@@ -1,56 +1,106 @@
-# Welcome to your Expo app 👋
+# YYC Skate Spots
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A street skateboarding spot book for Calgary. Expo SDK 57 (React Native 0.86) + Expo Router,
+Convex, Clerk, `react-native-maps`, NativeWind v4. Package manager is **Bun** (`bun.lock` is the
+source of truth).
 
-## Get started
+> **No Expo Go.** This app uses native modules (Google Maps, Clerk, SecureStore) that Expo Go
+> does not ship. You run it in a custom **EAS development build** — a one-time build you install
+> on your device, after which JS changes hot-reload exactly like Expo Go.
 
-1. Install dependencies
+## Setup checklist (in order)
 
-   ```bash
-   npm install
+### 1. Google Maps API keys (GCP)
+
+You need **two separate keys** in one GCP project, with **billing enabled**.
+
+1. Create/pick a GCP project → enable **Maps SDK for Android** and **Maps SDK for iOS**.
+2. Create the **Android key**:
+   - Application restriction: **Android apps** → add package `com.yycskatespots.app` plus your
+     SHA-1 fingerprint. For EAS builds the signing key lives on EAS servers — get the SHA-1 with
+     `eas credentials` (Android → Keystore) after step 5, then come back and add it.
+   - API restriction: **Maps SDK for Android** only.
+3. Create the **iOS key**:
+   - Application restriction: **iOS apps** → bundle id `com.yycskatespots.app`.
+   - API restriction: **Maps SDK for iOS** only.
+4. `cp .env.example .env` and fill in both keys.
+
+An unrestricted key that leaks from a decompiled APK can be run up against your billing account
+— restriction is not optional.
+
+### 2. Clerk
+
+1. Create an application at dashboard.clerk.com.
+2. **Configure → Native applications**: make sure the **Native API** is enabled (required for
+   any Expo integration).
+3. **Configure → JWT templates → New template → Convex.** Leave the name as `convex`. Note the
+   **Issuer** domain (`https://<something>.clerk.accounts.dev`).
+4. Copy the **Publishable key** into `.env` as `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY`.
+
+### 3. Convex
+
+1. `bun x convex dev` — first run logs you in, creates the project, and prints the deployment
+   URL. Put it in `.env` as `EXPO_PUBLIC_CONVEX_URL`.
+2. In the Convex dashboard (or `bun x convex env set`), set
+   `CLERK_JWT_ISSUER_DOMAIN` to the Issuer domain from step 2.3.
+3. Leave `bun x convex dev` running while developing — it pushes functions/schema on save.
+
+### 4. EAS project
+
+1. `bun x eas-cli login` (create an Expo account if needed).
+2. `bun x eas-cli init` — links this repo to an EAS project.
+3. Mirror the two map keys into EAS env vars so cloud builds see them
+   (`.env` is gitignored and never uploaded):
+   ```sh
+   bun x eas-cli env:create --environment development --name GOOGLE_MAPS_API_KEY_ANDROID --value <key>
+   bun x eas-cli env:create --environment development --name GOOGLE_MAPS_API_KEY_IOS --value <key>
    ```
+   Repeat for `preview`/`production` when you get there. The build **fails on purpose** if a key
+   is missing (see `app.config.ts`).
 
-2. Start the app
+### 5. Development build → device
 
-   ```bash
-   npx expo start
-   ```
+Android (works from Linux):
 
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```sh
+bun x eas-cli build --profile development --platform android
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+When it finishes, open the build URL on your phone and install the APK. Now grab the keystore
+SHA-1 (`bun x eas-cli credentials`) and finish the Android key restriction from step 1.
 
-### Other setup steps
+iOS requires an Apple Developer account; register your device first:
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+```sh
+bun x eas-cli device:create
+bun x eas-cli build --profile development --platform ios
+```
 
-## Learn more
+### 6. Run
 
-To learn more about developing your project with Expo, look at the following resources:
+```sh
+bun run start
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+Open the installed dev build on your phone (same Wi-Fi) and it connects to the dev server. If
+anything in `.env` is missing the app shows a red "Environment not configured" screen listing
+exactly what to fix.
 
-## Join the community
+## Scripts
 
-Join our community of developers creating universal apps.
+| Command             | What it does                              |
+| ------------------- | ----------------------------------------- |
+| `bun run start`     | Start the Metro dev server                |
+| `bun run typecheck` | `tsc --noEmit`                            |
+| `bun run lint`      | ESLint (`eslint-config-expo` + prettier)  |
+| `bun run format`    | Prettier                                  |
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## Architecture notes
+
+- `app.config.ts` (not `app.json`) so native config can read env vars. Map keys are baked into
+  binaries at **build** time; Convex/Clerk `EXPO_PUBLIC_*` vars are read by JS at **runtime**.
+- `src/app/` is Expo Router's file-based routing directory — files become routes, like Next.js.
+- Distance filtering is client-side haversine over one reactive Convex query — deliberate; the
+  dataset is one city. Do not add a geospatial index.
+- Rejected on purpose: `expo-maps` (alpha, no Google Maps on iOS), `@convex-dev/geospatial`,
+  Expo Go.
