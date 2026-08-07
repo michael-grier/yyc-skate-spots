@@ -87,10 +87,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     [
       "expo-image-picker",
       {
-        photosPermission:
-          "YYC Skate Spots lets you attach photos of a spot when you submit it.",
-        cameraPermission:
-          "YYC Skate Spots lets you photograph a spot when you submit it.",
+        photosPermission: "YYC Skate Spots lets you attach photos of a spot when you submit it.",
+        cameraPermission: "YYC Skate Spots lets you photograph a spot when you submit it.",
       },
     ],
   ],

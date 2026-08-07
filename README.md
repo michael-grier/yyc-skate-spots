@@ -92,8 +92,8 @@ exactly what to fix.
 | ------------------- | ----------------------------------------- |
 | `bun run start`     | Start the Metro dev server                |
 | `bun run typecheck` | `tsc --noEmit`                            |
-| `bun run lint`      | ESLint (`eslint-config-expo` + prettier)  |
-| `bun run format`    | Prettier                                  |
+| `bun run lint`      | ESLint (`eslint-config-expo`)             |
+| `bun run format`    | Biome (formatter only; ESLint owns lint)  |
 
 ## Architecture notes
 

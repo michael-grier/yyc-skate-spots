@@ -18,8 +18,7 @@ function EnvProblemScreen() {
         </Text>
       ))}
       <Text className="mt-4 text-sm text-red-300">
-        See the setup checklist in README.md, then restart the dev server (or rebuild for map
-        keys).
+        See the setup checklist in README.md, then restart the dev server (or rebuild for map keys).
       </Text>
     </ScrollView>
   );

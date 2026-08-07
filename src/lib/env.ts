@@ -16,21 +16,23 @@ export function getEnvProblems(): string[] {
     | undefined;
   if (Platform.OS === "android" && !mapKeys?.android) {
     problems.push(
-      "GOOGLE_MAPS_API_KEY_ANDROID was missing when this build was made. Set it in .env (or EAS env vars) and rebuild."
+      "GOOGLE_MAPS_API_KEY_ANDROID was missing when this build was made. Set it in .env (or EAS env vars) and rebuild.",
     );
   }
   if (Platform.OS === "ios" && !mapKeys?.ios) {
     problems.push(
-      "GOOGLE_MAPS_API_KEY_IOS was missing when this build was made. Set it in .env (or EAS env vars) and rebuild."
+      "GOOGLE_MAPS_API_KEY_IOS was missing when this build was made. Set it in .env (or EAS env vars) and rebuild.",
     );
   }
 
   if (!process.env.EXPO_PUBLIC_CONVEX_URL) {
-    problems.push("EXPO_PUBLIC_CONVEX_URL is not set. Run `npx convex dev` and copy the URL into .env.");
+    problems.push(
+      "EXPO_PUBLIC_CONVEX_URL is not set. Run `npx convex dev` and copy the URL into .env.",
+    );
   }
   if (!process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY) {
     problems.push(
-      "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY is not set. Copy it from the Clerk Dashboard into .env."
+      "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY is not set. Copy it from the Clerk Dashboard into .env.",
     );
   }
 
