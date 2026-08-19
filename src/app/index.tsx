@@ -2,6 +2,8 @@ import { Stack } from "expo-router";
 import { StyleSheet } from "react-native";
 import MapView, { PROVIDER_GOOGLE } from "react-native-maps";
 
+import { darkMapStyle } from "@/theme/map-style";
+
 // Downtown Calgary, framed wide enough to take in the whole city. Spots are
 // scattered city-wide, so opening tighter than this hides most of them.
 const CALGARY_REGION = {
@@ -20,7 +22,12 @@ export default function MapScreen() {
     <>
       {/* The map is full-bleed, so the stack header would both crop it and title it "index". */}
       <Stack.Screen options={{ headerShown: false }} />
-      <MapView provider={PROVIDER_GOOGLE} initialRegion={CALGARY_REGION} style={styles.map} />
+      <MapView
+        provider={PROVIDER_GOOGLE}
+        initialRegion={CALGARY_REGION}
+        customMapStyle={darkMapStyle}
+        style={styles.map}
+      />
     </>
   );
 }
