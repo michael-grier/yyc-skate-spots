@@ -33,9 +33,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ios: {
     bundleIdentifier: "com.yycskatespots.app",
     icon: "./assets/expo.icon",
-    config: {
-      googleMapsApiKey: GOOGLE_MAPS_API_KEY_IOS,
-    },
     infoPlist: {
       NSLocationWhenInUseUsageDescription:
         "YYC Skate Spots shows your position on the map and sorts spots by distance from you.",
@@ -54,11 +51,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       monochromeImage: "./assets/images/android-icon-monochrome.png",
     },
     permissions: ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"],
-    config: {
-      googleMaps: {
-        apiKey: GOOGLE_MAPS_API_KEY_ANDROID,
-      },
-    },
     predictiveBackGestureEnabled: false,
   },
   web: {
@@ -67,6 +59,19 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   plugins: [
     "expo-router",
+    // Keys must go through react-native-maps' own plugin, not the legacy
+    // `ios.config.googleMapsApiKey` / `android.config.googleMaps` fields.
+    // Those fields make Expo's built-in fallback plugin write
+    // `pod 'react-native-google-maps'` into the Podfile, and that podspec no
+    // longer exists in react-native-maps 1.27 — Google Maps is now the
+    // `react-native-maps/Google` subspec, which only this plugin adds.
+    [
+      "react-native-maps",
+      {
+        iosGoogleMapsApiKey: GOOGLE_MAPS_API_KEY_IOS,
+        androidGoogleMapsApiKey: GOOGLE_MAPS_API_KEY_ANDROID,
+      },
+    ],
     "expo-secure-store",
     "@clerk/expo",
     [
