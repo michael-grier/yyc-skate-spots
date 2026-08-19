@@ -108,6 +108,18 @@ bun x eas-cli device:create
 bun x eas-cli build --profile development --platform ios
 ```
 
+The build finishes with a QR code in the terminal. Scan it with the iPhone Camera app to reach
+the install page directly.
+
+The first development build you install **will refuse to open**, with a "Developer Mode Required"
+pop-up. iOS 16 and later require Developer Mode for any app signed with a development or ad-hoc
+profile, which every internal-distribution build is. On the phone: **Settings → Privacy &
+Security → Developer Mode**, toggle it on, restart when asked, then confirm at the prompt after
+the reboot.
+
+Once per device, not per build. The toggle only appears in Settings after a development-signed
+app has been installed, so you cannot do it in advance.
+
 ### 6. Run
 
 ```sh
