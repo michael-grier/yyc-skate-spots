@@ -25,6 +25,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: "YYC Skate Spots",
   slug: "yyc-skate-spots",
+  // Pinned explicitly because this user owns more than one Expo account;
+  // without `owner`, EAS infers it from login context and can resolve to the
+  // wrong one (notably in CI, where there is no interactive session).
+  owner: "michaelgrier",
   version: "1.0.0",
   orientation: "portrait",
   icon: "./assets/images/icon.png",
@@ -102,6 +106,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     reactCompiler: true,
   },
   extra: {
+    eas: {
+      projectId: "c70e46c5-1b1d-43d6-b8d0-dd48cd050273",
+    },
     // Runtime-visible flags so the app can fail loudly on a bad build
     // instead of showing a silently blank map (see src/lib/env.ts).
     googleMapsKeyPresent: {
