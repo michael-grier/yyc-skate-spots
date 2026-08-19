@@ -1,8 +1,17 @@
 import { ClerkProvider } from "@clerk/expo";
+import {
+  Inter_400Regular,
+  Inter_500Medium,
+  Inter_600SemiBold,
+  Inter_700Bold,
+  useFonts,
+} from "@expo-google-fonts/inter";
 import { Stack } from "expo-router";
+import { StatusBar } from "expo-status-bar";
 import { ScrollView, Text } from "react-native";
 
 import { getEnvProblems } from "@/lib/env";
+import { colors } from "@/theme/colors";
 import "../global.css";
 
 const publishableKey: string = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
@@ -28,14 +37,37 @@ function EnvProblemScreen() {
 }
 
 export default function RootLayout() {
+  const [fontsLoaded, fontError] = useFonts({
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+    Inter_700Bold,
+  });
+
+  // Checked before the font gate so a broken env still fails loudly, in the
+  // system font, even if font loading were to hang.
   if (envProblems.length > 0) {
     return <EnvProblemScreen />;
   }
 
-  // TODO(Phase 2): also wrap in ConvexProviderWithClerk.
+  // The splash screen stays up until the first real render. On a font-load
+  // failure, render anyway with system fonts instead of hanging on splash.
+  if (!fontsLoaded && !fontError) {
+    return null;
+  }
+
+  // TODO(Phase 1): also wrap in ConvexProviderWithClerk.
   return (
     <ClerkProvider publishableKey={publishableKey}>
-      <Stack />
+      <StatusBar style="light" />
+      <Stack
+        screenOptions={{
+          contentStyle: { backgroundColor: colors.base },
+          headerStyle: { backgroundColor: colors.base },
+          headerTintColor: colors.ink,
+          headerShadowVisible: false,
+        }}
+      />
     </ClerkProvider>
   );
 }
