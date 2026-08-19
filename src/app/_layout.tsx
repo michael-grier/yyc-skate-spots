@@ -37,7 +37,7 @@ function EnvProblemScreen() {
 }
 
 export default function RootLayout() {
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
     Inter_600SemiBold,
@@ -50,8 +50,9 @@ export default function RootLayout() {
     return <EnvProblemScreen />;
   }
 
-  // The splash screen stays up until the first real render.
-  if (!fontsLoaded) {
+  // The splash screen stays up until the first real render. On a font-load
+  // failure, render anyway with system fonts instead of hanging on splash.
+  if (!fontsLoaded && !fontError) {
     return null;
   }
 
