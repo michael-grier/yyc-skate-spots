@@ -1,8 +1,11 @@
+import { ClerkProvider } from "@clerk/expo";
 import { Stack } from "expo-router";
 import { ScrollView, Text } from "react-native";
 
 import { getEnvProblems } from "@/lib/env";
 import "../global.css";
+
+const publishableKey: string = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
 
 // Evaluated once at startup: a misconfigured environment shows this screen
 // instead of a silently blank map or a hung backend connection.
@@ -29,6 +32,10 @@ export default function RootLayout() {
     return <EnvProblemScreen />;
   }
 
-  // TODO(Phase 2): wrap in ClerkProvider + ConvexProviderWithClerk.
-  return <Stack />;
+  // TODO(Phase 2): also wrap in ConvexProviderWithClerk.
+  return (
+    <ClerkProvider publishableKey={publishableKey}>
+      <Stack />
+    </ClerkProvider>
+  );
 }
