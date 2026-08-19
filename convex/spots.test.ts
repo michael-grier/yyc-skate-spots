@@ -53,7 +53,7 @@ describe("spots authz", () => {
     expect(spot?.name).toBe("Test Ledge");
   });
 
-  test("field limits are enforced", async () => {
+  test("field limits and coordinate bounds are enforced", async () => {
     const t = convexTest(schema, modules);
     const asAlice = t.withIdentity({ subject: "alice" });
 
@@ -63,5 +63,53 @@ describe("spots authz", () => {
     await expect(
       asAlice.mutation(api.spots.create, { ...SPOT, notes: "x".repeat(2001) }),
     ).rejects.toThrow(/Notes/);
+    await expect(asAlice.mutation(api.spots.create, { ...SPOT, latitude: 91 })).rejects.toThrow(
+      /Latitude/,
+    );
+    await expect(asAlice.mutation(api.spots.create, { ...SPOT, longitude: -181 })).rejects.toThrow(
+      /Longitude/,
+    );
+  });
+
+  test("photo storage ids are never exposed to non-owners", async () => {
+    const t = convexTest(schema, modules);
+    const asAlice = t.withIdentity({ subject: "alice" });
+    const photoId = await t.run(async (ctx) => await ctx.storage.store(new Blob(["jpeg bytes"])));
+
+    const id = await asAlice.mutation(api.spots.create, { ...SPOT, photoIds: [photoId] });
+
+    const anonymous = await t.query(api.spots.get, { id });
+    expect(anonymous?.isOwner).toBe(false);
+    expect(anonymous?.photoIds).toBeNull();
+    expect(anonymous).not.toHaveProperty("createdBy");
+    expect((await t.query(api.spots.list, {}))[0]).not.toHaveProperty("photoIds");
+
+    const asOwner = await asAlice.query(api.spots.get, { id });
+    expect(asOwner?.isOwner).toBe(true);
+    expect(asOwner?.photoIds).toEqual([photoId]);
+  });
+
+  test("a photo attached to one spot cannot be attached to another", async () => {
+    const t = convexTest(schema, modules);
+    const asAlice = t.withIdentity({ subject: "alice" });
+    const asBob = t.withIdentity({ subject: "bob" });
+    const photoId = await t.run(async (ctx) => await ctx.storage.store(new Blob(["jpeg bytes"])));
+
+    const alicesSpot = await asAlice.mutation(api.spots.create, { ...SPOT, photoIds: [photoId] });
+
+    // Bob attaching Alice's photo would let him destroy the file later by
+    // deleting his own spot.
+    await expect(
+      asBob.mutation(api.spots.create, { ...SPOT, name: "Bob's", photoIds: [photoId] }),
+    ).rejects.toThrow(/another spot/);
+
+    const bobsSpot = await asBob.mutation(api.spots.create, { ...SPOT, name: "Bob's" });
+    await expect(
+      asBob.mutation(api.spots.update, { ...SPOT, id: bobsSpot, photoIds: [photoId] }),
+    ).rejects.toThrow(/another spot/);
+
+    // Alice's file is still there.
+    const spot = await t.query(api.spots.get, { id: alicesSpot });
+    expect(spot?.photoUrls).toHaveLength(1);
   });
 });
