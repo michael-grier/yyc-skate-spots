@@ -1,3 +1,4 @@
+import type { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { api } from "@convex/_generated/api";
 import { useQuery } from "convex/react";
 import { useMemo, useRef, useState } from "react";
@@ -8,6 +9,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ClusterMarker } from "@/components/cluster-marker";
 import { type FilterSection, FilterChips } from "@/components/filter-chips";
+import { FilterSheet } from "@/components/filter-sheet";
 import { LocateIcon } from "@/components/icons";
 import { SearchBar } from "@/components/search-bar";
 import { SpotMarker } from "@/components/spot-marker";
@@ -40,6 +42,7 @@ const NO_SPOTS: never[] = [];
  */
 export default function MapScreen() {
   const mapRef = useRef<MapView>(null);
+  const sheetRef = useRef<BottomSheetModal>(null);
   const insets = useSafeAreaInsets();
   // undefined while the first result is in flight; the map renders empty.
   const allSpots = useQuery(api.spots.list) ?? NO_SPOTS;
@@ -60,8 +63,12 @@ export default function MapScreen() {
   const { items, regionToExpand } = useClusters(points, region);
   const selectedSpot = spots.find((spot) => spot._id === selectedId);
 
-  function openFilters(_section: FilterSection) {
-    // The filter sheet arrives in the next commit.
+  function openFilters(section: FilterSection) {
+    // A radius is meaningless without a position, so ask as the sheet opens.
+    if (section === "distance" && !coords) {
+      void locate();
+    }
+    sheetRef.current?.present();
   }
 
   async function handleLocate() {
@@ -133,6 +140,16 @@ export default function MapScreen() {
           />
         ) : null}
       </View>
+
+      <FilterSheet
+        ref={sheetRef}
+        filters={filters}
+        onChange={setFilters}
+        resultCount={spots.length}
+        hasLocation={coords !== null}
+        onRequestLocation={() => void locate()}
+        onDone={() => sheetRef.current?.dismiss()}
+      />
     </View>
   );
 }

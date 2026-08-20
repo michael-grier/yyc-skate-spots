@@ -11,7 +11,11 @@ export const darkMapStyle: MapStyleElement[] = [
   { elementType: "labels.text.fill", stylers: [{ color: mapColors.label }] },
   { elementType: "labels.text.stroke", stylers: [{ color: mapColors.land }] },
   { featureType: "poi", stylers: [{ visibility: "off" }] },
-  { featureType: "poi.park", elementType: "geometry", stylers: [{ color: mapColors.park }, { visibility: "on" }] },
+  {
+    featureType: "poi.park",
+    elementType: "geometry",
+    stylers: [{ color: mapColors.park }, { visibility: "on" }],
+  },
   { featureType: "road", elementType: "geometry", stylers: [{ color: mapColors.roadMinor }] },
   { featureType: "road", elementType: "geometry.stroke", stylers: [{ visibility: "off" }] },
   { featureType: "road.arterial", elementType: "geometry", stylers: [{ color: mapColors.road }] },
