@@ -21,6 +21,11 @@ export const SPOT_TYPE_LABELS: Record<SpotType, string> = {
   other: "Other",
 };
 
+/** Every spot type, in the order the add form and filter sheet list them. */
+export const SPOT_TYPES = Object.keys(SPOT_TYPE_LABELS) as SpotType[];
+
+export const BUST_FACTORS = ["low", "medium", "high"] as const satisfies readonly BustFactor[];
+
 export const BUST_FACTOR_LABELS: Record<BustFactor, string> = {
   low: "Low",
   medium: "Medium",

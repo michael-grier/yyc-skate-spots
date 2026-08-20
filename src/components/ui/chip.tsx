@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Pressable, Text, View } from "react-native";
 
 import { cn } from "@/lib/cn";
@@ -8,11 +9,13 @@ type ChipProps = {
   onPress?: () => void;
   /** Small leading dot, used for the bust-factor semantic colors. */
   dotColor?: string;
+  /** Rendered after the label, e.g. a disclosure chevron. */
+  trailing?: ReactNode;
   className?: string;
 };
 
 /** Pill control used by map filters and the bust-factor selector. */
-export function Chip({ label, selected, onPress, dotColor, className }: ChipProps) {
+export function Chip({ label, selected, onPress, dotColor, trailing, className }: ChipProps) {
   return (
     <Pressable
       accessibilityRole="button"
@@ -39,6 +42,7 @@ export function Chip({ label, selected, onPress, dotColor, className }: ChipProp
       >
         {label}
       </Text>
+      {trailing}
     </Pressable>
   );
 }

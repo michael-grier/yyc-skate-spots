@@ -1,4 +1,5 @@
 import { ClerkProvider, useAuth } from "@clerk/expo";
+import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { ConvexReactClient } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import {
@@ -11,6 +12,7 @@ import {
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { ScrollView, Text } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 import { getEnvProblems } from "@/lib/env";
 import { colors } from "@/theme/colors";
@@ -26,7 +28,9 @@ const envProblems = getEnvProblems();
 // before anything can touch the client. unsavedChangesWarning is a
 // browser-only feature and must be off in React Native.
 const convexUrl = process.env.EXPO_PUBLIC_CONVEX_URL;
-const convex = convexUrl ? new ConvexReactClient(convexUrl, { unsavedChangesWarning: false }) : null;
+const convex = convexUrl
+  ? new ConvexReactClient(convexUrl, { unsavedChangesWarning: false })
+  : null;
 
 function EnvProblemScreen() {
   return (
@@ -68,17 +72,22 @@ export default function RootLayout() {
   return (
     <ClerkProvider publishableKey={publishableKey}>
       <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
-        <StatusBar style="light" />
-        <Stack
-          screenOptions={{
-            contentStyle: { backgroundColor: colors.base },
-            headerStyle: { backgroundColor: colors.base },
-            headerTintColor: colors.ink,
-            headerShadowVisible: false,
-          }}
-        >
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        </Stack>
+        {/* Bottom sheets need the gesture root and modal host above every screen. */}
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <BottomSheetModalProvider>
+            <StatusBar style="light" />
+            <Stack
+              screenOptions={{
+                contentStyle: { backgroundColor: colors.base },
+                headerStyle: { backgroundColor: colors.base },
+                headerTintColor: colors.ink,
+                headerShadowVisible: false,
+              }}
+            >
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            </Stack>
+          </BottomSheetModalProvider>
+        </GestureHandlerRootView>
       </ConvexProviderWithClerk>
     </ClerkProvider>
   );

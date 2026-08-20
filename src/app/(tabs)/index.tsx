@@ -1,14 +1,21 @@
+import type { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { api } from "@convex/_generated/api";
 import { useQuery } from "convex/react";
 import { useMemo, useRef, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import MapView, { PROVIDER_GOOGLE, type Region } from "react-native-maps";
 
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
 import { ClusterMarker } from "@/components/cluster-marker";
+import { type FilterSection, FilterChips } from "@/components/filter-chips";
+import { FilterSheet } from "@/components/filter-sheet";
 import { LocateIcon } from "@/components/icons";
+import { SearchBar } from "@/components/search-bar";
 import { SpotMarker } from "@/components/spot-marker";
 import { SpotPreviewCard } from "@/components/spot-preview-card";
 import { distanceKm } from "@/lib/geo";
+import { DEFAULT_FILTERS, applyFilters } from "@/lib/spot-filters";
 import { useClusters } from "@/lib/use-clusters";
 import { useUserLocation } from "@/lib/use-user-location";
 import { colors } from "@/theme/colors";
@@ -35,22 +42,34 @@ const NO_SPOTS: never[] = [];
  */
 export default function MapScreen() {
   const mapRef = useRef<MapView>(null);
+  const sheetRef = useRef<BottomSheetModal>(null);
+  const insets = useSafeAreaInsets();
   // undefined while the first result is in flight; the map renders empty.
-  const spots = useQuery(api.spots.list) ?? NO_SPOTS;
+  const allSpots = useQuery(api.spots.list) ?? NO_SPOTS;
+  const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   // Tracked on gesture end rather than every frame; clusters only need to
   // recompute once the map settles.
   const [region, setRegion] = useState(CALGARY_REGION);
   const { coords, granted, locate } = useUserLocation();
 
+  const spots = useMemo(() => applyFilters(allSpots, filters, coords), [allSpots, filters, coords]);
   // Stable between renders so useClusters only rebuilds its index when the
-  // query result actually changes.
+  // filtered result actually changes.
   const points = useMemo(
     () => spots.map(({ _id, latitude, longitude }) => ({ id: _id, latitude, longitude })),
     [spots],
   );
   const { items, regionToExpand } = useClusters(points, region);
   const selectedSpot = spots.find((spot) => spot._id === selectedId);
+
+  function openFilters(section: FilterSection) {
+    // A radius is meaningless without a position, so ask as the sheet opens.
+    if (section === "distance" && !coords) {
+      void locate();
+    }
+    sheetRef.current?.present();
+  }
 
   async function handleLocate() {
     const position = await locate();
@@ -93,6 +112,14 @@ export default function MapScreen() {
         )}
       </MapView>
 
+      <View className="absolute inset-x-4 gap-3" style={{ top: insets.top + 8 }}>
+        <SearchBar
+          value={filters.query}
+          onChangeText={(query) => setFilters((current) => ({ ...current, query }))}
+        />
+        <FilterChips filters={filters} onOpen={openFilters} />
+      </View>
+
       <View className="absolute inset-x-4 bottom-4 gap-3">
         <Pressable
           accessibilityRole="button"
@@ -113,6 +140,16 @@ export default function MapScreen() {
           />
         ) : null}
       </View>
+
+      <FilterSheet
+        ref={sheetRef}
+        filters={filters}
+        onChange={setFilters}
+        resultCount={spots.length}
+        hasLocation={coords !== null}
+        onRequestLocation={() => void locate()}
+        onDone={() => sheetRef.current?.dismiss()}
+      />
     </View>
   );
 }
