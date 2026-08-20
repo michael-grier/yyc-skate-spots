@@ -1,6 +1,8 @@
 import * as Location from "expo-location";
 import { useEffect, useState } from "react";
 
+type Lookup = { key: string; address: string | null };
+
 /**
  * Best-effort "street, district" for a spot via reverse geocoding. Android
  * needs location permission for geocoding, so callers pass `enabled` only
@@ -11,22 +13,26 @@ export function useSpotAddress(
   longitude: number | undefined,
   enabled: boolean,
 ) {
-  const [address, setAddress] = useState<string | null>(null);
+  // The result is keyed by the coordinates it was looked up for, so a change
+  // of spot yields null (not the previous address) until its lookup lands.
+  const key =
+    enabled && latitude !== undefined && longitude !== undefined
+      ? `${latitude},${longitude}`
+      : null;
+  const [lookup, setLookup] = useState<Lookup | null>(null);
 
   useEffect(() => {
-    // Never show the previous coordinates' address while a new lookup runs.
-    setAddress(null);
-    if (!enabled || latitude === undefined || longitude === undefined) {
+    if (key === null || latitude === undefined || longitude === undefined) {
       return;
     }
     let cancelled = false;
     Location.reverseGeocodeAsync({ latitude, longitude })
       .then(([first]) => {
-        if (cancelled || !first) {
+        if (cancelled) {
           return;
         }
-        const parts = [first.street, first.district ?? first.city].filter(Boolean);
-        setAddress(parts.length > 0 ? parts.join(", ") : null);
+        const parts = first ? [first.street, first.district ?? first.city].filter(Boolean) : [];
+        setLookup({ key, address: parts.length > 0 ? parts.join(", ") : null });
       })
       .catch(() => {
         // Geocoder unavailable: the detail screen simply omits the subtitle.
@@ -34,7 +40,7 @@ export function useSpotAddress(
     return () => {
       cancelled = true;
     };
-  }, [latitude, longitude, enabled]);
+  }, [key, latitude, longitude]);
 
-  return address;
+  return lookup?.key === key ? lookup.address : null;
 }
