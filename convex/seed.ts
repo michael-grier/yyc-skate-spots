@@ -50,8 +50,8 @@ const SEED_SPOTS = [
     bustFactor: "low",
     surface: "smooth",
     notes: "A mellow bank with a long curb/ledge at the top",
-    latitude: 51.051524,
-    longitude: -114.085926,
+    latitude: 51.0199013,
+    longitude: -114.0313298,
   },
   {
     name: "St. Patrick's Island Park",
