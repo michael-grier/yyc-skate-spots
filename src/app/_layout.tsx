@@ -1,4 +1,6 @@
-import { ClerkProvider } from "@clerk/expo";
+import { ClerkProvider, useAuth } from "@clerk/expo";
+import { ConvexReactClient } from "convex/react";
+import { ConvexProviderWithClerk } from "convex/react-clerk";
 import {
   Inter_400Regular,
   Inter_500Medium,
@@ -19,6 +21,12 @@ const publishableKey: string = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
 // Evaluated once at startup: a misconfigured environment shows this screen
 // instead of a silently blank map or a hung backend connection.
 const envProblems = getEnvProblems();
+
+// Null when EXPO_PUBLIC_CONVEX_URL is unset — the env gate below renders
+// before anything can touch the client. unsavedChangesWarning is a
+// browser-only feature and must be off in React Native.
+const convexUrl = process.env.EXPO_PUBLIC_CONVEX_URL;
+const convex = convexUrl ? new ConvexReactClient(convexUrl, { unsavedChangesWarning: false }) : null;
 
 function EnvProblemScreen() {
   return (
@@ -45,8 +53,9 @@ export default function RootLayout() {
   });
 
   // Checked before the font gate so a broken env still fails loudly, in the
-  // system font, even if font loading were to hang.
-  if (envProblems.length > 0) {
+  // system font, even if font loading were to hang. The !convex arm is
+  // unreachable (a missing URL is an env problem) but narrows the type.
+  if (envProblems.length > 0 || !convex) {
     return <EnvProblemScreen />;
   }
 
@@ -56,18 +65,19 @@ export default function RootLayout() {
     return null;
   }
 
-  // TODO(Phase 1): also wrap in ConvexProviderWithClerk.
   return (
     <ClerkProvider publishableKey={publishableKey}>
-      <StatusBar style="light" />
-      <Stack
-        screenOptions={{
-          contentStyle: { backgroundColor: colors.base },
-          headerStyle: { backgroundColor: colors.base },
-          headerTintColor: colors.ink,
-          headerShadowVisible: false,
-        }}
-      />
+      <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
+        <StatusBar style="light" />
+        <Stack
+          screenOptions={{
+            contentStyle: { backgroundColor: colors.base },
+            headerStyle: { backgroundColor: colors.base },
+            headerTintColor: colors.ink,
+            headerShadowVisible: false,
+          }}
+        />
+      </ConvexProviderWithClerk>
     </ClerkProvider>
   );
 }
