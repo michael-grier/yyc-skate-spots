@@ -1,6 +1,10 @@
+import { api } from "@convex/_generated/api";
+import { useQuery } from "convex/react";
+import { useState } from "react";
 import { StyleSheet } from "react-native";
 import MapView, { PROVIDER_GOOGLE } from "react-native-maps";
 
+import { SpotMarker } from "@/components/spot-marker";
 import { darkMapStyle } from "@/theme/map-style";
 
 // Downtown Calgary, framed wide enough to take in the whole city. Spots are
@@ -17,13 +21,29 @@ const CALGARY_REGION = {
  * only required for actions that write.
  */
 export default function MapScreen() {
+  // undefined while the first result is in flight; the map renders empty.
+  const spots = useQuery(api.spots.list) ?? [];
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
   return (
     <MapView
       provider={PROVIDER_GOOGLE}
       initialRegion={CALGARY_REGION}
       customMapStyle={darkMapStyle}
       style={styles.map}
-    />
+      onPress={() => setSelectedId(null)}
+    >
+      {spots.map((spot) => (
+        <SpotMarker
+          key={spot._id}
+          id={spot._id}
+          latitude={spot.latitude}
+          longitude={spot.longitude}
+          selected={spot._id === selectedId}
+          onPress={setSelectedId}
+        />
+      ))}
+    </MapView>
   );
 }
 
