@@ -101,6 +101,16 @@ export default function SpotDetailScreen() {
 
   // Captured here because TS narrowing of `spot` doesn't reach the closures below.
   const spotId = spot._id;
+  const destination = { name: spot.name, latitude: spot.latitude, longitude: spot.longitude };
+
+  async function handleDirections() {
+    try {
+      await openDirections(destination);
+    } catch {
+      // openURL rejects when nothing handles the URL or the user cancels.
+      Alert.alert("Couldn't open a maps app", "Install Google Maps or Apple Maps and try again.");
+    }
+  }
 
   function confirmDelete() {
     Alert.alert("Delete this spot?", "Its photos are removed too. This can't be undone.", [
@@ -192,7 +202,7 @@ export default function SpotDetailScreen() {
         <Button
           label="Take Me There"
           icon={<NavigateIcon size={17} color={colors.ink} />}
-          onPress={() => void openDirections(spot)}
+          onPress={() => void handleDirections()}
         />
       </View>
     </View>

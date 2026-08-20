@@ -14,6 +14,8 @@ export function useSpotAddress(
   const [address, setAddress] = useState<string | null>(null);
 
   useEffect(() => {
+    // Never show the previous coordinates' address while a new lookup runs.
+    setAddress(null);
     if (!enabled || latitude === undefined || longitude === undefined) {
       return;
     }
