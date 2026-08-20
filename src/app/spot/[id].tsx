@@ -99,6 +99,9 @@ export default function SpotDetailScreen() {
     );
   }
 
+  // Captured here because TS narrowing of `spot` doesn't reach the closures below.
+  const spotId = spot._id;
+
   function confirmDelete() {
     Alert.alert("Delete this spot?", "Its photos are removed too. This can't be undone.", [
       { text: "Cancel", style: "cancel" },
@@ -107,7 +110,7 @@ export default function SpotDetailScreen() {
         style: "destructive",
         onPress: async () => {
           try {
-            await removeSpot({ id: spot._id });
+            await removeSpot({ id: spotId });
             router.back();
           } catch {
             Alert.alert("Couldn't delete", "Check your connection and try again.");
