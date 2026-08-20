@@ -21,7 +21,8 @@ function typesLabel(types: SpotFilters["types"]) {
 
 function bustLabel(bustFactors: SpotFilters["bustFactors"]) {
   if (bustFactors.length === 0) return "Any bust";
-  return bustFactors.map((b) => BUST_FACTOR_LABELS[b]).join(" · ");
+  if (bustFactors.length === 1) return `${BUST_FACTOR_LABELS[bustFactors[0]]} bust`;
+  return `${bustFactors.length} bust levels`;
 }
 
 /** The three always-visible filter chips; each opens the filter sheet. */
@@ -34,7 +35,8 @@ export function FilterChips({ filters, onOpen }: FilterChipsProps) {
   const bustActive = filters.bustFactors.length > 0;
 
   return (
-    <View className="flex-row gap-2">
+    // Wraps so all three stay reachable on narrow screens and long labels.
+    <View className="flex-row flex-wrap gap-2">
       <Chip
         label={distanceActive ? `≤ ${filters.maxDistanceKm} km` : "Any distance"}
         selected={distanceActive}
