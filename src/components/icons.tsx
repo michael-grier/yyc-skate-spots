@@ -56,3 +56,36 @@ export function PersonIcon({ size = 24, color }: IconProps) {
     </Svg>
   );
 }
+
+export function LocateIcon({ size = 24, color }: IconProps) {
+  return (
+    <Svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth={2}
+      strokeLinejoin="round"
+    >
+      <Path d="M12 2l7 19-7-4-7 4 7-19z" />
+    </Svg>
+  );
+}
+
+export function ChevronRightIcon({ size = 24, color }: IconProps) {
+  return (
+    <Svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <Path d="M9 6l6 6-6 6" />
+    </Svg>
+  );
+}
