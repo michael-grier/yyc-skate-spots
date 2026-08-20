@@ -16,7 +16,7 @@ const MAX_SPOTS_LISTED = 500;
 // server-side from the authenticated identity, never accepted as args.
 const spotFields = v.object({
   name: v.string(),
-  type: spotType,
+  types: v.array(spotType),
   bustFactor,
   surface: v.optional(surface),
   notes: v.optional(v.string()),
@@ -48,6 +48,7 @@ async function requireOwnedSpot(ctx: MutationCtx, id: Id<"spots">) {
 
 function validateSpotFields(fields: {
   name: string;
+  types: string[];
   notes?: string;
   photoIds: unknown[];
   latitude: number;
@@ -55,6 +56,9 @@ function validateSpotFields(fields: {
 }) {
   if (fields.name.trim().length === 0 || fields.name.length > MAX_NAME_LENGTH) {
     throw new Error(`Name must be 1–${MAX_NAME_LENGTH} characters.`);
+  }
+  if (fields.types.length === 0 || new Set(fields.types).size !== fields.types.length) {
+    throw new Error("Pick at least one spot type, each at most once.");
   }
   if (fields.notes !== undefined && fields.notes.length > MAX_NOTES_LENGTH) {
     throw new Error(`Notes must be at most ${MAX_NOTES_LENGTH} characters.`);

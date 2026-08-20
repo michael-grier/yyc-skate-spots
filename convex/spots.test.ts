@@ -9,7 +9,7 @@ const modules = import.meta.glob("./**/*.ts");
 
 const SPOT = {
   name: "Test Ledge",
-  type: "ledge" as const,
+  types: ["ledge" as const],
   bustFactor: "high" as const,
   latitude: 51.0447,
   longitude: -114.0719,
@@ -63,6 +63,12 @@ describe("spots authz", () => {
     await expect(
       asAlice.mutation(api.spots.create, { ...SPOT, notes: "x".repeat(2001) }),
     ).rejects.toThrow(/Notes/);
+    await expect(asAlice.mutation(api.spots.create, { ...SPOT, types: [] })).rejects.toThrow(
+      /at least one/,
+    );
+    await expect(
+      asAlice.mutation(api.spots.create, { ...SPOT, types: ["ledge", "ledge"] }),
+    ).rejects.toThrow(/at most once/);
     await expect(asAlice.mutation(api.spots.create, { ...SPOT, latitude: 91 })).rejects.toThrow(
       /Latitude/,
     );

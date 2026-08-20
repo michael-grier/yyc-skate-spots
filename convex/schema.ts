@@ -1,12 +1,20 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
+// Handrails and flatbars are deliberately separate: they skate completely
+// differently even though both are "rails".
 export const spotType = v.union(
-  v.literal("rail"),
   v.literal("ledge"),
+  v.literal("handrail"),
+  v.literal("flatbar"),
   v.literal("stairs"),
   v.literal("manny_pad"),
   v.literal("gap"),
+  v.literal("curb"),
+  v.literal("bank"),
+  v.literal("bump"),
+  v.literal("hubba"),
+  v.literal("drop"),
   v.literal("other"),
 );
 
@@ -17,7 +25,9 @@ export const surface = v.union(v.literal("smooth"), v.literal("rough"));
 export default defineSchema({
   spots: defineTable({
     name: v.string(),
-    type: spotType,
+    // Most real spots have more than one obstacle (a plaza with ledges and
+    // a stair set), so a spot carries every type that applies.
+    types: v.array(spotType),
     bustFactor,
     surface: v.optional(surface),
     notes: v.optional(v.string()),
