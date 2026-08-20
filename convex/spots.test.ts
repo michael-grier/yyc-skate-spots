@@ -118,4 +118,22 @@ describe("spots authz", () => {
     const spot = await t.query(api.spots.get, { id: alicesSpot });
     expect(spot?.photoUrls).toHaveLength(1);
   });
+
+  test("dropping or deleting a spot's photos removes the files and their claims", async () => {
+    const t = convexTest(schema, modules);
+    const asAlice = t.withIdentity({ subject: "alice" });
+    const [first, second] = await t.run(async (ctx) => [
+      await ctx.storage.store(new Blob(["one"])),
+      await ctx.storage.store(new Blob(["two"])),
+    ]);
+    const id = await asAlice.mutation(api.spots.create, { ...SPOT, photoIds: [first, second] });
+
+    await asAlice.mutation(api.spots.update, { ...SPOT, id, photoIds: [second] });
+    expect(await t.run((ctx) => ctx.storage.getUrl(first))).toBeNull();
+    expect(await t.run((ctx) => ctx.storage.getUrl(second))).not.toBeNull();
+
+    await asAlice.mutation(api.spots.remove, { id });
+    expect(await t.run((ctx) => ctx.storage.getUrl(second))).toBeNull();
+    expect(await t.run((ctx) => ctx.db.query("spotPhotos").take(10))).toEqual([]);
+  });
 });

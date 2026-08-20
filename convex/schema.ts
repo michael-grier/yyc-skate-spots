@@ -41,4 +41,12 @@ export default defineSchema({
     // need a Clerk lookup. Not updated if the user later renames themselves.
     createdByName: v.optional(v.string()),
   }).index("by_createdBy", ["createdBy"]),
+
+  // One row per photo attached to a spot. The index makes "is this file
+  // already someone's photo?" a single lookup instead of a table scan, so
+  // the ownership check stays correct at any table size.
+  spotPhotos: defineTable({
+    storageId: v.id("_storage"),
+    spotId: v.id("spots"),
+  }).index("by_storageId", ["storageId"]),
 });

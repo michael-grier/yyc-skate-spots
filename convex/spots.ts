@@ -8,7 +8,7 @@ import { bustFactor, spotType, surface } from "./schema";
 const MAX_PHOTOS = 6;
 const MAX_NAME_LENGTH = 80;
 const MAX_NOTES_LENGTH = 2000;
-// City-scale app: a plain bounded read covers Calgary's realistic spot count.
+// City-scale app: one bounded read covers Calgary's realistic spot count.
 // Revisit with pagination + geo indexing if the table ever approaches this.
 const MAX_SPOTS_LISTED = 500;
 
@@ -66,6 +66,9 @@ function validateSpotFields(fields: {
   if (fields.photoIds.length > MAX_PHOTOS) {
     throw new Error(`A spot can have at most ${MAX_PHOTOS} photos.`);
   }
+  if (new Set(fields.photoIds).size !== fields.photoIds.length) {
+    throw new Error("The same photo cannot be attached twice.");
+  }
   if (!Number.isFinite(fields.latitude) || Math.abs(fields.latitude) > 90) {
     throw new Error("Latitude must be between -90 and 90.");
   }
@@ -74,35 +77,50 @@ function validateSpotFields(fields: {
   }
 }
 
+async function photoRef(ctx: MutationCtx, photoId: Id<"_storage">) {
+  return await ctx.db
+    .query("spotPhotos")
+    .withIndex("by_storageId", (q) => q.eq("storageId", photoId))
+    .unique();
+}
+
 /**
- * Which of `photoIds` are already attached to a spot other than
- * `excludeSpotId`. Storage IDs become reachable once a spot is published, so
- * without this check a user could attach someone else's photo to their own
- * spot and later destroy the file via update/remove. Bounded scan — same
- * city-scale assumption as MAX_SPOTS_LISTED.
+ * Rejects any photo already attached to a spot other than `spotId`. Storage
+ * IDs become reachable once a spot is published, so without this a user
+ * could attach someone else's photo to their own spot and later destroy the
+ * file via update/remove.
  */
-async function photoIdsClaimedByOtherSpots(
+async function assertPhotosUnclaimed(
   ctx: MutationCtx,
   photoIds: Id<"_storage">[],
-  excludeSpotId: Id<"spots"> | null,
+  spotId: Id<"spots"> | null,
 ) {
-  const claimed = new Set<Id<"_storage">>();
-  if (photoIds.length === 0) {
-    return claimed;
-  }
-  const wanted = new Set(photoIds);
-  const spots = await ctx.db.query("spots").take(MAX_SPOTS_LISTED);
-  for (const spot of spots) {
-    if (spot._id === excludeSpotId) {
-      continue;
-    }
-    for (const photoId of spot.photoIds) {
-      if (wanted.has(photoId)) {
-        claimed.add(photoId);
-      }
+  for (const photoId of photoIds) {
+    const ref = await photoRef(ctx, photoId);
+    if (ref && ref.spotId !== spotId) {
+      throw new Error("One of those photos already belongs to another spot.");
     }
   }
-  return claimed;
+}
+
+async function claimPhotos(ctx: MutationCtx, photoIds: Id<"_storage">[], spotId: Id<"spots">) {
+  for (const photoId of photoIds) {
+    await ctx.db.insert("spotPhotos", { storageId: photoId, spotId });
+  }
+}
+
+/**
+ * Drops the references and deletes the files. Safe to delete outright:
+ * claims are unique, so a released photo cannot belong to another spot.
+ */
+async function releasePhotos(ctx: MutationCtx, photoIds: Id<"_storage">[]) {
+  for (const photoId of photoIds) {
+    const ref = await photoRef(ctx, photoId);
+    if (ref) {
+      await ctx.db.delete("spotPhotos", ref._id);
+    }
+    await ctx.storage.delete(photoId);
+  }
 }
 
 /**
@@ -151,16 +169,15 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const identity = await requireIdentity(ctx);
     validateSpotFields(args);
-    const claimed = await photoIdsClaimedByOtherSpots(ctx, args.photoIds, null);
-    if (claimed.size > 0) {
-      throw new Error("One of those photos already belongs to another spot.");
-    }
-    return await ctx.db.insert("spots", {
+    await assertPhotosUnclaimed(ctx, args.photoIds, null);
+    const id = await ctx.db.insert("spots", {
       ...args,
       name: args.name.trim(),
       createdBy: identity.tokenIdentifier,
       createdByName: identity.name,
     });
+    await claimPhotos(ctx, args.photoIds, id);
+    return id;
   },
 });
 
@@ -170,20 +187,18 @@ export const update = mutation({
     const { id, ...fields } = args;
     const existing = await requireOwnedSpot(ctx, id);
     validateSpotFields(fields);
-    const kept = new Set(fields.photoIds);
-    const dropped = existing.photoIds.filter((photoId) => !kept.has(photoId));
-    // One scan answers both questions: are any attached photos stolen from
-    // another spot, and which dropped photos are safe to delete.
-    const claimed = await photoIdsClaimedByOtherSpots(ctx, [...fields.photoIds, ...dropped], id);
-    if (fields.photoIds.some((photoId) => claimed.has(photoId))) {
-      throw new Error("One of those photos already belongs to another spot.");
-    }
-    // Photos dropped from the spot would otherwise be orphaned in storage;
-    // never delete a file another spot still references.
-    await Promise.all(
-      dropped
-        .filter((photoId) => !claimed.has(photoId))
-        .map((photoId) => ctx.storage.delete(photoId)),
+    await assertPhotosUnclaimed(ctx, fields.photoIds, id);
+    const before = new Set(existing.photoIds);
+    const after = new Set(fields.photoIds);
+    await claimPhotos(
+      ctx,
+      fields.photoIds.filter((photoId) => !before.has(photoId)),
+      id,
+    );
+    // Photos dropped from the spot would otherwise be orphaned in storage.
+    await releasePhotos(
+      ctx,
+      existing.photoIds.filter((photoId) => !after.has(photoId)),
     );
     await ctx.db.patch("spots", id, { ...fields, name: fields.name.trim() });
     return null;
@@ -194,12 +209,7 @@ export const remove = mutation({
   args: { id: v.id("spots") },
   handler: async (ctx, args) => {
     const spot = await requireOwnedSpot(ctx, args.id);
-    const claimed = await photoIdsClaimedByOtherSpots(ctx, spot.photoIds, args.id);
-    await Promise.all(
-      spot.photoIds
-        .filter((photoId) => !claimed.has(photoId))
-        .map((photoId) => ctx.storage.delete(photoId)),
-    );
+    await releasePhotos(ctx, spot.photoIds);
     await ctx.db.delete("spots", args.id);
     return null;
   },
