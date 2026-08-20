@@ -19,7 +19,12 @@ type BoardMarkProps = {
  * Used everywhere a logo or spot glyph appears — map pins, search bar,
  * sign-in — so it renders from props, not a bundled asset.
  */
-export function BoardMark({ size, angle = 45, color = colors.silver, strokeWidth = 1.8 }: BoardMarkProps) {
+export function BoardMark({
+  size,
+  angle = 45,
+  color = colors.silver,
+  strokeWidth = 1.8,
+}: BoardMarkProps) {
   // A tilted board's bounding box exceeds the 24-unit viewBox, so shrink it
   // around its center just enough to keep the tips inside.
   const scale = angle === 0 ? 1 : 0.88;

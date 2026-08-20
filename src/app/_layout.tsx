@@ -76,7 +76,9 @@ export default function RootLayout() {
             headerTintColor: colors.ink,
             headerShadowVisible: false,
           }}
-        />
+        >
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        </Stack>
       </ConvexProviderWithClerk>
     </ClerkProvider>
   );
