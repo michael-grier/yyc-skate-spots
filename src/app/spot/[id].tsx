@@ -1,11 +1,19 @@
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { ActivityIndicator, Platform, Pressable, ScrollView, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Alert,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { BackIcon, NavigateIcon } from "@/components/icons";
+import { BackIcon, MoreIcon, NavigateIcon } from "@/components/icons";
 import { PhotoCarousel } from "@/components/photo-carousel";
 import { Button } from "@/components/ui/button";
 import { Hairline } from "@/components/ui/hairline";
@@ -51,6 +59,7 @@ export default function SpotDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const spot = useQuery(api.spots.get, { id: id as Id<"spots"> });
+  const removeSpot = useMutation(api.spots.remove);
   const { coords, granted } = useUserLocation();
   // Android's geocoder needs location permission; iOS's does not.
   const address = useSpotAddress(spot?.latitude, spot?.longitude, Platform.OS === "ios" || granted);
@@ -88,6 +97,24 @@ export default function SpotDetailScreen() {
         {backButton}
       </View>
     );
+  }
+
+  function confirmDelete() {
+    Alert.alert("Delete this spot?", "Its photos are removed too. This can't be undone.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await removeSpot({ id: spot._id });
+            router.back();
+          } catch {
+            Alert.alert("Couldn't delete", "Check your connection and try again.");
+          }
+        },
+      },
+    ]);
   }
 
   const byline = spot.createdByName
@@ -137,6 +164,23 @@ export default function SpotDetailScreen() {
       </ScrollView>
 
       {backButton}
+      {/* Only the owner gets the menu; the server rejects anyone else anyway. */}
+      {spot.isOwner ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Spot options"
+          onPress={() =>
+            Alert.alert(spot.name, undefined, [
+              { text: "Delete spot", style: "destructive", onPress: confirmDelete },
+              { text: "Cancel", style: "cancel" },
+            ])
+          }
+          className="absolute right-4 h-9 w-9 items-center justify-center rounded-full border border-white/10 active:opacity-80"
+          style={{ top: insets.top + 8, backgroundColor: "rgba(30,32,36,0.72)" }}
+        >
+          <MoreIcon size={18} color={colors.ink} />
+        </Pressable>
+      ) : null}
 
       <View
         className="absolute inset-x-0 bottom-0 border-t border-white/10 bg-base px-5 pt-3"

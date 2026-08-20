@@ -172,3 +172,13 @@ export function NavigateIcon({ size = 24, color }: IconProps) {
     </Svg>
   );
 }
+
+export function MoreIcon({ size = 24, color }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
+      <Circle cx="6" cy="12" r="1.8" />
+      <Circle cx="12" cy="12" r="1.8" />
+      <Circle cx="18" cy="12" r="1.8" />
+    </Svg>
+  );
+}
