@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
 // convex-test requires the edge-runtime environment to mirror the Convex
@@ -9,6 +10,6 @@ export default defineConfig({
     include: ["convex/**/*.test.ts", "src/**/*.test.ts"],
   },
   resolve: {
-    alias: { "@": new URL("./src", import.meta.url).pathname },
+    alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
   },
 });
