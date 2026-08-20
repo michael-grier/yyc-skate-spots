@@ -1,6 +1,7 @@
 import type { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { api } from "@convex/_generated/api";
 import { useQuery } from "convex/react";
+import { useRouter } from "expo-router";
 import { useMemo, useRef, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import MapView, { PROVIDER_GOOGLE, type Region } from "react-native-maps";
@@ -41,6 +42,7 @@ const NO_SPOTS: never[] = [];
  * only required for actions that write.
  */
 export default function MapScreen() {
+  const router = useRouter();
   const mapRef = useRef<MapView>(null);
   const sheetRef = useRef<BottomSheetModal>(null);
   const insets = useSafeAreaInsets();
@@ -137,6 +139,9 @@ export default function MapScreen() {
             bustFactor={selectedSpot.bustFactor}
             previewPhotoUrl={selectedSpot.previewPhotoUrl}
             distanceKm={coords ? distanceKm(coords, selectedSpot) : undefined}
+            onPress={() =>
+              router.push({ pathname: "/spot/[id]", params: { id: selectedSpot._id } })
+            }
           />
         ) : null}
       </View>
