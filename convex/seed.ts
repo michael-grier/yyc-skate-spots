@@ -1,82 +1,85 @@
 import { internalMutation } from "./_generated/server";
 
-// Development fixture spots around Calgary. Coordinates are approximate.
+// Development fixture spots around Calgary, from the maintainer's own list.
 // createdBy is a sentinel no Clerk tokenIdentifier can equal, so seeded
 // spots are browsable but not editable through the app.
 const SEED_OWNER = "seed";
 
 const SEED_SPOTS = [
   {
-    name: "Olympic Plaza Ledges",
-    type: "ledge",
+    name: "Harmony Park",
+    types: ["ledge", "stairs"],
     bustFactor: "medium",
     surface: "smooth",
-    notes: "Downtown granite ledges, knee to waist high. Busy at lunch, quiet evenings.",
-    latitude: 51.0459,
-    longitude: -114.0581,
+    notes: "Formerly known as James Short park.",
+    latitude: 51.049144,
+    longitude: -114.063528,
   },
   {
-    name: "Shaw Millennium Park",
-    type: "other",
-    bustFactor: "low",
-    surface: "smooth",
-    notes: "Legendary free 24/7 park. Everything from bowls to street section.",
-    latitude: 51.0447,
-    longitude: -114.0846,
-  },
-  {
-    name: "Chinook 10-Ledge",
-    type: "ledge",
-    bustFactor: "high",
-    surface: "smooth",
-    notes: "Waxed granite out front of the north entrance. Security laps weekend afternoons.",
-    latitude: 50.9982,
-    longitude: -114.074,
-  },
-  {
-    name: "U of C Kickflip Stairs",
-    type: "stairs",
-    bustFactor: "low",
-    surface: "rough",
-    notes: "Campus 6-stair with a clean run-up. Dead quiet on weekends and all summer.",
-    latitude: 51.0784,
-    longitude: -114.1336,
-  },
-  {
-    name: "Eau Claire Manny Pads",
-    type: "manny_pad",
+    name: "Chinatown 12 Stair",
+    types: ["stairs"],
     bustFactor: "medium",
     surface: "smooth",
-    notes: "Low pads by the plaza fountain. Watch for pedestrians on nice days.",
-    latitude: 51.0533,
-    longitude: -114.068,
+    notes:
+      "The gate generally has to be opened in order to get enough run-up. How to do that is up to you.",
+    latitude: 51.050971,
+    longitude: -114.065359,
   },
   {
-    name: "Bankers Hall Rail",
-    type: "rail",
-    bustFactor: "high",
-    surface: "smooth",
-    notes: "Round handrail on the +15 stairs. Fast bust — go early Sunday morning.",
-    latitude: 51.0453,
-    longitude: -114.0687,
-  },
-  {
-    name: "Crescent Heights Curbs",
-    type: "ledge",
+    name: "Central Library",
+    types: ["ledge"],
     bustFactor: "low",
     surface: "rough",
-    notes: "Painted curbs at the lookout with the skyline behind you. Golden at sunset.",
-    latitude: 51.0605,
-    longitude: -114.0625,
+    notes:
+      "Amazing granite ledges. Ground is cement. Low bust factor, but the kook factor is off the charts. Best to go in the morning.",
+    latitude: 51.045858,
+    longitude: -114.055295,
   },
   {
-    name: "Beltline Alley Gap",
-    type: "gap",
-    bustFactor: "medium",
+    name: "Poppy Plaza",
+    types: ["other"],
+    bustFactor: "low",
+    surface: "smooth",
+    notes: "Tall wooden pyramid and decent flatground. Watch out for splinters!",
+    latitude: 51.051524,
+    longitude: -114.085926,
+  },
+  {
+    name: "Amvic Bank to Ledge",
+    types: ["bank", "curb", "ledge"],
+    bustFactor: "low",
+    surface: "smooth",
+    notes: "A mellow bank with a long curb/ledge at the top",
+    latitude: 51.051524,
+    longitude: -114.085926,
+  },
+  {
+    name: "St. Patrick's Island Park",
+    types: ["ledge", "stairs"],
+    bustFactor: "low",
     surface: "rough",
-    notes: "Loading-dock gap off 11th Ave. Landing is a bit gravelly — sweep first.",
-    latitude: 51.0415,
-    longitude: -114.0765,
+    notes: "White concrete benches and stair sets of varying size. Ground is cement bricks",
+    latitude: 51.0464383,
+    longitude: -114.0373399,
+  },
+  {
+    name: "White Concrete Bench",
+    types: ["ledge"],
+    bustFactor: "low",
+    surface: "rough",
+    notes:
+      "White concrete bench, same as the ones at St. Patrick's Island. Cement brick ground is the same as well",
+    latitude: 51.0483026,
+    longitude: -114.045231,
+  },
+  {
+    name: "Bowness Curbs",
+    types: ["curb"],
+    bustFactor: "low",
+    surface: "smooth",
+    notes: "Perfect double-sided curbs. DIY built",
+    latitude: 51.0841944,
+    longitude: -114.1868889,
   },
 ] as const;
 
@@ -91,6 +94,7 @@ export const run = internalMutation({
     for (const spot of SEED_SPOTS) {
       await ctx.db.insert("spots", {
         ...spot,
+        types: [...spot.types],
         photoIds: [],
         createdBy: SEED_OWNER,
         createdByName: "YYC Skate Spots",
