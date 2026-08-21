@@ -144,6 +144,24 @@ describe("spots authz", () => {
     expect(spot?.photoUrls).toHaveLength(1);
   });
 
+  test("list flags the caller's own spots and mine lists only those", async () => {
+    const t = convexTest(schema, modules);
+    const asAlice = t.withIdentity({ subject: "alice" });
+    const asBob = t.withIdentity({ subject: "bob" });
+    await asAlice.mutation(api.spots.create, { ...SPOT, name: "Alice's" });
+    await asBob.mutation(api.spots.create, { ...SPOT, name: "Bob's" });
+
+    const seenByAlice = await asAlice.query(api.spots.list, {});
+    expect(seenByAlice.map((s) => [s.name, s.isMine])).toEqual([
+      ["Alice's", true],
+      ["Bob's", false],
+    ]);
+    expect((await t.query(api.spots.list, {})).every((s) => !s.isMine)).toBe(true);
+
+    expect((await asBob.query(api.spots.mine, {})).map((s) => s.name)).toEqual(["Bob's"]);
+    expect(await t.query(api.spots.mine, {})).toEqual([]);
+  });
+
   test("get returns null for a malformed id instead of throwing", async () => {
     const t = convexTest(schema, modules);
     expect(await t.query(api.spots.get, { id: "not-a-real-id" })).toBeNull();

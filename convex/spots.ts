@@ -160,13 +160,40 @@ async function releasePhotos(ctx: MutationCtx, photoIds: Id<"_storage">[]) {
 export const list = query({
   args: {},
   handler: async (ctx) => {
+    // isMine lets the map style the caller's own pins; the query is
+    // identity-aware, so it re-runs on sign-in and sign-out.
+    const identity = await ctx.auth.getUserIdentity();
     const spots = await ctx.db.query("spots").take(MAX_SPOTS_LISTED);
     return Promise.all(
-      spots.map(async ({ photoIds, createdBy: _createdBy, ...spot }) => ({
+      spots.map(async ({ photoIds, createdBy, ...spot }) => ({
         ...spot,
+        isMine: identity !== null && createdBy === identity.tokenIdentifier,
         previewPhotoUrl: photoIds.length > 0 ? await ctx.storage.getUrl(photoIds[0]) : null,
       })),
     );
+  },
+});
+
+/** The caller's own spots, newest first, for the profile's "Your spots" list. */
+export const mine = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return [];
+    }
+    const spots = await ctx.db
+      .query("spots")
+      .withIndex("by_createdBy", (q) => q.eq("createdBy", identity.tokenIdentifier))
+      .order("desc")
+      .take(MAX_SPOTS_LISTED);
+    return spots.map(({ _id, _creationTime, name, types, bustFactor }) => ({
+      _id,
+      _creationTime,
+      name,
+      types,
+      bustFactor,
+    }));
   },
 });
 
