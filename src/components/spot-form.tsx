@@ -4,7 +4,16 @@ import type { Id } from "@convex/_generated/dataModel";
 import { useMutation } from "convex/react";
 import { Image } from "expo-image";
 import { useState } from "react";
-import { Alert, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import {
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { CloseIcon } from "@/components/icons";
@@ -159,129 +168,137 @@ export function SpotForm({ title, initialValues, onCancel, onSave }: SpotFormPro
         </Pressable>
       </View>
 
-      <ScrollView
-        keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 40 }}
+      {/* Keeps the focused field (notably the notes box at the bottom) above the keyboard. */}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        className="flex-1"
       >
-        <Section label="NAME" error={errors.name}>
-          <Card className="px-4 py-3">
-            <TextInput
-              value={values.name}
-              onChangeText={(name) => set("name", name)}
-              placeholder="What do locals call it?"
-              placeholderTextColor={colors.mute}
-              accessibilityLabel="Spot name"
-              className="font-sans text-[15px] text-ink"
-              style={{ paddingVertical: 0 }}
-            />
-          </Card>
-        </Section>
-
-        <Section label="TYPE" error={errors.types}>
-          <View className="flex-row flex-wrap gap-2">
-            {SPOT_TYPES.map((type) => (
-              <Chip
-                key={type}
-                label={SPOT_TYPE_LABELS[type]}
-                selected={values.types.includes(type)}
-                onPress={() => set("types", toggle(values.types, type))}
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          automaticallyAdjustKeyboardInsets
+          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 40 }}
+        >
+          <Section label="NAME" error={errors.name}>
+            <Card className="px-4 py-3">
+              <TextInput
+                value={values.name}
+                onChangeText={(name) => set("name", name)}
+                placeholder="What do locals call it?"
+                placeholderTextColor={colors.mute}
+                accessibilityLabel="Spot name"
+                className="font-sans text-[15px] text-ink"
+                style={{ paddingVertical: 0 }}
               />
-            ))}
-          </View>
-        </Section>
+            </Card>
+          </Section>
 
-        <Section label="BUST FACTOR" error={errors.bustFactor}>
-          <View className="flex-row gap-2">
-            {BUST_FACTORS.map((bust) => (
-              <Chip
-                key={bust}
-                label={BUST_FACTOR_LABELS[bust]}
-                dotColor={BUST_FACTOR_COLORS[bust]}
-                selected={values.bustFactor === bust}
-                onPress={() => set("bustFactor", bust)}
-                className="flex-1"
-              />
-            ))}
-          </View>
-        </Section>
-
-        <Section label="SURFACE (OPTIONAL)">
-          <View className="flex-row gap-2">
-            {SURFACES.map((surface) => (
-              <Chip
-                key={surface}
-                label={SURFACE_LABELS[surface]}
-                selected={values.surface === surface}
-                // Tapping the selected one clears it, since the field is optional.
-                onPress={() => set("surface", values.surface === surface ? null : surface)}
-                className="flex-1"
-              />
-            ))}
-          </View>
-        </Section>
-
-        <Section label="PHOTOS" error={errors.photos}>
-          <View className="flex-row flex-wrap gap-2.5">
-            {values.photos.map((photo) => (
-              <View key={photo.key} className="h-20 w-20">
-                <Image
-                  source={{ uri: photo.uri }}
-                  contentFit="cover"
-                  className="h-20 w-20 rounded-xl"
+          <Section label="TYPE" error={errors.types}>
+            <View className="flex-row flex-wrap gap-2">
+              {SPOT_TYPES.map((type) => (
+                <Chip
+                  key={type}
+                  label={SPOT_TYPE_LABELS[type]}
+                  selected={values.types.includes(type)}
+                  onPress={() => set("types", toggle(values.types, type))}
                 />
+              ))}
+            </View>
+          </Section>
+
+          <Section label="BUST FACTOR" error={errors.bustFactor}>
+            <View className="flex-row gap-2">
+              {BUST_FACTORS.map((bust) => (
+                <Chip
+                  key={bust}
+                  label={BUST_FACTOR_LABELS[bust]}
+                  dotColor={BUST_FACTOR_COLORS[bust]}
+                  selected={values.bustFactor === bust}
+                  onPress={() => set("bustFactor", bust)}
+                  className="flex-1"
+                />
+              ))}
+            </View>
+          </Section>
+
+          <Section label="SURFACE (OPTIONAL)">
+            <View className="flex-row gap-2">
+              {SURFACES.map((surface) => (
+                <Chip
+                  key={surface}
+                  label={SURFACE_LABELS[surface]}
+                  selected={values.surface === surface}
+                  // Tapping the selected one clears it, since the field is optional.
+                  onPress={() => set("surface", values.surface === surface ? null : surface)}
+                  className="flex-1"
+                />
+              ))}
+            </View>
+          </Section>
+
+          <Section label="PHOTOS" error={errors.photos}>
+            <View className="flex-row flex-wrap gap-2.5">
+              {values.photos.map((photo) => (
+                <View key={photo.key} className="h-20 w-20">
+                  <Image
+                    source={{ uri: photo.uri }}
+                    contentFit="cover"
+                    className="h-20 w-20 rounded-xl"
+                  />
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Remove photo"
+                    hitSlop={6}
+                    onPress={() => removePhoto(photo)}
+                    className="absolute -right-1.5 -top-1.5 h-6 w-6 items-center justify-center rounded-full border border-white/20"
+                    style={{ backgroundColor: "rgba(30,32,36,0.95)" }}
+                  >
+                    <CloseIcon size={12} color={colors.ink} />
+                  </Pressable>
+                </View>
+              ))}
+              {values.photos.length < MAX_PHOTOS ? (
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="Remove photo"
-                  hitSlop={6}
-                  onPress={() => removePhoto(photo)}
-                  className="absolute -right-1.5 -top-1.5 h-6 w-6 items-center justify-center rounded-full border border-white/20"
-                  style={{ backgroundColor: "rgba(30,32,36,0.95)" }}
+                  accessibilityLabel="Add photos"
+                  onPress={() => void addPhotos()}
+                  className="h-20 w-20 items-center justify-center rounded-xl border border-dashed border-white/20 active:opacity-80"
                 >
-                  <CloseIcon size={12} color={colors.ink} />
+                  <Text className="font-sans text-[24px] text-mute">+</Text>
                 </Pressable>
-              </View>
-            ))}
-            {values.photos.length < MAX_PHOTOS ? (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Add photos"
-                onPress={() => void addPhotos()}
-                className="h-20 w-20 items-center justify-center rounded-xl border border-dashed border-white/20 active:opacity-80"
-              >
-                <Text className="font-sans text-[24px] text-mute">+</Text>
-              </Pressable>
-            ) : null}
-          </View>
-        </Section>
+              ) : null}
+            </View>
+          </Section>
 
-        <Section label="LOCATION" error={errors.location}>
-          <LocationPicker
-            value={location}
-            onChange={({ latitude, longitude }) =>
-              setValues((current) => ({ ...current, latitude, longitude }))
-            }
-          />
-          <Text className="mt-1.5 px-1 font-sans text-[12px] text-mute">
-            Drag the map until the pin sits on the spot.
-          </Text>
-        </Section>
-
-        <Section label="NOTES" error={errors.notes}>
-          <Card className="px-4 py-3">
-            <TextInput
-              value={values.notes}
-              onChangeText={(notes) => set("notes", notes)}
-              placeholder="Run-up, ground, when security does laps…"
-              placeholderTextColor={colors.mute}
-              multiline
-              textAlignVertical="top"
-              accessibilityLabel="Notes"
-              className="min-h-[96px] font-sans text-[15px] leading-relaxed text-ink"
-              style={{ paddingVertical: 0 }}
+          <Section label="LOCATION" error={errors.location}>
+            <LocationPicker
+              value={location}
+              onChange={({ latitude, longitude }) =>
+                setValues((current) => ({ ...current, latitude, longitude }))
+              }
             />
-          </Card>
-        </Section>
-      </ScrollView>
+            <Text className="mt-1.5 px-1 font-sans text-[12px] text-mute">
+              Drag the map until the pin sits on the spot.
+            </Text>
+          </Section>
+
+          <Section label="NOTES" error={errors.notes}>
+            <Card className="px-4 py-3">
+              <TextInput
+                value={values.notes}
+                onChangeText={(notes) => set("notes", notes)}
+                placeholder="Run-up, ground, when security does laps…"
+                placeholderTextColor={colors.mute}
+                multiline
+                textAlignVertical="top"
+                accessibilityLabel="Notes"
+                className="min-h-[96px] font-sans text-[15px] leading-relaxed text-ink"
+                style={{ paddingVertical: 0 }}
+              />
+            </Card>
+          </Section>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }
