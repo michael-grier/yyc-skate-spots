@@ -34,6 +34,8 @@ export const BUST_FACTOR_LABELS: Record<BustFactor, string> = {
 
 export const BUST_FACTOR_COLORS: Record<BustFactor, string> = colors.bust;
 
+export const SURFACES = ["smooth", "rough"] as const satisfies readonly Surface[];
+
 export const SURFACE_LABELS: Record<Surface, string> = {
   smooth: "Smooth",
   rough: "Rough",
