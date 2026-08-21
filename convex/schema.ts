@@ -49,4 +49,12 @@ export default defineSchema({
     storageId: v.id("_storage"),
     spotId: v.id("spots"),
   }).index("by_storageId", ["storageId"]),
+
+  // Who uploaded each not-yet-attached file. A row is created right after
+  // the upload and consumed when the photo is attached to a spot, so only
+  // the uploader can attach or discard it.
+  uploads: defineTable({
+    storageId: v.id("_storage"),
+    uploadedBy: v.string(),
+  }).index("by_storageId", ["storageId"]),
 });

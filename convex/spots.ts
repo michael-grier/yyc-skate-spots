@@ -43,7 +43,7 @@ async function requireOwnedSpot(ctx: MutationCtx, id: Id<"spots">) {
   if (spot.createdBy !== identity.tokenIdentifier) {
     throw new Error("Only the person who added a spot can change it.");
   }
-  return spot;
+  return { spot, identity };
 }
 
 function validateSpotFields(fields: {
@@ -100,6 +100,28 @@ async function assertPhotosUnclaimed(
     if (ref && ref.spotId !== spotId) {
       throw new Error("One of those photos already belongs to another spot.");
     }
+  }
+}
+
+async function uploadRef(ctx: MutationCtx, storageId: Id<"_storage">) {
+  return await ctx.db
+    .query("uploads")
+    .withIndex("by_storageId", (q) => q.eq("storageId", storageId))
+    .unique();
+}
+
+/**
+ * Consumes the caller's upload records for `photoIds`, rejecting any photo
+ * the caller did not upload themselves. Together with assertPhotosUnclaimed
+ * this means a storage id can only ever be attached by its uploader.
+ */
+async function consumeUploads(ctx: MutationCtx, uploader: string, photoIds: Id<"_storage">[]) {
+  for (const photoId of photoIds) {
+    const upload = await uploadRef(ctx, photoId);
+    if (!upload || upload.uploadedBy !== uploader) {
+      throw new Error("Photos must be uploaded by you before they can be attached.");
+    }
+    await ctx.db.delete("uploads", upload._id);
   }
 }
 
@@ -173,6 +195,7 @@ export const create = mutation({
     const identity = await requireIdentity(ctx);
     validateSpotFields(args);
     await assertPhotosUnclaimed(ctx, args.photoIds, null);
+    await consumeUploads(ctx, identity.tokenIdentifier, args.photoIds);
     const id = await ctx.db.insert("spots", {
       ...args,
       name: args.name.trim(),
@@ -188,16 +211,14 @@ export const update = mutation({
   args: { id: v.id("spots"), ...spotFields.fields },
   handler: async (ctx, args) => {
     const { id, ...fields } = args;
-    const existing = await requireOwnedSpot(ctx, id);
+    const { spot: existing, identity } = await requireOwnedSpot(ctx, id);
     validateSpotFields(fields);
     await assertPhotosUnclaimed(ctx, fields.photoIds, id);
     const before = new Set(existing.photoIds);
     const after = new Set(fields.photoIds);
-    await claimPhotos(
-      ctx,
-      fields.photoIds.filter((photoId) => !before.has(photoId)),
-      id,
-    );
+    const added = fields.photoIds.filter((photoId) => !before.has(photoId));
+    await consumeUploads(ctx, identity.tokenIdentifier, added);
+    await claimPhotos(ctx, added, id);
     // Photos dropped from the spot would otherwise be orphaned in storage.
     await releasePhotos(
       ctx,
@@ -218,7 +239,7 @@ export const update = mutation({
 export const remove = mutation({
   args: { id: v.id("spots") },
   handler: async (ctx, args) => {
-    const spot = await requireOwnedSpot(ctx, args.id);
+    const { spot } = await requireOwnedSpot(ctx, args.id);
     await releasePhotos(ctx, spot.photoIds);
     await ctx.db.delete("spots", args.id);
     return null;
@@ -226,18 +247,41 @@ export const remove = mutation({
 });
 
 /**
- * Deletes a photo that was uploaded but never attached, e.g. when saving the
- * form failed after the upload. Refuses anything a spot references, so it can
- * only ever remove the caller's own stray uploads (unattached storage ids are
- * known only to whoever uploaded them).
+ * Records the caller as the uploader of a freshly POSTed file. Must be called
+ * before the photo can be attached to a spot or discarded.
+ */
+export const registerUpload = mutation({
+  args: { storageId: v.id("_storage") },
+  handler: async (ctx, args) => {
+    const identity = await requireIdentity(ctx);
+    if (!(await ctx.db.system.get("_storage", args.storageId))) {
+      throw new Error("Upload not found.");
+    }
+    if ((await uploadRef(ctx, args.storageId)) || (await photoRef(ctx, args.storageId))) {
+      throw new Error("That photo is already registered.");
+    }
+    await ctx.db.insert("uploads", {
+      storageId: args.storageId,
+      uploadedBy: identity.tokenIdentifier,
+    });
+    return null;
+  },
+});
+
+/**
+ * Deletes a file the caller uploaded but never attached, e.g. when saving
+ * the form failed after the upload. Bound to the uploader, so nobody can
+ * delete another user's pending upload even with its id in hand.
  */
 export const discardUpload = mutation({
   args: { storageId: v.id("_storage") },
   handler: async (ctx, args) => {
-    await requireIdentity(ctx);
-    if (await photoRef(ctx, args.storageId)) {
-      throw new Error("That photo belongs to a spot.");
+    const identity = await requireIdentity(ctx);
+    const upload = await uploadRef(ctx, args.storageId);
+    if (!upload || upload.uploadedBy !== identity.tokenIdentifier) {
+      throw new Error("That isn't one of your pending uploads.");
     }
+    await ctx.db.delete("uploads", upload._id);
     await ctx.storage.delete(args.storageId);
     return null;
   },

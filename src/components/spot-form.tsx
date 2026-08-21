@@ -66,6 +66,7 @@ function toggle<T>(list: T[], item: T) {
 export function SpotForm({ title, initialValues, onCancel, onSave }: SpotFormProps) {
   const insets = useSafeAreaInsets();
   const generateUploadUrl = useMutation(api.spots.generateUploadUrl);
+  const registerUpload = useMutation(api.spots.registerUpload);
   const discardUpload = useMutation(api.spots.discardUpload);
   const [values, setValues] = useState(initialValues);
   const [errors, setErrors] = useState<SpotFormErrors>({});
@@ -111,6 +112,8 @@ export function SpotForm({ title, initialValues, onCancel, onSave }: SpotFormPro
           continue;
         }
         const storageId = await uploadPhoto(photo, await generateUploadUrl());
+        // Binds the file to this user; required before it can be attached or discarded.
+        await registerUpload({ storageId });
         uploaded.push(storageId);
         photoIds.push(storageId);
       }

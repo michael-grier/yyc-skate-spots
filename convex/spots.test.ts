@@ -7,6 +7,16 @@ import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
 
+type Harness = ReturnType<typeof convexTest>;
+type Identity = ReturnType<Harness["withIdentity"]>;
+
+/** Stores a file and registers it as `as`'s upload, like the app does after a POST. */
+async function uploadAs(t: Harness, as: Identity, bytes: string) {
+  const storageId = await t.run(async (ctx) => await ctx.storage.store(new Blob([bytes])));
+  await as.mutation(api.spots.registerUpload, { storageId });
+  return storageId;
+}
+
 const SPOT = {
   name: "Test Ledge",
   types: ["ledge" as const],
@@ -95,7 +105,7 @@ describe("spots authz", () => {
   test("photo storage ids are never exposed to non-owners", async () => {
     const t = convexTest(schema, modules);
     const asAlice = t.withIdentity({ subject: "alice" });
-    const photoId = await t.run(async (ctx) => await ctx.storage.store(new Blob(["jpeg bytes"])));
+    const photoId = await uploadAs(t, asAlice, "jpeg bytes");
 
     const id = await asAlice.mutation(api.spots.create, { ...SPOT, photoIds: [photoId] });
 
@@ -114,7 +124,7 @@ describe("spots authz", () => {
     const t = convexTest(schema, modules);
     const asAlice = t.withIdentity({ subject: "alice" });
     const asBob = t.withIdentity({ subject: "bob" });
-    const photoId = await t.run(async (ctx) => await ctx.storage.store(new Blob(["jpeg bytes"])));
+    const photoId = await uploadAs(t, asAlice, "jpeg bytes");
 
     const alicesSpot = await asAlice.mutation(api.spots.create, { ...SPOT, photoIds: [photoId] });
 
@@ -139,35 +149,54 @@ describe("spots authz", () => {
     expect(await t.query(api.spots.get, { id: "not-a-real-id" })).toBeNull();
   });
 
-  test("discardUpload removes stray uploads but never an attached photo", async () => {
+  test("only the uploader can attach or discard a pending upload", async () => {
     const t = convexTest(schema, modules);
     const asAlice = t.withIdentity({ subject: "alice" });
     const asBob = t.withIdentity({ subject: "bob" });
-    const [stray, attached] = await t.run(async (ctx) => [
-      await ctx.storage.store(new Blob(["stray"])),
-      await ctx.storage.store(new Blob(["attached"])),
-    ]);
-    await asAlice.mutation(api.spots.create, { ...SPOT, photoIds: [attached] });
+    const alicesUpload = await uploadAs(t, asAlice, "stray");
+    const unregistered = await t.run(async (ctx) => await ctx.storage.store(new Blob(["raw"])));
 
-    await expect(t.mutation(api.spots.discardUpload, { storageId: stray })).rejects.toThrow(
+    // Bob has Alice's id somehow: he can neither attach nor delete it.
+    await expect(
+      asBob.mutation(api.spots.create, { ...SPOT, photoIds: [alicesUpload] }),
+    ).rejects.toThrow(/uploaded by you/);
+    await expect(
+      asBob.mutation(api.spots.discardUpload, { storageId: alicesUpload }),
+    ).rejects.toThrow(/your pending uploads/);
+    await expect(t.mutation(api.spots.discardUpload, { storageId: alicesUpload })).rejects.toThrow(
       /signed in/,
     );
-    await expect(asBob.mutation(api.spots.discardUpload, { storageId: attached })).rejects.toThrow(
-      /belongs to a spot/,
-    );
-    expect(await t.run((ctx) => ctx.storage.getUrl(attached))).not.toBeNull();
+    expect(await t.run((ctx) => ctx.storage.getUrl(alicesUpload))).not.toBeNull();
 
-    await asAlice.mutation(api.spots.discardUpload, { storageId: stray });
-    expect(await t.run((ctx) => ctx.storage.getUrl(stray))).toBeNull();
+    // A file that was never registered can't be attached by anyone either.
+    await expect(
+      asAlice.mutation(api.spots.create, { ...SPOT, photoIds: [unregistered] }),
+    ).rejects.toThrow(/uploaded by you/);
+
+    await asAlice.mutation(api.spots.discardUpload, { storageId: alicesUpload });
+    expect(await t.run((ctx) => ctx.storage.getUrl(alicesUpload))).toBeNull();
+  });
+
+  test("an attached photo is no longer a pending upload", async () => {
+    const t = convexTest(schema, modules);
+    const asAlice = t.withIdentity({ subject: "alice" });
+    const photoId = await uploadAs(t, asAlice, "attached");
+    await asAlice.mutation(api.spots.create, { ...SPOT, photoIds: [photoId] });
+
+    await expect(asAlice.mutation(api.spots.discardUpload, { storageId: photoId })).rejects.toThrow(
+      /your pending uploads/,
+    );
+    await expect(
+      asAlice.mutation(api.spots.registerUpload, { storageId: photoId }),
+    ).rejects.toThrow(/already registered/);
+    expect(await t.run((ctx) => ctx.db.query("uploads").take(10))).toEqual([]);
   });
 
   test("dropping or deleting a spot's photos removes the files and their claims", async () => {
     const t = convexTest(schema, modules);
     const asAlice = t.withIdentity({ subject: "alice" });
-    const [first, second] = await t.run(async (ctx) => [
-      await ctx.storage.store(new Blob(["one"])),
-      await ctx.storage.store(new Blob(["two"])),
-    ]);
+    const first = await uploadAs(t, asAlice, "one");
+    const second = await uploadAs(t, asAlice, "two");
     const id = await asAlice.mutation(api.spots.create, { ...SPOT, photoIds: [first, second] });
 
     await asAlice.mutation(api.spots.update, { ...SPOT, id, photoIds: [second] });
