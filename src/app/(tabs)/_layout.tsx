@@ -1,3 +1,4 @@
+import { useAuth } from "@clerk/expo";
 import { Tabs } from "expo-router";
 
 import { MapIcon, PersonIcon, PlusCircleIcon } from "@/components/icons";
@@ -8,6 +9,8 @@ import { colors } from "@/theme/colors";
  * top edge; no native blur so it renders identically on both platforms.
  */
 export default function TabsLayout() {
+  const { isSignedIn } = useAuth();
+
   return (
     <Tabs
       screenOptions={{
@@ -38,7 +41,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="account"
         options={{
-          title: "Sign in",
+          title: isSignedIn ? "Profile" : "Sign in",
           tabBarIcon: ({ color, size }) => <PersonIcon size={size} color={color} />,
         }}
       />

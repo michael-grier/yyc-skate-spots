@@ -1,13 +1,25 @@
-import { Text, View } from "react-native";
+import { useAuth } from "@clerk/expo";
+import { ActivityIndicator, View } from "react-native";
 
-/** Placeholder until the custom sign-in flow lands (Phase 5). */
+import { ProfileView } from "@/components/profile-view";
+import { SignInView } from "@/components/sign-in-view";
+import { colors } from "@/theme/colors";
+
+/**
+ * Account tab: sign-in when signed out, profile when signed in. Clerk state
+ * here only decides what to show; every protected write is re-checked in
+ * Convex against the session token.
+ */
 export default function AccountScreen() {
-  return (
-    <View className="flex-1 items-center justify-center bg-base px-8">
-      <Text className="font-sans-semibold text-[17px] text-ink">Sign in</Text>
-      <Text className="mt-2 text-center font-sans text-[14px] text-mute">
-        Sign-in is coming soon. Browsing never needs an account.
-      </Text>
-    </View>
-  );
+  const { isLoaded, isSignedIn } = useAuth();
+
+  if (!isLoaded) {
+    return (
+      <View className="flex-1 items-center justify-center bg-base">
+        <ActivityIndicator color={colors.mute} />
+      </View>
+    );
+  }
+
+  return isSignedIn ? <ProfileView /> : <SignInView />;
 }
