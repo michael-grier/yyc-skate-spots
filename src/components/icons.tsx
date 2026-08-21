@@ -139,3 +139,46 @@ export function CloseIcon({ size = 24, color }: IconProps) {
     </Svg>
   );
 }
+
+export function BackIcon({ size = 24, color }: IconProps) {
+  return (
+    <Svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth={2.2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <Path d="M15 5l-7 7 7 7" />
+    </Svg>
+  );
+}
+
+export function NavigateIcon({ size = 24, color }: IconProps) {
+  return (
+    <Svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth={2.2}
+      strokeLinejoin="round"
+    >
+      <Path d="M3 11l19-8-8 19-2.5-8.5L3 11z" />
+    </Svg>
+  );
+}
+
+export function MoreIcon({ size = 24, color }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
+      <Circle cx="6" cy="12" r="1.8" />
+      <Circle cx="12" cy="12" r="1.8" />
+      <Circle cx="18" cy="12" r="1.8" />
+    </Svg>
+  );
+}
