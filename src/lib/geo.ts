@@ -1,5 +1,8 @@
 export type LatLng = { latitude: number; longitude: number };
 
+/** Downtown Calgary; the fallback centre when the user's location is unknown. */
+export const CALGARY_CENTER: LatLng = { latitude: 51.0447, longitude: -114.0719 };
+
 const EARTH_RADIUS_KM = 6371;
 
 /** Great-circle distance between two coordinates, in kilometres. */
