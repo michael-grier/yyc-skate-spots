@@ -1,11 +1,22 @@
-import { expect, test } from "vitest";
+import { describe, expect, test } from "vitest";
 
-import { convexSiteUrl } from "./convex-site";
+import { needsExplicitSiteUrl, resolveConvexSiteUrl } from "./convex-site";
 
-test("convexSiteUrl maps the cloud deployment URL to its HTTP actions host", () => {
-  expect(convexSiteUrl("https://happy-otter-123.convex.cloud")).toBe(
-    "https://happy-otter-123.convex.site",
-  );
-  // Self-hosted or already-.site URLs pass through untouched.
-  expect(convexSiteUrl("https://convex.example.com")).toBe("https://convex.example.com");
+describe("resolveConvexSiteUrl", () => {
+  test("prefers the configured site URL, without a trailing slash", () => {
+    expect(
+      resolveConvexSiteUrl("https://happy-otter-123.convex.cloud", "https://api.example.com/"),
+    ).toBe("https://api.example.com");
+  });
+
+  test("derives the .site host for a default deployment when none is configured", () => {
+    expect(resolveConvexSiteUrl("https://happy-otter-123.convex.cloud", undefined)).toBe(
+      "https://happy-otter-123.convex.site",
+    );
+  });
+});
+
+test("needsExplicitSiteUrl is true only for non-default (custom) cloud URLs", () => {
+  expect(needsExplicitSiteUrl("https://happy-otter-123.convex.cloud")).toBe(false);
+  expect(needsExplicitSiteUrl("https://convex.example.com")).toBe(true);
 });

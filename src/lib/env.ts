@@ -1,6 +1,8 @@
 import Constants from "expo-constants";
 import { Platform } from "react-native";
 
+import { needsExplicitSiteUrl } from "@/lib/convex-site";
+
 /**
  * Startup environment check. Returns human-readable problems instead of
  * letting the app limp along with a blank map or a dead backend connection.
@@ -25,9 +27,16 @@ export function getEnvProblems(): string[] {
     );
   }
 
-  if (!process.env.EXPO_PUBLIC_CONVEX_URL) {
+  const convexUrl = process.env.EXPO_PUBLIC_CONVEX_URL;
+  if (!convexUrl) {
     problems.push(
       "EXPO_PUBLIC_CONVEX_URL is not set. Run `npx convex dev` and copy the URL into .env.",
+    );
+  } else if (!process.env.EXPO_PUBLIC_CONVEX_SITE_URL && needsExplicitSiteUrl(convexUrl)) {
+    // Photo uploads go to the HTTP-actions host, which only follows from the
+    // cloud URL for default *.convex.cloud deployments.
+    problems.push(
+      "EXPO_PUBLIC_CONVEX_SITE_URL is not set. Custom Convex domains need the HTTP actions URL configured explicitly in .env.",
     );
   }
   if (!process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY) {

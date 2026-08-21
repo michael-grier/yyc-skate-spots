@@ -37,12 +37,15 @@ import {
   SURFACE_LABELS,
   SURFACES,
 } from "@/lib/spot-labels";
-import { convexSiteUrl } from "@/lib/convex-site";
+import { resolveConvexSiteUrl } from "@/lib/convex-site";
 import { pickPhotos, uploadPhoto } from "@/lib/spot-photos";
 import { colors } from "@/theme/colors";
 
-// The env gate in the root layout guarantees this is set before any form renders.
-const UPLOAD_HOST = convexSiteUrl(process.env.EXPO_PUBLIC_CONVEX_URL ?? "");
+// The env gate in the root layout guarantees these are valid before any form renders.
+const UPLOAD_HOST = resolveConvexSiteUrl(
+  process.env.EXPO_PUBLIC_CONVEX_URL ?? "",
+  process.env.EXPO_PUBLIC_CONVEX_SITE_URL,
+);
 
 type SpotFormProps = {
   title: string;
