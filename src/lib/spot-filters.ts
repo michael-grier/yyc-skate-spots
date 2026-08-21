@@ -64,3 +64,25 @@ export function countActiveFilters(filters: SpotFilters) {
     filters.bustFactors.length > 0,
   ].filter(Boolean).length;
 }
+
+/** True when search or any chip filter is narrowing the map. */
+export function hasActiveFilters(filters: SpotFilters) {
+  return filters.query.trim().length > 0 || countActiveFilters(filters) > 0;
+}
+
+/**
+ * The spots to list under the search bar: nearest first when the user's
+ * location is known, otherwise alphabetical, capped at `limit`.
+ */
+export function rankSuggestions<T extends FilterableSpot>(
+  spots: T[],
+  userLocation: LatLng | null,
+  limit = 6,
+): T[] {
+  const sorted = [...spots].sort((a, b) =>
+    userLocation
+      ? distanceKm(userLocation, a) - distanceKm(userLocation, b)
+      : a.name.localeCompare(b.name),
+  );
+  return sorted.slice(0, limit);
+}

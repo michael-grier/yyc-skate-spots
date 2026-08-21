@@ -7,10 +7,12 @@ import { colors } from "@/theme/colors";
 type SearchBarProps = {
   value: string;
   onChangeText: (text: string) => void;
+  onFocus?: () => void;
+  onSubmitEditing?: () => void;
 };
 
 /** Matte search pill with the board mark as the app's only on-map branding. */
-export function SearchBar({ value, onChangeText }: SearchBarProps) {
+export function SearchBar({ value, onChangeText, onFocus, onSubmitEditing }: SearchBarProps) {
   return (
     <View
       className="h-12 flex-row items-center gap-2.5 rounded-2xl border border-white/10 px-3.5"
@@ -27,6 +29,8 @@ export function SearchBar({ value, onChangeText }: SearchBarProps) {
         autoCapitalize="none"
         autoCorrect={false}
         returnKeyType="search"
+        onFocus={onFocus}
+        onSubmitEditing={onSubmitEditing}
         clearButtonMode="never"
         accessibilityLabel="Search spots by name"
         className="flex-1 font-sans text-[15px] text-ink"
