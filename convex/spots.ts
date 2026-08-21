@@ -200,7 +200,14 @@ export const update = mutation({
       ctx,
       existing.photoIds.filter((photoId) => !after.has(photoId)),
     );
-    await ctx.db.patch("spots", id, { ...fields, name: fields.name.trim() });
+    // replace, not patch: an omitted optional field (notes, surface) must
+    // clear the stored value, and patch leaves absent keys untouched.
+    await ctx.db.replace("spots", id, {
+      ...fields,
+      name: fields.name.trim(),
+      createdBy: existing.createdBy,
+      createdByName: existing.createdByName,
+    });
     return null;
   },
 });

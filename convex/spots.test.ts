@@ -37,6 +37,21 @@ describe("spots authz", () => {
     expect(await t.query(api.spots.get, { id })).toBeNull();
   });
 
+  test("update clears optional fields that are omitted", async () => {
+    const t = convexTest(schema, modules);
+    const asAlice = t.withIdentity({ subject: "alice" });
+    const id = await asAlice.mutation(api.spots.create, {
+      ...SPOT,
+      notes: "Go early.",
+      surface: "rough",
+    });
+    await asAlice.mutation(api.spots.update, { ...SPOT, id });
+    const spot = await t.query(api.spots.get, { id });
+    expect(spot?.notes).toBeUndefined();
+    expect(spot?.surface).toBeUndefined();
+    expect(spot?.createdByName).toBeUndefined();
+  });
+
   test("a different user cannot update or delete someone else's spot", async () => {
     const t = convexTest(schema, modules);
     const asAlice = t.withIdentity({ subject: "alice" });

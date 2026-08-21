@@ -116,6 +116,10 @@ export default function SpotDetailScreen() {
     Alert.alert("Delete this spot?", "Its photos are removed too. This can't be undone.", [
       { text: "Cancel", style: "cancel" },
       {
+        text: "Edit",
+        onPress: () => router.push({ pathname: "/spot/edit/[id]", params: { id: spotId } }),
+      },
+      {
         text: "Delete",
         style: "destructive",
         onPress: async () => {
