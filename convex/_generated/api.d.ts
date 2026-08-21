@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as http from "../http.js";
 import type * as seed from "../seed.js";
 import type * as spots from "../spots.js";
 
@@ -18,6 +19,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  http: typeof http;
   seed: typeof seed;
   spots: typeof spots;
 }>;

@@ -32,8 +32,15 @@ export async function pickPhotos(limit: number): Promise<FormPhoto[]> {
   }));
 }
 
-/** Downscales and re-encodes a picked photo, then POSTs it to a Convex upload URL. */
-export async function uploadPhoto(photo: FormPhoto, uploadUrl: string): Promise<Id<"_storage">> {
+/**
+ * Downscales and re-encodes a picked photo, then POSTs it to the app's
+ * authenticated /upload action, which stores it and records the uploader.
+ */
+export async function uploadPhoto(
+  photo: FormPhoto,
+  siteUrl: string,
+  token: string,
+): Promise<Id<"_storage">> {
   const context = ImageManipulator.manipulate(photo.uri);
   const scale = Math.min(1, MAX_EDGE_PX / Math.max(photo.width, photo.height));
   if (scale < 1) {
@@ -46,13 +53,15 @@ export async function uploadPhoto(photo: FormPhoto, uploadUrl: string): Promise<
   const saved = await rendered.saveAsync({ format: SaveFormat.JPEG, compress: JPEG_QUALITY });
 
   const body = await (await fetch(saved.uri)).blob();
-  const response = await fetch(uploadUrl, {
+  const response = await fetch(`${siteUrl}/upload`, {
     method: "POST",
-    headers: { "Content-Type": "image/jpeg" },
+    headers: { "Content-Type": "image/jpeg", Authorization: `Bearer ${token}` },
     body,
   });
   if (!response.ok) {
-    throw new Error("Photo upload failed.");
+    throw new Error(
+      response.status === 401 ? "Sign in again to upload photos." : "Photo upload failed.",
+    );
   }
   const { storageId } = (await response.json()) as { storageId: Id<"_storage"> };
   return storageId;

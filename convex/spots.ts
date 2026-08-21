@@ -1,6 +1,12 @@
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
-import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
+import {
+  internalMutation,
+  mutation,
+  query,
+  type MutationCtx,
+  type QueryCtx,
+} from "./_generated/server";
 import { bustFactor, spotType, surface } from "./schema";
 
 // Caps chosen so a spot document stays far under Convex's 1MB limit and
@@ -247,19 +253,14 @@ export const remove = mutation({
 });
 
 /**
- * Records the caller as the uploader of a freshly POSTed file. Must be called
- * before the photo can be attached to a spot or discarded.
+ * Ledger entry for a file the caller just stored; called only from the
+ * /upload HTTP action, in the same request as the store. Identity comes
+ * from the request's token, never from an argument.
  */
-export const registerUpload = mutation({
+export const recordUpload = internalMutation({
   args: { storageId: v.id("_storage") },
   handler: async (ctx, args) => {
     const identity = await requireIdentity(ctx);
-    if (!(await ctx.db.system.get("_storage", args.storageId))) {
-      throw new Error("Upload not found.");
-    }
-    if ((await uploadRef(ctx, args.storageId)) || (await photoRef(ctx, args.storageId))) {
-      throw new Error("That photo is already registered.");
-    }
     await ctx.db.insert("uploads", {
       storageId: args.storageId,
       uploadedBy: identity.tokenIdentifier,
@@ -284,14 +285,5 @@ export const discardUpload = mutation({
     await ctx.db.delete("uploads", upload._id);
     await ctx.storage.delete(args.storageId);
     return null;
-  },
-});
-
-/** Signed URL the app POSTs a photo to before create/update. */
-export const generateUploadUrl = mutation({
-  args: {},
-  handler: async (ctx) => {
-    await requireIdentity(ctx);
-    return await ctx.storage.generateUploadUrl();
   },
 });

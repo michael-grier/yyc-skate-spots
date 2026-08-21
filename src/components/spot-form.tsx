@@ -1,3 +1,4 @@
+import { useAuth } from "@clerk/expo";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 import { useMutation } from "convex/react";
@@ -27,8 +28,12 @@ import {
   SURFACE_LABELS,
   SURFACES,
 } from "@/lib/spot-labels";
+import { convexSiteUrl } from "@/lib/convex-site";
 import { pickPhotos, uploadPhoto } from "@/lib/spot-photos";
 import { colors } from "@/theme/colors";
+
+// The env gate in the root layout guarantees this is set before any form renders.
+const UPLOAD_HOST = convexSiteUrl(process.env.EXPO_PUBLIC_CONVEX_URL ?? "");
 
 type SpotFormProps = {
   title: string;
@@ -65,8 +70,7 @@ function toggle<T>(list: T[], item: T) {
 /** Add/edit spot form from the approved mock, plus an optional surface row. */
 export function SpotForm({ title, initialValues, onCancel, onSave }: SpotFormProps) {
   const insets = useSafeAreaInsets();
-  const generateUploadUrl = useMutation(api.spots.generateUploadUrl);
-  const registerUpload = useMutation(api.spots.registerUpload);
+  const { getToken } = useAuth();
   const discardUpload = useMutation(api.spots.discardUpload);
   const [values, setValues] = useState(initialValues);
   const [errors, setErrors] = useState<SpotFormErrors>({});
@@ -111,9 +115,11 @@ export function SpotForm({ title, initialValues, onCancel, onSave }: SpotFormPro
           photoIds.push(photo.storageId);
           continue;
         }
-        const storageId = await uploadPhoto(photo, await generateUploadUrl());
-        // Binds the file to this user; required before it can be attached or discarded.
-        await registerUpload({ storageId });
+        const token = await getToken({ template: "convex" });
+        if (!token) {
+          throw new Error("Sign in again to upload photos.");
+        }
+        const storageId = await uploadPhoto(photo, UPLOAD_HOST, token);
         uploaded.push(storageId);
         photoIds.push(storageId);
       }

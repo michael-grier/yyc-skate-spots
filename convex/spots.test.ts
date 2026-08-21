@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
 import { describe, expect, test } from "vitest";
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import schema from "./schema";
 
@@ -10,10 +10,10 @@ const modules = import.meta.glob("./**/*.ts");
 type Harness = ReturnType<typeof convexTest>;
 type Identity = ReturnType<Harness["withIdentity"]>;
 
-/** Stores a file and registers it as `as`'s upload, like the app does after a POST. */
+/** Stores a file and records `as` as its uploader, as the /upload action does. */
 async function uploadAs(t: Harness, as: Identity, bytes: string) {
   const storageId = await t.run(async (ctx) => await ctx.storage.store(new Blob([bytes])));
-  await as.mutation(api.spots.registerUpload, { storageId });
+  await as.mutation(internal.spots.recordUpload, { storageId });
   return storageId;
 }
 
@@ -186,10 +186,29 @@ describe("spots authz", () => {
     await expect(asAlice.mutation(api.spots.discardUpload, { storageId: photoId })).rejects.toThrow(
       /your pending uploads/,
     );
-    await expect(
-      asAlice.mutation(api.spots.registerUpload, { storageId: photoId }),
-    ).rejects.toThrow(/already registered/);
     expect(await t.run((ctx) => ctx.db.query("uploads").take(10))).toEqual([]);
+  });
+
+  test("/upload stores the file and records the uploader in one request", async () => {
+    const t = convexTest(schema, modules);
+    const asAlice = t.withIdentity({ subject: "alice" });
+    const image = { method: "POST", headers: { "Content-Type": "image/jpeg" }, body: "jpeg bytes" };
+
+    expect((await t.fetch("/upload", image)).status).toBe(401);
+    expect(
+      (await asAlice.fetch("/upload", { ...image, headers: { "Content-Type": "text/plain" } }))
+        .status,
+    ).toBe(415);
+
+    const response = await asAlice.fetch("/upload", image);
+    expect(response.status).toBe(200);
+    const { storageId } = (await response.json()) as { storageId: Id<"_storage"> };
+    expect(await t.run((ctx) => ctx.storage.getUrl(storageId))).not.toBeNull();
+    expect(await t.run((ctx) => ctx.db.query("uploads").take(10))).toMatchObject([{ storageId }]);
+
+    // And it is usable exactly like any other upload of Alice's.
+    const id = await asAlice.mutation(api.spots.create, { ...SPOT, photoIds: [storageId] });
+    expect((await t.query(api.spots.get, { id }))?.photoUrls).toHaveLength(1);
   });
 
   test("dropping or deleting a spot's photos removes the files and their claims", async () => {
