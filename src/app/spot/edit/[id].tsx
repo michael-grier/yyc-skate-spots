@@ -13,8 +13,10 @@ import { colors } from "@/theme/colors";
 export default function EditSpotScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const spot = useQuery(api.spots.get, { id });
+  // get() tolerates any string; update() wants a real id, which a non-null
+  // owner result guarantees this is.
   const spotId = id as Id<"spots">;
-  const spot = useQuery(api.spots.get, { id: spotId });
   const updateSpot = useMutation(api.spots.update);
 
   if (spot === undefined) {

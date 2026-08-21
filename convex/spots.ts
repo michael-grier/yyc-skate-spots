@@ -148,9 +148,12 @@ export const list = query({
  * owner, whose edit form needs them.
  */
 export const get = query({
-  args: { id: v.id("spots") },
+  // A string, not v.id: the id comes from a route param, and a malformed deep
+  // link should read as "no such spot" rather than a validation error.
+  args: { id: v.string() },
   handler: async (ctx, args) => {
-    const spot = await ctx.db.get("spots", args.id);
+    const id = ctx.db.normalizeId("spots", args.id);
+    const spot = id ? await ctx.db.get("spots", id) : null;
     if (!spot) {
       return null;
     }
@@ -218,6 +221,24 @@ export const remove = mutation({
     const spot = await requireOwnedSpot(ctx, args.id);
     await releasePhotos(ctx, spot.photoIds);
     await ctx.db.delete("spots", args.id);
+    return null;
+  },
+});
+
+/**
+ * Deletes a photo that was uploaded but never attached, e.g. when saving the
+ * form failed after the upload. Refuses anything a spot references, so it can
+ * only ever remove the caller's own stray uploads (unattached storage ids are
+ * known only to whoever uploaded them).
+ */
+export const discardUpload = mutation({
+  args: { storageId: v.id("_storage") },
+  handler: async (ctx, args) => {
+    await requireIdentity(ctx);
+    if (await photoRef(ctx, args.storageId)) {
+      throw new Error("That photo belongs to a spot.");
+    }
+    await ctx.storage.delete(args.storageId);
     return null;
   },
 });

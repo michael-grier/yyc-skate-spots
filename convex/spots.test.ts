@@ -134,6 +134,33 @@ describe("spots authz", () => {
     expect(spot?.photoUrls).toHaveLength(1);
   });
 
+  test("get returns null for a malformed id instead of throwing", async () => {
+    const t = convexTest(schema, modules);
+    expect(await t.query(api.spots.get, { id: "not-a-real-id" })).toBeNull();
+  });
+
+  test("discardUpload removes stray uploads but never an attached photo", async () => {
+    const t = convexTest(schema, modules);
+    const asAlice = t.withIdentity({ subject: "alice" });
+    const asBob = t.withIdentity({ subject: "bob" });
+    const [stray, attached] = await t.run(async (ctx) => [
+      await ctx.storage.store(new Blob(["stray"])),
+      await ctx.storage.store(new Blob(["attached"])),
+    ]);
+    await asAlice.mutation(api.spots.create, { ...SPOT, photoIds: [attached] });
+
+    await expect(t.mutation(api.spots.discardUpload, { storageId: stray })).rejects.toThrow(
+      /signed in/,
+    );
+    await expect(asBob.mutation(api.spots.discardUpload, { storageId: attached })).rejects.toThrow(
+      /belongs to a spot/,
+    );
+    expect(await t.run((ctx) => ctx.storage.getUrl(attached))).not.toBeNull();
+
+    await asAlice.mutation(api.spots.discardUpload, { storageId: stray });
+    expect(await t.run((ctx) => ctx.storage.getUrl(stray))).toBeNull();
+  });
+
   test("dropping or deleting a spot's photos removes the files and their claims", async () => {
     const t = convexTest(schema, modules);
     const asAlice = t.withIdentity({ subject: "alice" });

@@ -66,6 +66,7 @@ function toggle<T>(list: T[], item: T) {
 export function SpotForm({ title, initialValues, onCancel, onSave }: SpotFormProps) {
   const insets = useSafeAreaInsets();
   const generateUploadUrl = useMutation(api.spots.generateUploadUrl);
+  const discardUpload = useMutation(api.spots.discardUpload);
   const [values, setValues] = useState(initialValues);
   const [errors, setErrors] = useState<SpotFormErrors>({});
   const [saving, setSaving] = useState(false);
@@ -99,14 +100,23 @@ export function SpotForm({ title, initialValues, onCancel, onSave }: SpotFormPro
     }
     setErrors({});
     setSaving(true);
+    // Uploads happen at save time so a cancelled form leaves no orphan files;
+    // if the save itself fails, the fresh uploads are discarded for the same reason.
+    const uploaded: Id<"_storage">[] = [];
     try {
-      // Uploads happen at save time so a cancelled form leaves no orphan files.
       const photoIds: Id<"_storage">[] = [];
       for (const photo of values.photos) {
-        photoIds.push(photo.storageId ?? (await uploadPhoto(photo, await generateUploadUrl())));
+        if (photo.storageId) {
+          photoIds.push(photo.storageId);
+          continue;
+        }
+        const storageId = await uploadPhoto(photo, await generateUploadUrl());
+        uploaded.push(storageId);
+        photoIds.push(storageId);
       }
       await onSave(result.payload, photoIds);
     } catch (err) {
+      await Promise.allSettled(uploaded.map((storageId) => discardUpload({ storageId })));
       Alert.alert("Couldn't save the spot", err instanceof Error ? err.message : "Try again.");
     } finally {
       setSaving(false);
