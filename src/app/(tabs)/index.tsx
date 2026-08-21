@@ -103,13 +103,15 @@ export default function MapScreen() {
   const settledFilters = useDebouncedValue(filters, REFIT_DEBOUNCE_MS);
   const lastFittedRef = useRef(settledFilters);
   useEffect(() => {
+    if (!hasActiveFilters(settledFilters) || spots.length === 0) {
+      return;
+    }
+    // Recorded only once a fit actually happens, so results that arrive
+    // after the debounce (e.g. the initial load) still get framed.
     if (lastFittedRef.current === settledFilters) {
       return;
     }
     lastFittedRef.current = settledFilters;
-    if (!hasActiveFilters(settledFilters) || spots.length === 0) {
-      return;
-    }
     mapRef.current?.fitToCoordinates(
       [
         ...spots.map(({ latitude, longitude }) => ({ latitude, longitude })),
