@@ -94,7 +94,13 @@ export default function MapScreen() {
         showsUserLocation={granted}
         showsMyLocationButton={false}
         onRegionChangeComplete={setRegion}
-        onPress={() => setSelectedId(null)}
+        onPress={(event) => {
+          // Belt and braces with the markers' stopPropagation: ignore the
+          // synthetic map press that accompanies a marker tap.
+          if ((event.nativeEvent as { action?: string }).action !== "marker-press") {
+            setSelectedId(null);
+          }
+        }}
       >
         {items.map((item) =>
           item.kind === "cluster" ? (

@@ -26,23 +26,30 @@ export function SpotMarker({ id, latitude, longitude, selected, onPress }: SpotM
       coordinate={{ latitude, longitude }}
       anchor={{ x: 0.5, y: 0.5 }}
       tracksViewChanges={false}
-      onPress={() => onPress(id)}
+      onPress={(event) => {
+        // With the Google provider on iOS a marker tap also fires the map's
+        // onPress, which would clear the selection this tap just made.
+        event.stopPropagation();
+        onPress(id);
+      }}
     >
       {selected ? (
-        <View className="h-[52px] w-[52px] items-center justify-center rounded-full bg-white/10">
+        <View className="h-[52px] w-[52px] items-center justify-center rounded-full bg-white/15">
           <View
-            className="h-10 w-10 items-center justify-center rounded-full border border-white/30"
+            className="h-10 w-10 items-center justify-center rounded-full border border-white/40"
             style={{ backgroundColor: colors.pinSelected }}
           >
             <BoardMark size={17} strokeWidth={2.4} color={colors.pinSelectedInk} />
           </View>
         </View>
       ) : (
+        // Light on the dark map so pins read at a glance; the selected one
+        // is the same colour but larger with a halo.
         <View
-          className="h-8 w-8 items-center justify-center rounded-full border border-white/20"
-          style={{ backgroundColor: "rgba(30,32,36,0.92)" }}
+          className="h-8 w-8 items-center justify-center rounded-full border border-black/20"
+          style={{ backgroundColor: colors.pinSelected }}
         >
-          <BoardMark size={14} strokeWidth={2.4} />
+          <BoardMark size={14} strokeWidth={2.4} color={colors.pinSelectedInk} />
         </View>
       )}
     </Marker>
