@@ -21,6 +21,7 @@ type SpotPreviewCardProps = {
   previewPhotoUrl: string | null;
   /** Omitted when the user's location is unknown. */
   distanceKm?: number;
+  mine?: boolean;
   /** When absent the card is static: no chevron, no button semantics. */
   onPress?: () => void;
 };
@@ -32,9 +33,11 @@ export function SpotPreviewCard({
   bustFactor,
   previewPhotoUrl,
   distanceKm,
+  mine,
   onPress,
 }: SpotPreviewCardProps) {
   const subtitle = [
+    mine && "Your spot",
     formatSpotTypes(types),
     distanceKm !== undefined && `${formatDistance(distanceKm)} away`,
   ]

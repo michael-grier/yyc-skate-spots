@@ -62,6 +62,11 @@ export default function MapScreen() {
     () => spots.map(({ _id, latitude, longitude }) => ({ id: _id, latitude, longitude })),
     [spots],
   );
+  // Cluster items carry plain string ids, hence Set<string>.
+  const mineIds = useMemo(
+    () => new Set<string>(spots.filter((spot) => spot.isMine).map((spot) => spot._id)),
+    [spots],
+  );
   const { items, regionToExpand } = useClusters(points, region);
   const selectedSpot = spots.find((spot) => spot._id === selectedId);
 
@@ -114,6 +119,7 @@ export default function MapScreen() {
               key={item.id}
               {...item}
               selected={item.id === selectedId}
+              mine={mineIds.has(item.id)}
               onPress={setSelectedId}
             />
           ),
@@ -145,6 +151,7 @@ export default function MapScreen() {
             bustFactor={selectedSpot.bustFactor}
             previewPhotoUrl={selectedSpot.previewPhotoUrl}
             distanceKm={coords ? distanceKm(coords, selectedSpot) : undefined}
+            mine={selectedSpot.isMine}
             onPress={() =>
               router.push({ pathname: "/spot/[id]", params: { id: selectedSpot._id } })
             }
