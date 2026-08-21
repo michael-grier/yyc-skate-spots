@@ -1,6 +1,12 @@
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
-import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
+import {
+  internalMutation,
+  mutation,
+  query,
+  type MutationCtx,
+  type QueryCtx,
+} from "./_generated/server";
 import { bustFactor, spotType, surface } from "./schema";
 
 // Caps chosen so a spot document stays far under Convex's 1MB limit and
@@ -43,7 +49,7 @@ async function requireOwnedSpot(ctx: MutationCtx, id: Id<"spots">) {
   if (spot.createdBy !== identity.tokenIdentifier) {
     throw new Error("Only the person who added a spot can change it.");
   }
-  return spot;
+  return { spot, identity };
 }
 
 function validateSpotFields(fields: {
@@ -103,6 +109,28 @@ async function assertPhotosUnclaimed(
   }
 }
 
+async function uploadRef(ctx: MutationCtx, storageId: Id<"_storage">) {
+  return await ctx.db
+    .query("uploads")
+    .withIndex("by_storageId", (q) => q.eq("storageId", storageId))
+    .unique();
+}
+
+/**
+ * Consumes the caller's upload records for `photoIds`, rejecting any photo
+ * the caller did not upload themselves. Together with assertPhotosUnclaimed
+ * this means a storage id can only ever be attached by its uploader.
+ */
+async function consumeUploads(ctx: MutationCtx, uploader: string, photoIds: Id<"_storage">[]) {
+  for (const photoId of photoIds) {
+    const upload = await uploadRef(ctx, photoId);
+    if (!upload || upload.uploadedBy !== uploader) {
+      throw new Error("Photos must be uploaded by you before they can be attached.");
+    }
+    await ctx.db.delete("uploads", upload._id);
+  }
+}
+
 async function claimPhotos(ctx: MutationCtx, photoIds: Id<"_storage">[], spotId: Id<"spots">) {
   for (const photoId of photoIds) {
     await ctx.db.insert("spotPhotos", { storageId: photoId, spotId });
@@ -148,9 +176,12 @@ export const list = query({
  * owner, whose edit form needs them.
  */
 export const get = query({
-  args: { id: v.id("spots") },
+  // A string, not v.id: the id comes from a route param, and a malformed deep
+  // link should read as "no such spot" rather than a validation error.
+  args: { id: v.string() },
   handler: async (ctx, args) => {
-    const spot = await ctx.db.get("spots", args.id);
+    const id = ctx.db.normalizeId("spots", args.id);
+    const spot = id ? await ctx.db.get("spots", id) : null;
     if (!spot) {
       return null;
     }
@@ -170,6 +201,7 @@ export const create = mutation({
     const identity = await requireIdentity(ctx);
     validateSpotFields(args);
     await assertPhotosUnclaimed(ctx, args.photoIds, null);
+    await consumeUploads(ctx, identity.tokenIdentifier, args.photoIds);
     const id = await ctx.db.insert("spots", {
       ...args,
       name: args.name.trim(),
@@ -185,22 +217,27 @@ export const update = mutation({
   args: { id: v.id("spots"), ...spotFields.fields },
   handler: async (ctx, args) => {
     const { id, ...fields } = args;
-    const existing = await requireOwnedSpot(ctx, id);
+    const { spot: existing, identity } = await requireOwnedSpot(ctx, id);
     validateSpotFields(fields);
     await assertPhotosUnclaimed(ctx, fields.photoIds, id);
     const before = new Set(existing.photoIds);
     const after = new Set(fields.photoIds);
-    await claimPhotos(
-      ctx,
-      fields.photoIds.filter((photoId) => !before.has(photoId)),
-      id,
-    );
+    const added = fields.photoIds.filter((photoId) => !before.has(photoId));
+    await consumeUploads(ctx, identity.tokenIdentifier, added);
+    await claimPhotos(ctx, added, id);
     // Photos dropped from the spot would otherwise be orphaned in storage.
     await releasePhotos(
       ctx,
       existing.photoIds.filter((photoId) => !after.has(photoId)),
     );
-    await ctx.db.patch("spots", id, { ...fields, name: fields.name.trim() });
+    // replace, not patch: an omitted optional field (notes, surface) must
+    // clear the stored value, and patch leaves absent keys untouched.
+    await ctx.db.replace("spots", id, {
+      ...fields,
+      name: fields.name.trim(),
+      createdBy: existing.createdBy,
+      createdByName: existing.createdByName,
+    });
     return null;
   },
 });
@@ -208,18 +245,45 @@ export const update = mutation({
 export const remove = mutation({
   args: { id: v.id("spots") },
   handler: async (ctx, args) => {
-    const spot = await requireOwnedSpot(ctx, args.id);
+    const { spot } = await requireOwnedSpot(ctx, args.id);
     await releasePhotos(ctx, spot.photoIds);
     await ctx.db.delete("spots", args.id);
     return null;
   },
 });
 
-/** Signed URL the app POSTs a photo to before create/update. */
-export const generateUploadUrl = mutation({
-  args: {},
-  handler: async (ctx) => {
-    await requireIdentity(ctx);
-    return await ctx.storage.generateUploadUrl();
+/**
+ * Ledger entry for a file the caller just stored; called only from the
+ * /upload HTTP action, in the same request as the store. Identity comes
+ * from the request's token, never from an argument.
+ */
+export const recordUpload = internalMutation({
+  args: { storageId: v.id("_storage") },
+  handler: async (ctx, args) => {
+    const identity = await requireIdentity(ctx);
+    await ctx.db.insert("uploads", {
+      storageId: args.storageId,
+      uploadedBy: identity.tokenIdentifier,
+    });
+    return null;
+  },
+});
+
+/**
+ * Deletes a file the caller uploaded but never attached, e.g. when saving
+ * the form failed after the upload. Bound to the uploader, so nobody can
+ * delete another user's pending upload even with its id in hand.
+ */
+export const discardUpload = mutation({
+  args: { storageId: v.id("_storage") },
+  handler: async (ctx, args) => {
+    const identity = await requireIdentity(ctx);
+    const upload = await uploadRef(ctx, args.storageId);
+    if (!upload || upload.uploadedBy !== identity.tokenIdentifier) {
+      throw new Error("That isn't one of your pending uploads.");
+    }
+    await ctx.db.delete("uploads", upload._id);
+    await ctx.storage.delete(args.storageId);
+    return null;
   },
 });

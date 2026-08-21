@@ -51,7 +51,9 @@ with no error in Metro. Confirm with `adb logcat | grep -i "Google Maps Android 
 ### 3. Convex
 
 1. `bun x convex dev` — first run logs you in, creates the project, and prints the deployment
-   URL. Put it in `.env` as `EXPO_PUBLIC_CONVEX_URL`.
+   URL. Put it in `.env` as `EXPO_PUBLIC_CONVEX_URL`. Photo uploads go to the deployment's
+   HTTP-actions host, derived automatically for `*.convex.cloud` URLs; if you ever put Convex
+   behind a custom domain, set that host as `EXPO_PUBLIC_CONVEX_SITE_URL` too.
 2. In the Convex dashboard (or `bun x convex env set`), set
    `CLERK_JWT_ISSUER_DOMAIN` to the Issuer domain from step 2.3.
 3. Leave `bun x convex dev` running while developing — it pushes functions/schema on save.

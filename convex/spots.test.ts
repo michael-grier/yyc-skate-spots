@@ -1,11 +1,21 @@
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
 import { describe, expect, test } from "vitest";
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
+
+type Harness = ReturnType<typeof convexTest>;
+type Identity = ReturnType<Harness["withIdentity"]>;
+
+/** Stores a file and records `as` as its uploader, as the /upload action does. */
+async function uploadAs(t: Harness, as: Identity, bytes: string) {
+  const storageId = await t.run(async (ctx) => await ctx.storage.store(new Blob([bytes])));
+  await as.mutation(internal.spots.recordUpload, { storageId });
+  return storageId;
+}
 
 const SPOT = {
   name: "Test Ledge",
@@ -35,6 +45,21 @@ describe("spots authz", () => {
 
     await asAlice.mutation(api.spots.remove, { id });
     expect(await t.query(api.spots.get, { id })).toBeNull();
+  });
+
+  test("update clears optional fields that are omitted", async () => {
+    const t = convexTest(schema, modules);
+    const asAlice = t.withIdentity({ subject: "alice" });
+    const id = await asAlice.mutation(api.spots.create, {
+      ...SPOT,
+      notes: "Go early.",
+      surface: "rough",
+    });
+    await asAlice.mutation(api.spots.update, { ...SPOT, id });
+    const spot = await t.query(api.spots.get, { id });
+    expect(spot?.notes).toBeUndefined();
+    expect(spot?.surface).toBeUndefined();
+    expect(spot?.createdByName).toBeUndefined();
   });
 
   test("a different user cannot update or delete someone else's spot", async () => {
@@ -80,7 +105,7 @@ describe("spots authz", () => {
   test("photo storage ids are never exposed to non-owners", async () => {
     const t = convexTest(schema, modules);
     const asAlice = t.withIdentity({ subject: "alice" });
-    const photoId = await t.run(async (ctx) => await ctx.storage.store(new Blob(["jpeg bytes"])));
+    const photoId = await uploadAs(t, asAlice, "jpeg bytes");
 
     const id = await asAlice.mutation(api.spots.create, { ...SPOT, photoIds: [photoId] });
 
@@ -99,7 +124,7 @@ describe("spots authz", () => {
     const t = convexTest(schema, modules);
     const asAlice = t.withIdentity({ subject: "alice" });
     const asBob = t.withIdentity({ subject: "bob" });
-    const photoId = await t.run(async (ctx) => await ctx.storage.store(new Blob(["jpeg bytes"])));
+    const photoId = await uploadAs(t, asAlice, "jpeg bytes");
 
     const alicesSpot = await asAlice.mutation(api.spots.create, { ...SPOT, photoIds: [photoId] });
 
@@ -119,13 +144,78 @@ describe("spots authz", () => {
     expect(spot?.photoUrls).toHaveLength(1);
   });
 
+  test("get returns null for a malformed id instead of throwing", async () => {
+    const t = convexTest(schema, modules);
+    expect(await t.query(api.spots.get, { id: "not-a-real-id" })).toBeNull();
+  });
+
+  test("only the uploader can attach or discard a pending upload", async () => {
+    const t = convexTest(schema, modules);
+    const asAlice = t.withIdentity({ subject: "alice" });
+    const asBob = t.withIdentity({ subject: "bob" });
+    const alicesUpload = await uploadAs(t, asAlice, "stray");
+    const unregistered = await t.run(async (ctx) => await ctx.storage.store(new Blob(["raw"])));
+
+    // Bob has Alice's id somehow: he can neither attach nor delete it.
+    await expect(
+      asBob.mutation(api.spots.create, { ...SPOT, photoIds: [alicesUpload] }),
+    ).rejects.toThrow(/uploaded by you/);
+    await expect(
+      asBob.mutation(api.spots.discardUpload, { storageId: alicesUpload }),
+    ).rejects.toThrow(/your pending uploads/);
+    await expect(t.mutation(api.spots.discardUpload, { storageId: alicesUpload })).rejects.toThrow(
+      /signed in/,
+    );
+    expect(await t.run((ctx) => ctx.storage.getUrl(alicesUpload))).not.toBeNull();
+
+    // A file that was never registered can't be attached by anyone either.
+    await expect(
+      asAlice.mutation(api.spots.create, { ...SPOT, photoIds: [unregistered] }),
+    ).rejects.toThrow(/uploaded by you/);
+
+    await asAlice.mutation(api.spots.discardUpload, { storageId: alicesUpload });
+    expect(await t.run((ctx) => ctx.storage.getUrl(alicesUpload))).toBeNull();
+  });
+
+  test("an attached photo is no longer a pending upload", async () => {
+    const t = convexTest(schema, modules);
+    const asAlice = t.withIdentity({ subject: "alice" });
+    const photoId = await uploadAs(t, asAlice, "attached");
+    await asAlice.mutation(api.spots.create, { ...SPOT, photoIds: [photoId] });
+
+    await expect(asAlice.mutation(api.spots.discardUpload, { storageId: photoId })).rejects.toThrow(
+      /your pending uploads/,
+    );
+    expect(await t.run((ctx) => ctx.db.query("uploads").take(10))).toEqual([]);
+  });
+
+  test("/upload stores the file and records the uploader in one request", async () => {
+    const t = convexTest(schema, modules);
+    const asAlice = t.withIdentity({ subject: "alice" });
+    const image = { method: "POST", headers: { "Content-Type": "image/jpeg" }, body: "jpeg bytes" };
+
+    expect((await t.fetch("/upload", image)).status).toBe(401);
+    expect(
+      (await asAlice.fetch("/upload", { ...image, headers: { "Content-Type": "text/plain" } }))
+        .status,
+    ).toBe(415);
+
+    const response = await asAlice.fetch("/upload", image);
+    expect(response.status).toBe(200);
+    const { storageId } = (await response.json()) as { storageId: Id<"_storage"> };
+    expect(await t.run((ctx) => ctx.storage.getUrl(storageId))).not.toBeNull();
+    expect(await t.run((ctx) => ctx.db.query("uploads").take(10))).toMatchObject([{ storageId }]);
+
+    // And it is usable exactly like any other upload of Alice's.
+    const id = await asAlice.mutation(api.spots.create, { ...SPOT, photoIds: [storageId] });
+    expect((await t.query(api.spots.get, { id }))?.photoUrls).toHaveLength(1);
+  });
+
   test("dropping or deleting a spot's photos removes the files and their claims", async () => {
     const t = convexTest(schema, modules);
     const asAlice = t.withIdentity({ subject: "alice" });
-    const [first, second] = await t.run(async (ctx) => [
-      await ctx.storage.store(new Blob(["one"])),
-      await ctx.storage.store(new Blob(["two"])),
-    ]);
+    const first = await uploadAs(t, asAlice, "one");
+    const second = await uploadAs(t, asAlice, "two");
     const id = await asAlice.mutation(api.spots.create, { ...SPOT, photoIds: [first, second] });
 
     await asAlice.mutation(api.spots.update, { ...SPOT, id, photoIds: [second] });

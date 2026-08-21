@@ -1,5 +1,4 @@
 import { api } from "@convex/_generated/api";
-import type { Id } from "@convex/_generated/dataModel";
 import { useMutation, useQuery } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import {
@@ -58,7 +57,7 @@ export default function SpotDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const spot = useQuery(api.spots.get, { id: id as Id<"spots"> });
+  const spot = useQuery(api.spots.get, { id });
   const removeSpot = useMutation(api.spots.remove);
   const { coords, granted } = useUserLocation();
   // Android's geocoder needs location permission; iOS's does not.
@@ -184,6 +183,10 @@ export default function SpotDetailScreen() {
           accessibilityLabel="Spot options"
           onPress={() =>
             Alert.alert(spot.name, undefined, [
+              {
+                text: "Edit spot",
+                onPress: () => router.push({ pathname: "/spot/edit/[id]", params: { id: spotId } }),
+              },
               { text: "Delete spot", style: "destructive", onPress: confirmDelete },
               { text: "Cancel", style: "cancel" },
             ])

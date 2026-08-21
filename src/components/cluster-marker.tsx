@@ -1,6 +1,8 @@
 import { Text, View } from "react-native";
 import { Marker } from "react-native-maps";
 
+import { colors } from "@/theme/colors";
+
 type ClusterMarkerProps = {
   id: number;
   latitude: number;
@@ -17,13 +19,18 @@ export function ClusterMarker({ id, latitude, longitude, count, onPress }: Clust
       coordinate={{ latitude, longitude }}
       anchor={{ x: 0.5, y: 0.5 }}
       tracksViewChanges={false}
-      onPress={onPress}
+      onPress={(event) => {
+        event.stopPropagation();
+        onPress();
+      }}
     >
       <View
-        className="h-9 min-w-9 items-center justify-center rounded-full border border-white/20 px-2"
-        style={{ backgroundColor: "rgba(30,32,36,0.92)" }}
+        className="h-9 min-w-9 items-center justify-center rounded-full border border-black/20 px-2"
+        style={{ backgroundColor: colors.pinSelected }}
       >
-        <Text className="font-sans-semibold text-[12px] text-ink">{count}</Text>
+        <Text className="font-sans-semibold text-[12px]" style={{ color: colors.pinSelectedInk }}>
+          {count}
+        </Text>
       </View>
     </Marker>
   );
