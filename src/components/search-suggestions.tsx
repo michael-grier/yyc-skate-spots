@@ -15,14 +15,24 @@ type Suggestion = {
 type SearchSuggestionsProps = {
   suggestions: Suggestion[];
   onPick: (id: string) => void;
+  /** Offered in the empty state when chip filters are narrowing the results. */
+  onClearFilters?: () => void;
 };
 
 /** Matching spots listed under the search bar while the user is typing. */
-export function SearchSuggestions({ suggestions, onPick }: SearchSuggestionsProps) {
+export function SearchSuggestions({ suggestions, onPick, onClearFilters }: SearchSuggestionsProps) {
   if (suggestions.length === 0) {
     return (
-      <Card className="px-4 py-3" style={{ backgroundColor: "rgba(30,32,36,0.96)" }}>
+      <Card
+        className="flex-row items-center justify-between px-4 py-3"
+        style={{ backgroundColor: "rgba(30,32,36,0.96)" }}
+      >
         <Text className="font-sans text-[13px] text-mute">No spots match that.</Text>
+        {onClearFilters ? (
+          <Pressable accessibilityRole="button" hitSlop={8} onPress={onClearFilters}>
+            <Text className="font-sans-semibold text-[12px] text-silver">Clear filters</Text>
+          </Pressable>
+        ) : null}
       </Card>
     );
   }

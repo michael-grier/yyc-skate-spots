@@ -19,6 +19,7 @@ import { SpotPreviewCard } from "@/components/spot-preview-card";
 import { distanceKm } from "@/lib/geo";
 import {
   applyFilters,
+  countActiveFilters,
   DEFAULT_FILTERS,
   fitKeyFor,
   hasActiveFilters,
@@ -221,7 +222,16 @@ export default function MapScreen() {
           onSubmitEditing={() => setSearchActive(false)}
         />
         {searchActive && query ? (
-          <SearchSuggestions suggestions={suggestions} onPick={pickSuggestion} />
+          <SearchSuggestions
+            suggestions={suggestions}
+            onPick={pickSuggestion}
+            // Only chip filters are worth clearing here; the query has its own ✕.
+            onClearFilters={
+              countActiveFilters(filters) > 0
+                ? () => setFilters((current) => ({ ...DEFAULT_FILTERS, query: current.query }))
+                : undefined
+            }
+          />
         ) : (
           <FilterChips filters={filters} onOpen={openFilters} />
         )}
