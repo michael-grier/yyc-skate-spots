@@ -86,3 +86,21 @@ export function rankSuggestions<T extends FilterableSpot>(
   );
   return sorted.slice(0, limit);
 }
+
+/**
+ * Identity of a "frame the results" request, or null when there is nothing to
+ * frame (no active filters, or no matches yet). Two equal keys mean the
+ * viewport is already framed for this state, so the map doesn't re-fit on
+ * unrelated re-renders — but it does once location becomes known or results
+ * reappear after being empty.
+ */
+export function fitKeyFor(
+  filters: SpotFilters,
+  userLocation: LatLng | null,
+  resultCount: number,
+): string | null {
+  if (resultCount === 0 || !hasActiveFilters(filters)) {
+    return null;
+  }
+  return JSON.stringify({ filters, userLocation });
+}

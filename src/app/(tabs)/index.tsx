@@ -18,8 +18,9 @@ import { SpotMarker } from "@/components/spot-marker";
 import { SpotPreviewCard } from "@/components/spot-preview-card";
 import { distanceKm } from "@/lib/geo";
 import {
-  DEFAULT_FILTERS,
   applyFilters,
+  DEFAULT_FILTERS,
+  fitKeyFor,
   hasActiveFilters,
   rankSuggestions,
 } from "@/lib/spot-filters";
@@ -99,19 +100,21 @@ export default function MapScreen() {
 
   // Re-frame the map so every matching spot (and the user) is on screen once
   // the filters settle; without this a narrow search could leave the viewport
-  // looking empty while matches sat just off-screen.
+  // looking empty while matches sat just off-screen. The key is null when
+  // there is nothing to frame, so results arriving later still trigger a fit,
+  // and it includes the user's location so a later fix re-frames to include them.
   const settledFilters = useDebouncedValue(filters, REFIT_DEBOUNCE_MS);
-  const lastFittedRef = useRef(settledFilters);
+  const fitKey = fitKeyFor(settledFilters, coords, spots.length);
+  const lastFitKeyRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!hasActiveFilters(settledFilters) || spots.length === 0) {
+    if (fitKey === null) {
+      lastFitKeyRef.current = null;
       return;
     }
-    // Recorded only once a fit actually happens, so results that arrive
-    // after the debounce (e.g. the initial load) still get framed.
-    if (lastFittedRef.current === settledFilters) {
+    if (lastFitKeyRef.current === fitKey) {
       return;
     }
-    lastFittedRef.current = settledFilters;
+    lastFitKeyRef.current = fitKey;
     mapRef.current?.fitToCoordinates(
       [
         ...spots.map(({ latitude, longitude }) => ({ latitude, longitude })),
@@ -122,7 +125,7 @@ export default function MapScreen() {
         animated: true,
       },
     );
-  }, [settledFilters, spots, coords, insets.top]);
+  }, [fitKey, spots, coords, insets.top]);
 
   function pickSuggestion(id: string) {
     const spot = spotsById.get(id);
@@ -153,7 +156,9 @@ export default function MapScreen() {
 
   async function handleLocate() {
     const position = await locate();
-    if (position) {
+    // With a search or filter active, the results-fit effect frames the
+    // user together with the matches; animating here too would fight it.
+    if (position && !hasActiveFilters(filters)) {
       mapRef.current?.animateToRegion(
         { ...position, latitudeDelta: LOCATE_DELTA, longitudeDelta: LOCATE_DELTA },
         400,

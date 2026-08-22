@@ -4,6 +4,7 @@ import {
   DEFAULT_FILTERS,
   applyFilters,
   countActiveFilters,
+  fitKeyFor,
   hasActiveFilters,
   rankSuggestions,
 } from "./spot-filters";
@@ -116,5 +117,26 @@ describe("rankSuggestions", () => {
       "Bowness Curbs",
       "Chinatown 12 Stair",
     ]);
+  });
+});
+
+describe("fitKeyFor", () => {
+  const active = { ...DEFAULT_FILTERS, query: "bmo" };
+
+  test("is null when nothing narrows the map or nothing matches", () => {
+    expect(fitKeyFor(DEFAULT_FILTERS, DOWNTOWN, 5)).toBeNull();
+    expect(fitKeyFor(active, DOWNTOWN, 0)).toBeNull();
+  });
+
+  test("is stable for the same state and changes when location becomes known", () => {
+    expect(fitKeyFor(active, null, 3)).toBe(fitKeyFor({ ...active }, null, 3));
+    expect(fitKeyFor(active, null, 3)).not.toBe(fitKeyFor(active, DOWNTOWN, 3));
+  });
+
+  test("clears between results disappearing and reappearing", () => {
+    const before = fitKeyFor(active, DOWNTOWN, 2);
+    expect(fitKeyFor(active, DOWNTOWN, 0)).toBeNull();
+    // A new fit is warranted after the gap even though the key matches.
+    expect(fitKeyFor(active, DOWNTOWN, 2)).toBe(before);
   });
 });
