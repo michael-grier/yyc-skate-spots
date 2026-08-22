@@ -129,9 +129,12 @@ export default function SpotDetailScreen() {
     ]);
   }
 
-  const byline = spot.createdByName
-    ? `Added ${formatMonthYear(spot._creationTime)} by ${spot.createdByName}`
-    : `Added ${formatMonthYear(spot._creationTime)}`;
+  const added = `Added ${formatMonthYear(spot._creationTime)}`;
+  const byline = spot.isOwner
+    ? `${added} by you`
+    : spot.createdByName
+      ? `${added} by ${spot.createdByName}`
+      : added;
 
   return (
     <View className="flex-1 bg-base">
