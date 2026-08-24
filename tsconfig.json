@@ -2,6 +2,9 @@
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true,
+    // TS 6 no longer auto-includes node_modules/@types; jest's globals for
+    // the *.test.tsx component tests must be requested explicitly.
+    "types": ["jest"],
     "paths": {
       "@/*": ["./src/*"],
       "@/assets/*": ["./assets/*"],
