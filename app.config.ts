@@ -33,10 +33,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   orientation: "portrait",
   icon: "./assets/images/icon.png",
   scheme: "yycskatespots",
-  userInterfaceStyle: "automatic",
+  userInterfaceStyle: "dark",
   ios: {
     bundleIdentifier: "com.yycskatespots.app",
-    icon: "./assets/expo.icon",
     infoPlist: {
       NSLocationWhenInUseUsageDescription:
         "YYC Skate Spots shows your position on the map and sorts spots by distance from you.",
@@ -49,7 +48,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   android: {
     package: "com.yycskatespots.app",
     adaptiveIcon: {
-      backgroundColor: "#E6F4FE",
+      backgroundColor: "#141517",
       foregroundImage: "./assets/images/android-icon-foreground.png",
       backgroundImage: "./assets/images/android-icon-background.png",
       monochromeImage: "./assets/images/android-icon-monochrome.png",
@@ -81,9 +80,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     [
       "expo-splash-screen",
       {
-        backgroundColor: "#208AEF",
+        backgroundColor: "#141517",
         image: "./assets/images/splash-icon.png",
-        imageWidth: 76,
+        imageWidth: 96,
       },
     ],
     [

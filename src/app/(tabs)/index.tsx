@@ -3,7 +3,7 @@ import { api } from "@convex/_generated/api";
 import { useQuery } from "convex/react";
 import { useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Keyboard, Pressable, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Keyboard, Pressable, StyleSheet, Text, View } from "react-native";
 import MapView, { PROVIDER_GOOGLE, type Region } from "react-native-maps";
 
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -19,6 +19,7 @@ import { SpotPreviewCard } from "@/components/spot-preview-card";
 import { distanceKm } from "@/lib/geo";
 import {
   applyFilters,
+  countActiveFilters,
   DEFAULT_FILTERS,
   fitKeyFor,
   hasActiveFilters,
@@ -58,8 +59,11 @@ export default function MapScreen() {
   const mapRef = useRef<MapView>(null);
   const sheetRef = useRef<BottomSheetModal>(null);
   const insets = useSafeAreaInsets();
-  // undefined while the first result is in flight; the map renders empty.
-  const allSpots = useQuery(api.spots.list) ?? NO_SPOTS;
+  // undefined while the first result is in flight; the map renders empty
+  // behind a loading pill.
+  const spotsResult = useQuery(api.spots.list);
+  const loading = spotsResult === undefined;
+  const allSpots = spotsResult ?? NO_SPOTS;
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   // Suggestions stay open across the input blurring (tapping a row blurs it
@@ -217,11 +221,46 @@ export default function MapScreen() {
           onFocus={() => setSearchActive(query.length > 0)}
           onSubmitEditing={() => setSearchActive(false)}
         />
-        {searchActive && query ? (
-          <SearchSuggestions suggestions={suggestions} onPick={pickSuggestion} />
+        {/* While loading, the pill below explains the empty map; an empty
+            suggestions list would wrongly read as "no matches". */}
+        {!loading && searchActive && query ? (
+          <SearchSuggestions
+            suggestions={suggestions}
+            onPick={pickSuggestion}
+            // Only chip filters are worth clearing here; the query has its own ✕.
+            onClearFilters={
+              countActiveFilters(filters) > 0
+                ? () => setFilters((current) => ({ ...DEFAULT_FILTERS, query: current.query }))
+                : undefined
+            }
+          />
         ) : (
           <FilterChips filters={filters} onOpen={openFilters} />
         )}
+        {loading ? (
+          <View
+            className="flex-row items-center gap-2 self-start rounded-full border border-white/10 px-3.5 py-2"
+            style={{ backgroundColor: "rgba(30,32,36,0.92)" }}
+          >
+            <ActivityIndicator size="small" color={colors.mute} />
+            <Text className="font-sans text-[12px] text-mute">Loading spots…</Text>
+          </View>
+        ) : null}
+        {!loading && !searchActive && hasActiveFilters(filters) && spots.length === 0 ? (
+          <View
+            className="flex-row items-center gap-3 self-start rounded-full border border-white/10 px-3.5 py-2"
+            style={{ backgroundColor: "rgba(30,32,36,0.92)" }}
+          >
+            <Text className="font-sans text-[12px] text-mute">No spots match.</Text>
+            <Pressable
+              accessibilityRole="button"
+              hitSlop={8}
+              onPress={() => setFilters(DEFAULT_FILTERS)}
+            >
+              <Text className="font-sans-semibold text-[12px] text-silver">Clear filters</Text>
+            </Pressable>
+          </View>
+        ) : null}
       </View>
 
       <View className="absolute inset-x-4 bottom-4 gap-3">

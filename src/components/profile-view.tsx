@@ -2,7 +2,7 @@ import { useClerk, useUser } from "@clerk/expo";
 import { api } from "@convex/_generated/api";
 import { useQuery } from "convex/react";
 import { useRouter } from "expo-router";
-import { FlatList, Pressable, Text, View } from "react-native";
+import { ActivityIndicator, FlatList, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ChevronRightIcon } from "@/components/icons";
@@ -63,6 +63,9 @@ export function ProfileView() {
           </Card>
 
           <Text className="mt-8 mb-2 px-1 font-sans-medium text-[11px] text-mute">YOUR SPOTS</Text>
+          {mySpots === undefined ? (
+            <ActivityIndicator color={colors.mute} className="self-start px-1" />
+          ) : null}
           {mySpots?.length === 0 ? (
             <Text className="px-1 font-sans text-[14px] text-mute">
               Nothing yet. Spots you add from the Add tab show up here.
