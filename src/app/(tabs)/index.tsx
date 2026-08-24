@@ -221,7 +221,9 @@ export default function MapScreen() {
           onFocus={() => setSearchActive(query.length > 0)}
           onSubmitEditing={() => setSearchActive(false)}
         />
-        {searchActive && query ? (
+        {/* While loading, the pill below explains the empty map; an empty
+            suggestions list would wrongly read as "no matches". */}
+        {!loading && searchActive && query ? (
           <SearchSuggestions
             suggestions={suggestions}
             onPick={pickSuggestion}
