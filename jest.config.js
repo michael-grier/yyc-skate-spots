@@ -8,6 +8,9 @@ module.exports = {
   setupFiles: ["<rootDir>/jest.setup.js"],
   testMatch: ["<rootDir>/src/**/*.test.tsx"],
   moduleNameMapper: {
+    // Specific before generic, mirroring tsconfig paths: @/assets lives at
+    // the repo root, everything else under @/ is src/.
+    "^@/assets/(.*)$": "<rootDir>/assets/$1",
     "^@/(.*)$": "<rootDir>/src/$1",
     "^@convex/(.*)$": "<rootDir>/convex/$1",
   },
