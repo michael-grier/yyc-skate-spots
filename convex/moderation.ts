@@ -47,8 +47,11 @@ export const listSpots = query({
   args: {},
   handler: async (ctx) => {
     await requireAdmin(ctx);
-    const spots = await ctx.db.query("spots").order("desc").take(MAX_SPOTS_LISTED);
-    const activeSpots = spots.filter((spot) => !spot.deletionRequested);
+    const activeSpots = await ctx.db
+      .query("spots")
+      .order("desc")
+      .filter((q) => q.neq(q.field("deletionRequested"), true))
+      .take(MAX_SPOTS_LISTED);
     const creatorIdentifiers = [...new Set(activeSpots.map((spot) => spot.createdBy))];
     // Indexed lookups keep metadata aligned with the selected spots even after
     // the moderation tables grow beyond the queue's display limit.

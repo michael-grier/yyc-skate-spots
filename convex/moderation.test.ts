@@ -62,17 +62,22 @@ describe("spot moderation", () => {
     expect(queue.every((spot) => spot.review.attentionReason === "new")).toBe(true);
   });
 
-  test("queue metadata remains correlated after moderation tables exceed the list limit", async () => {
+  test("queue cap and metadata remain correlated after moderation tables exceed the limit", async () => {
     const t = convexTest(schema, modules);
     const asAdmin = t.withIdentity({ subject: "admin", role: "admin" });
     const targetId = await t.run(async (ctx) => {
-      const staleSpotId = await ctx.db.insert("spots", {
+      const id = await ctx.db.insert("spots", {
         ...SPOT,
-        name: "Pending deletion",
-        createdBy: "stale-owner",
-        deletionRequested: true,
+        createdBy: "target-owner",
+        createdByName: "Target Owner",
       });
       for (let index = 0; index < MAX_SPOTS_LISTED; index += 1) {
+        const staleSpotId = await ctx.db.insert("spots", {
+          ...SPOT,
+          name: `Pending deletion ${index}`,
+          createdBy: `stale-user-${index}`,
+          deletionRequested: true,
+        });
         await ctx.db.insert("spotModeration", {
           spotId: staleSpotId,
           spotCreationTime: index,
@@ -88,11 +93,6 @@ describe("spot moderation", () => {
         });
       }
 
-      const id = await ctx.db.insert("spots", {
-        ...SPOT,
-        createdBy: "target-owner",
-        createdByName: "Target Owner",
-      });
       await ctx.db.insert("spotModeration", {
         spotId: id,
         spotCreationTime: Date.now(),
