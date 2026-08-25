@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as favorites from "../favorites.js";
 import type * as http from "../http.js";
 import type * as seed from "../seed.js";
 import type * as spots from "../spots.js";
@@ -19,6 +20,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  favorites: typeof favorites;
   http: typeof http;
   seed: typeof seed;
   spots: typeof spots;

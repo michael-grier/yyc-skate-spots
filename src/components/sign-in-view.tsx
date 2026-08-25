@@ -56,8 +56,8 @@ export function SignInView() {
         YYC Skate Spots
       </Text>
       <Text className="mt-2 font-sans text-[14px] leading-relaxed text-mute">
-        Sign in to add spots to the map and manage the ones you’ve shared. Browsing never needs an
-        account.
+        Sign in to save favourite spots, add new ones, and manage the spots you&apos;ve shared.
+        Browsing never needs an account.
       </Text>
 
       {step.kind === "email" ? (

@@ -2,12 +2,14 @@ import { useClerk, useUser } from "@clerk/expo";
 import { api } from "@convex/_generated/api";
 import { useQuery } from "convex/react";
 import { useRouter } from "expo-router";
+import { useState } from "react";
 import { ActivityIndicator, FlatList, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ChevronRightIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { cn } from "@/lib/cn";
 import { BUST_FACTOR_COLORS, BUST_FACTOR_LABELS, formatSpotTypes } from "@/lib/spot-labels";
 import { colors } from "@/theme/colors";
 
@@ -20,14 +22,54 @@ function initialsOf(name: string | null | undefined, email: string | undefined) 
   return source.slice(0, 2).toUpperCase();
 }
 
-/** Signed-in state of the Account tab: who you are, and the spots you've added. */
+type ProfileList = "favorites" | "mine";
+
+type ProfileSegmentProps = {
+  label: string;
+  count: number | undefined;
+  selected: boolean;
+  onPress: () => void;
+};
+
+/** One half of the profile's Favourites / Your spots switcher. */
+function ProfileSegment({ label, count, selected, onPress }: ProfileSegmentProps) {
+  const countLabel = count === undefined ? "loading" : `${count} ${count === 1 ? "spot" : "spots"}`;
+
+  return (
+    <Pressable
+      accessibilityRole="tab"
+      accessibilityLabel={`${label}, ${countLabel}`}
+      accessibilityState={{ selected }}
+      onPress={onPress}
+      className={cn("flex-1 rounded-xl px-3 py-2.5", selected && "bg-white/10")}
+    >
+      <Text
+        className={cn(
+          "text-center text-[13px]",
+          selected ? "font-sans-semibold text-ink" : "font-sans-medium text-mute",
+        )}
+      >
+        {label} <Text className="text-mute">{count ?? "…"}</Text>
+      </Text>
+    </Pressable>
+  );
+}
+
+/** Signed-in Account tab with saved and submitted spot lists. */
 export function ProfileView() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user } = useUser();
   const { signOut } = useClerk();
+  const favorites = useQuery(api.favorites.list);
   const mySpots = useQuery(api.spots.mine);
+  const [activeList, setActiveList] = useState<ProfileList>("favorites");
   const email = user?.primaryEmailAddress?.emailAddress;
+  const activeSpots = activeList === "favorites" ? favorites : mySpots;
+  const emptyMessage =
+    activeList === "favorites"
+      ? "No favourites yet. Tap the heart on a spot to save it here."
+      : "Nothing yet. Spots you add from the Add tab show up here.";
 
   return (
     <FlatList
@@ -37,8 +79,9 @@ export function ProfileView() {
         paddingHorizontal: 20,
         paddingBottom: insets.bottom + 24,
       }}
-      data={mySpots ?? []}
+      data={activeSpots ?? []}
       keyExtractor={(spot) => spot._id}
+      extraData={activeList}
       ListHeaderComponent={
         <>
           <Text className="font-sans-semibold text-[26px] tracking-tight text-ink">Profile</Text>
@@ -62,15 +105,32 @@ export function ProfileView() {
             </View>
           </Card>
 
-          <Text className="mt-8 mb-2 px-1 font-sans-medium text-[11px] text-mute">YOUR SPOTS</Text>
-          {mySpots === undefined ? (
-            <ActivityIndicator color={colors.mute} className="self-start px-1" />
+          <View className="mt-7 flex-row rounded-2xl border border-white/10 bg-card p-1">
+            <ProfileSegment
+              label="Favourites"
+              count={favorites?.length}
+              selected={activeList === "favorites"}
+              onPress={() => setActiveList("favorites")}
+            />
+            <ProfileSegment
+              label="Your spots"
+              count={mySpots?.length}
+              selected={activeList === "mine"}
+              onPress={() => setActiveList("mine")}
+            />
+          </View>
+
+          {activeSpots === undefined ? (
+            <ActivityIndicator
+              accessibilityLabel={`Loading ${activeList === "favorites" ? "favourites" : "your spots"}`}
+              color={colors.mute}
+              className="mt-4 self-start px-1"
+            />
           ) : null}
-          {mySpots?.length === 0 ? (
-            <Text className="px-1 font-sans text-[14px] text-mute">
-              Nothing yet. Spots you add from the Add tab show up here.
-            </Text>
+          {activeSpots?.length === 0 ? (
+            <Text className="mt-4 px-1 font-sans text-[14px] text-mute">{emptyMessage}</Text>
           ) : null}
+          {activeSpots && activeSpots.length > 0 ? <View className="h-4" /> : null}
         </>
       }
       renderItem={({ item }) => (

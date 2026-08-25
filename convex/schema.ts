@@ -40,7 +40,20 @@ export default defineSchema({
     // Denormalized at creation for the "Added by …" byline, so reads never
     // need a Clerk lookup. Not updated if the user later renames themselves.
     createdByName: v.optional(v.string()),
+    // Hides a deleted spot while its unbounded favorite rows are removed in
+    // scheduled batches. The final batch physically deletes this document.
+    deletionRequested: v.optional(v.boolean()),
   }).index("by_createdBy", ["createdBy"]),
+
+  // One row per saved spot. The Clerk tokenIdentifier stays server-derived,
+  // while the indexes cover profile ordering, membership, and spot deletion.
+  favorites: defineTable({
+    userId: v.string(),
+    spotId: v.id("spots"),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_userId_and_spotId", ["userId", "spotId"])
+    .index("by_spotId_and_userId", ["spotId", "userId"]),
 
   // One row per photo attached to a spot. The index makes "is this file
   // already someone's photo?" a single lookup instead of a table scan, so
