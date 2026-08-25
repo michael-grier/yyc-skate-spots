@@ -143,6 +143,12 @@ export async function releasePhotos(ctx: MutationCtx, photoIds: Id<"_storage">[]
   }
 }
 
+/** Hides a departing spot and queues its potentially unbounded favorites cleanup. */
+export async function scheduleSpotDeletion(ctx: MutationCtx, spotId: Id<"spots">) {
+  await ctx.db.patch("spots", spotId, { deletionRequested: true, photoIds: [] });
+  await ctx.scheduler.runAfter(0, internal.spots.removeFavoriteBatch, { spotId });
+}
+
 /**
  * All spots plus a first-photo URL for the map's preview card.
  * Raw photoIds and the owner's identity key never leave the server —
@@ -343,10 +349,7 @@ export const remove = mutation({
     const { spot } = await requireOwnedSpot(ctx, args.id);
     await releasePhotos(ctx, spot.photoIds);
     await clearSpotModeration(ctx, args.id);
-    // Hide the spot immediately. Its favorite count is unbounded, so a queued
-    // worker removes those rows in safe transactions before deleting the spot.
-    await ctx.db.patch("spots", args.id, { deletionRequested: true, photoIds: [] });
-    await ctx.scheduler.runAfter(0, internal.spots.removeFavoriteBatch, { spotId: args.id });
+    await scheduleSpotDeletion(ctx, args.id);
     return null;
   },
 });

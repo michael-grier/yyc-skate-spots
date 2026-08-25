@@ -16,7 +16,7 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const identity = await requireIdentity(ctx);
     const spot = await ctx.db.get("spots", args.spotId);
-    if (!spot) {
+    if (!spot || spot.deletionRequested) {
       throw new Error("Spot not found.");
     }
     if (spot.createdBy === identity.tokenIdentifier) {

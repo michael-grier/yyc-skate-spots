@@ -108,6 +108,7 @@ describe("spot moderation", () => {
     const photoId = await t.run((ctx) => ctx.storage.store(new Blob(["photo"])));
     await asAlice.mutation(internal.spots.recordUpload, { storageId: photoId });
     const id = await asAlice.mutation(api.spots.create, { ...SPOT, photoIds: [photoId] });
+    await asBob.mutation(api.favorites.toggle, { spotId: id });
     await asBob.mutation(api.reports.create, { spotId: id, reason: "not_a_spot" });
 
     const result = await asAdmin.mutation(api.moderation.removeSpot, {
@@ -130,6 +131,10 @@ describe("spot moderation", () => {
     expect(await t.run((ctx) => ctx.storage.getUrl(photoId))).toBeNull();
     expect(await t.run((ctx) => ctx.db.query("spotReports").take(10))).toEqual([]);
     expect(await t.run((ctx) => ctx.db.query("spotModeration").take(10))).toEqual([]);
+    expect(await t.run((ctx) => ctx.db.query("favorites").take(10))).toHaveLength(1);
+    await t.mutation(internal.spots.removeFavoriteBatch, { spotId: id });
+    expect(await t.run((ctx) => ctx.db.get("spots", id))).toBeNull();
+    expect(await t.run((ctx) => ctx.db.query("favorites").take(10))).toEqual([]);
   });
 
   test("three removals make a contributor eligible for a manual, reversible ban", async () => {

@@ -10,7 +10,7 @@ import {
   spotModerationFor,
 } from "./moderationModel";
 import { reportReason } from "./schema";
-import { MAX_SPOTS_LISTED, releasePhotos } from "./spots";
+import { MAX_SPOTS_LISTED, releasePhotos, scheduleSpotDeletion } from "./spots";
 
 const MAX_REMOVAL_DETAILS_LENGTH = 500;
 const MAX_ELIGIBLE_CONTRIBUTORS = 100;
@@ -57,18 +57,20 @@ export const listSpots = query({
       contributorRows.map((row) => [row.userIdentifier, row]),
     );
     return await Promise.all(
-      spots.map(async ({ photoIds, createdBy, ...spot }) => {
-        const contributor = contributorByIdentifier.get(createdBy);
-        return {
-          ...spot,
-          creatorName: spot.createdByName,
-          creatorRemovalCount: contributor?.confirmedRemovalCount ?? 0,
-          creatorIsBanned: contributor?.isBanned ?? false,
-          creatorModerationId: contributor?._id ?? null,
-          previewPhotoUrl: photoIds.length > 0 ? await ctx.storage.getUrl(photoIds[0]) : null,
-          review: reviewState({ ...spot, photoIds, createdBy }, moderationBySpot.get(spot._id)),
-        };
-      }),
+      spots
+        .filter((spot) => !spot.deletionRequested)
+        .map(async ({ photoIds, createdBy, deletionRequested: _deletionRequested, ...spot }) => {
+          const contributor = contributorByIdentifier.get(createdBy);
+          return {
+            ...spot,
+            creatorName: spot.createdByName,
+            creatorRemovalCount: contributor?.confirmedRemovalCount ?? 0,
+            creatorIsBanned: contributor?.isBanned ?? false,
+            creatorModerationId: contributor?._id ?? null,
+            previewPhotoUrl: photoIds.length > 0 ? await ctx.storage.getUrl(photoIds[0]) : null,
+            review: reviewState({ ...spot, photoIds, createdBy }, moderationBySpot.get(spot._id)),
+          };
+        }),
     );
   },
 });
@@ -80,7 +82,7 @@ export const getSpot = query({
     await requireAdmin(ctx);
     const id = ctx.db.normalizeId("spots", args.id);
     const spot = id ? await ctx.db.get("spots", id) : null;
-    if (!spot) {
+    if (!spot || spot.deletionRequested) {
       return null;
     }
     const [moderation, contributor, reports] = await Promise.all([
@@ -98,7 +100,12 @@ export const getSpot = query({
     const photoUrls = (
       await Promise.all(spot.photoIds.map((photoId) => ctx.storage.getUrl(photoId)))
     ).filter((url): url is string => url !== null);
-    const { photoIds: _photoIds, createdBy: _createdBy, ...fields } = spot;
+    const {
+      photoIds: _photoIds,
+      createdBy: _createdBy,
+      deletionRequested: _deletionRequested,
+      ...fields
+    } = spot;
     return {
       ...fields,
       photoUrls,
@@ -125,7 +132,7 @@ export const markMeetsStandards = mutation({
   handler: async (ctx, args) => {
     const identity = await requireAdmin(ctx);
     const spot = await ctx.db.get("spots", args.spotId);
-    if (!spot) {
+    if (!spot || spot.deletionRequested) {
       throw new Error("Spot not found.");
     }
     await deleteOpenReports(ctx, args.spotId);
@@ -164,7 +171,7 @@ export const removeSpot = mutation({
   handler: async (ctx, args) => {
     const identity = await requireAdmin(ctx);
     const spot = await ctx.db.get("spots", args.spotId);
-    if (!spot) {
+    if (!spot || spot.deletionRequested) {
       throw new Error("Spot not found.");
     }
     const details = args.details?.trim();
@@ -173,7 +180,7 @@ export const removeSpot = mutation({
     }
     const reportCount = await clearSpotModeration(ctx, spot._id);
     await releasePhotos(ctx, spot.photoIds);
-    await ctx.db.delete("spots", spot._id);
+    await scheduleSpotDeletion(ctx, spot._id);
 
     let strikeNumber = 0;
     let contributorModerationId = null;

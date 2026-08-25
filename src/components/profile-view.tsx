@@ -1,5 +1,6 @@
 import { useClerk, useUser } from "@clerk/expo";
 import { api } from "@convex/_generated/api";
+import type { FunctionReturnType } from "convex/server";
 import { useQuery } from "convex/react";
 import { useRouter } from "expo-router";
 import { useState } from "react";
@@ -24,6 +25,7 @@ function initialsOf(name: string | null | undefined, email: string | undefined) 
 }
 
 type ProfileList = "favorites" | "mine";
+type ProfileSpot = FunctionReturnType<typeof api.spots.mine>[number];
 
 type ProfileSegmentProps = {
   label: string;
@@ -67,7 +69,10 @@ export function ProfileView() {
   const [activeList, setActiveList] = useState<ProfileList>("favorites");
   const moderation = useQuery(api.moderation.viewer);
   const email = user?.primaryEmailAddress?.emailAddress;
-  const activeSpots = activeList === "favorites" ? favorites : mySpots;
+  const activeSpots: ProfileSpot[] | undefined =
+    activeList === "favorites"
+      ? favorites?.map((spot) => ({ status: "active" as const, ...spot }))
+      : mySpots;
   const emptyMessage =
     activeList === "favorites"
       ? "No favourites yet. Tap the heart on a spot to save it here."
