@@ -1,10 +1,9 @@
 import { internalMutation } from "./_generated/server";
+import { SEED_OWNER } from "./constants";
 
 // Development fixture spots around Calgary, from the maintainer's own list.
 // createdBy is a sentinel no Clerk tokenIdentifier can equal, so seeded
 // spots are browsable but not editable through the app.
-const SEED_OWNER = "seed";
-
 const SEED_SPOTS = [
   {
     name: "Harmony Park",

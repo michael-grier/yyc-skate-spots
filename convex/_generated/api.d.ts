@@ -10,6 +10,8 @@
 
 import type * as favorites from "../favorites.js";
 import type * as http from "../http.js";
+import type * as moderation from "../moderation.js";
+import type * as reports from "../reports.js";
 import type * as seed from "../seed.js";
 import type * as spots from "../spots.js";
 
@@ -22,6 +24,8 @@ import type {
 declare const fullApi: ApiFromModules<{
   favorites: typeof favorites;
   http: typeof http;
+  moderation: typeof moderation;
+  reports: typeof reports;
   seed: typeof seed;
   spots: typeof spots;
 }>;

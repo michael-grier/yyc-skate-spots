@@ -44,9 +44,12 @@ with no error in Metro. Confirm with `adb logcat | grep -i "Google Maps Android 
 1. Create an application at dashboard.clerk.com.
 2. **Configure → Native applications**: make sure the **Native API** is enabled (required for
    any Expo integration).
-3. **Configure → JWT templates → New template → Convex.** Leave the name as `convex`. Note the
+3. **Configure → JWT templates → New template → Convex.** Leave the name as `convex`. Add
+   `"role": "{{user.public_metadata.role}}"` to the template's existing claims, then note the
    **Issuer** domain (`https://<something>.clerk.accounts.dev`).
 4. Copy the **Publishable key** into `.env` as `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY`.
+5. In **Users**, open the account that should have moderation access and set its public metadata
+   to `{ "role": "admin" }`. Sign out and back in after changing this so Clerk issues a new token.
 
 ### 3. Convex
 

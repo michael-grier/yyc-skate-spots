@@ -29,7 +29,7 @@ export default function EditSpotScreen() {
   }
 
   // photoIds is only returned to the owner, so its absence doubles as the guard.
-  if (spot === null || !spot.isOwner || spot.photoIds === null) {
+  if (spot === null || spot.status !== "active" || !spot.isOwner || spot.photoIds === null) {
     return (
       <View className="flex-1 items-center justify-center bg-base px-8">
         <Stack.Screen options={{ headerShown: false }} />

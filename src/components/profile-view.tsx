@@ -144,15 +144,21 @@ export function ProfileView() {
               <Text numberOfLines={1} className="font-sans-semibold text-[15px] text-ink">
                 {item.name}
               </Text>
-              <View className="mt-1 flex-row items-center gap-1.5">
-                <View
-                  className="h-1.5 w-1.5 rounded-full"
-                  style={{ backgroundColor: BUST_FACTOR_COLORS[item.bustFactor] }}
-                />
-                <Text numberOfLines={1} className="font-sans text-[12px] text-mute">
-                  {formatSpotTypes(item.types)} · {BUST_FACTOR_LABELS[item.bustFactor]} bust
+              {item.status === "active" ? (
+                <View className="mt-1 flex-row items-center gap-1.5">
+                  <View
+                    className="h-1.5 w-1.5 rounded-full"
+                    style={{ backgroundColor: BUST_FACTOR_COLORS[item.bustFactor] }}
+                  />
+                  <Text numberOfLines={1} className="font-sans text-[12px] text-mute">
+                    {formatSpotTypes(item.types)} · {BUST_FACTOR_LABELS[item.bustFactor]} bust
+                  </Text>
+                </View>
+              ) : (
+                <Text className="mt-1 font-sans text-[12px]" style={{ color: colors.bust.high }}>
+                  Removed for not meeting spot standards
                 </Text>
-              </View>
+              )}
             </View>
             <ChevronRightIcon size={18} color={colors.mute} />
           </Card>

@@ -18,6 +18,7 @@ import { BackIcon, MoreIcon, NavigateIcon } from "@/components/icons";
 import { FavoriteButton } from "@/components/favorite-button";
 import { PhotoCarousel } from "@/components/photo-carousel";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Hairline } from "@/components/ui/hairline";
 import { formatMonthYear } from "@/lib/dates";
 import { distanceKm, formatDistance } from "@/lib/geo";
@@ -66,8 +67,13 @@ export default function SpotDetailScreen() {
   const toggleFavorite = useMutation(api.favorites.toggle);
   const [favoritePending, setFavoritePending] = useState(false);
   const { coords, granted } = useUserLocation();
+  const activeSpot = spot?.status === "active" ? spot : null;
   // Android's geocoder needs location permission; iOS's does not.
-  const address = useSpotAddress(spot?.latitude, spot?.longitude, Platform.OS === "ios" || granted);
+  const address = useSpotAddress(
+    activeSpot?.latitude,
+    activeSpot?.longitude,
+    Platform.OS === "ios" || granted,
+  );
 
   const backButton = (
     <Pressable
@@ -99,6 +105,25 @@ export default function SpotDetailScreen() {
         <Text className="mt-2 text-center font-sans text-[14px] text-mute">
           It may have been removed by the person who added it.
         </Text>
+        {backButton}
+      </View>
+    );
+  }
+
+  if (spot.status === "removed") {
+    return (
+      <View className="flex-1 bg-base px-5" style={{ paddingTop: insets.top + 72 }}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <Card className="p-5">
+          <Text className="font-sans-medium text-[11px] text-mute">SPOT REMOVED</Text>
+          <Text className="mt-2 font-sans-semibold text-[22px] tracking-tight text-ink">
+            {spot.name}
+          </Text>
+          <Text className="mt-3 font-sans text-[15px] leading-relaxed text-mute">
+            This spot was removed because it did not meet YYC Skate Spots standards. This notice is
+            visible only to you.
+          </Text>
+        </Card>
         {backButton}
       </View>
     );
