@@ -214,11 +214,25 @@ export const get = query({
     }
     const identity = await ctx.auth.getUserIdentity();
     const isOwner = identity !== null && spot.createdBy === identity.tokenIdentifier;
+    const favorite = identity
+      ? await ctx.db
+          .query("favorites")
+          .withIndex("by_userId_and_spotId", (q) =>
+            q.eq("userId", identity.tokenIdentifier).eq("spotId", spot._id),
+          )
+          .unique()
+      : null;
     const photoUrls = (
       await Promise.all(spot.photoIds.map((photoId) => ctx.storage.getUrl(photoId)))
     ).filter((url): url is string => url !== null);
     const { photoIds, createdBy: _createdBy, ...publicFields } = spot;
-    return { ...publicFields, photoUrls, isOwner, photoIds: isOwner ? photoIds : null };
+    return {
+      ...publicFields,
+      photoUrls,
+      isOwner,
+      isFavorite: favorite !== null,
+      photoIds: isOwner ? photoIds : null,
+    };
   },
 });
 
@@ -273,6 +287,15 @@ export const remove = mutation({
   args: { id: v.id("spots") },
   handler: async (ctx, args) => {
     const { spot } = await requireOwnedSpot(ctx, args.id);
+    const favorites = await ctx.db
+      .query("favorites")
+      .withIndex("by_spotId_and_userId", (q) => q.eq("spotId", args.id))
+      .collect();
+    // Convex has no foreign-key cascade, so keep spot and favorite deletion
+    // in this transaction to prevent stale Profile rows.
+    for (const favorite of favorites) {
+      await ctx.db.delete("favorites", favorite._id);
+    }
     await releasePhotos(ctx, spot.photoIds);
     await ctx.db.delete("spots", args.id);
     return null;
