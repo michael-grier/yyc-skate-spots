@@ -182,3 +182,20 @@ export function MoreIcon({ size = 24, color }: IconProps) {
     </Svg>
   );
 }
+
+export function HeartIcon({ size = 24, color, filled = false }: IconProps & { filled?: boolean }) {
+  return (
+    <Svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill={filled ? color : "none"}
+      stroke={color}
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <Path d="M20.8 4.6a5.4 5.4 0 0 0-7.6 0L12 5.8l-1.2-1.2a5.4 5.4 0 1 0-7.6 7.6L12 21l8.8-8.8a5.4 5.4 0 0 0 0-7.6z" />
+    </Svg>
+  );
+}

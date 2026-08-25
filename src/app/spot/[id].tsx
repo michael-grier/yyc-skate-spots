@@ -1,6 +1,8 @@
+import { useAuth } from "@clerk/expo";
 import { api } from "@convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -13,6 +15,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { BackIcon, MoreIcon, NavigateIcon } from "@/components/icons";
+import { FavoriteButton } from "@/components/favorite-button";
 import { PhotoCarousel } from "@/components/photo-carousel";
 import { Button } from "@/components/ui/button";
 import { Hairline } from "@/components/ui/hairline";
@@ -57,8 +60,11 @@ export default function SpotDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { isLoaded: authLoaded, isSignedIn } = useAuth();
   const spot = useQuery(api.spots.get, { id });
   const removeSpot = useMutation(api.spots.remove);
+  const toggleFavorite = useMutation(api.favorites.toggle);
+  const [favoritePending, setFavoritePending] = useState(false);
   const { coords, granted } = useUserLocation();
   // Android's geocoder needs location permission; iOS's does not.
   const address = useSpotAddress(spot?.latitude, spot?.longitude, Platform.OS === "ios" || granted);
@@ -108,6 +114,25 @@ export default function SpotDetailScreen() {
     } catch {
       // openURL rejects when nothing handles the URL or the user cancels.
       Alert.alert("Couldn't open a maps app", "Install Google Maps or Apple Maps and try again.");
+    }
+  }
+
+  async function handleToggleFavorite() {
+    if (!isSignedIn) {
+      Alert.alert("Sign in to save spots", "Keep a favourites list across all your devices.", [
+        { text: "Cancel", style: "cancel" },
+        { text: "Sign in", onPress: () => router.push("/account") },
+      ]);
+      return;
+    }
+
+    setFavoritePending(true);
+    try {
+      await toggleFavorite({ spotId });
+    } catch {
+      Alert.alert("Couldn't update favourites", "Check your connection and try again.");
+    } finally {
+      setFavoritePending(false);
     }
   }
 
@@ -179,27 +204,36 @@ export default function SpotDetailScreen() {
       </ScrollView>
 
       {backButton}
-      {/* Only the owner gets the menu; the server rejects anyone else anyway. */}
-      {spot.isOwner ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Spot options"
-          onPress={() =>
-            Alert.alert(spot.name, undefined, [
-              {
-                text: "Edit spot",
-                onPress: () => router.push({ pathname: "/spot/edit/[id]", params: { id: spotId } }),
-              },
-              { text: "Delete spot", style: "destructive", onPress: confirmDelete },
-              { text: "Cancel", style: "cancel" },
-            ])
-          }
-          className="absolute right-4 h-9 w-9 items-center justify-center rounded-full border border-white/10 active:opacity-80"
-          style={{ top: insets.top + 8, backgroundColor: "rgba(30,32,36,0.72)" }}
-        >
-          <MoreIcon size={18} color={colors.ink} />
-        </Pressable>
-      ) : null}
+      <View className="absolute right-4 flex-row gap-2" style={{ top: insets.top + 8 }}>
+        <FavoriteButton
+          isFavorite={spot.isFavorite}
+          busy={favoritePending}
+          disabled={!authLoaded}
+          onPress={() => void handleToggleFavorite()}
+        />
+        {/* Only the owner gets the menu; the server rejects anyone else anyway. */}
+        {spot.isOwner ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Spot options"
+            onPress={() =>
+              Alert.alert(spot.name, undefined, [
+                {
+                  text: "Edit spot",
+                  onPress: () =>
+                    router.push({ pathname: "/spot/edit/[id]", params: { id: spotId } }),
+                },
+                { text: "Delete spot", style: "destructive", onPress: confirmDelete },
+                { text: "Cancel", style: "cancel" },
+              ])
+            }
+            className="h-9 w-9 items-center justify-center rounded-full border border-white/10 active:opacity-80"
+            style={{ backgroundColor: "rgba(30,32,36,0.72)" }}
+          >
+            <MoreIcon size={18} color={colors.ink} />
+          </Pressable>
+        ) : null}
+      </View>
 
       <View
         className="absolute inset-x-0 bottom-0 border-t border-white/10 bg-base px-5 pt-3"
