@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/cn";
 import { BUST_FACTOR_COLORS, BUST_FACTOR_LABELS, formatSpotTypes } from "@/lib/spot-labels";
+import { reportReasonLabel } from "@/lib/spot-standards";
 import { colors } from "@/theme/colors";
 
 function initialsOf(name: string | null | undefined, email: string | undefined) {
@@ -64,6 +65,7 @@ export function ProfileView() {
   const favorites = useQuery(api.favorites.list);
   const mySpots = useQuery(api.spots.mine);
   const [activeList, setActiveList] = useState<ProfileList>("favorites");
+  const moderation = useQuery(api.moderation.viewer);
   const email = user?.primaryEmailAddress?.emailAddress;
   const activeSpots = activeList === "favorites" ? favorites : mySpots;
   const emptyMessage =
@@ -105,6 +107,26 @@ export function ProfileView() {
             </View>
           </Card>
 
+          {moderation?.isBanned ? (
+            <Card className="mt-3 p-4">
+              <Text className="font-sans-semibold text-[15px] text-ink">
+                Contribution access removed
+              </Text>
+              <Text className="mt-1 font-sans text-[13px] leading-relaxed text-mute">
+                You can browse and delete your existing spots, but you cannot add or edit spots.
+              </Text>
+              <Pressable
+                accessibilityRole="link"
+                onPress={() => router.push("/standards")}
+                className="mt-2 self-start py-1 active:opacity-80"
+              >
+                <Text className="font-sans-semibold text-[13px] text-silver">
+                  Read the spot standards
+                </Text>
+              </Pressable>
+            </Card>
+          ) : null}
+
           <View className="mt-7 flex-row rounded-2xl border border-white/10 bg-card p-1">
             <ProfileSegment
               label="Favourites"
@@ -144,7 +166,16 @@ export function ProfileView() {
               <Text numberOfLines={1} className="font-sans-semibold text-[15px] text-ink">
                 {item.name}
               </Text>
-              {item.status === "active" ? (
+              {"status" in item && item.status === "removed" ? (
+                <View className="mt-1">
+                  <Text className="font-sans text-[12px]" style={{ color: colors.bust.high }}>
+                    Removed · {reportReasonLabel(item.reason)}
+                  </Text>
+                  <Text className="mt-0.5 font-sans text-[11px] text-mute">
+                    Confirmed removal {item.strikeNumber} · ban threshold 3
+                  </Text>
+                </View>
+              ) : (
                 <View className="mt-1 flex-row items-center gap-1.5">
                   <View
                     className="h-1.5 w-1.5 rounded-full"
@@ -154,10 +185,6 @@ export function ProfileView() {
                     {formatSpotTypes(item.types)} · {BUST_FACTOR_LABELS[item.bustFactor]} bust
                   </Text>
                 </View>
-              ) : (
-                <Text className="mt-1 font-sans text-[12px]" style={{ color: colors.bust.high }}>
-                  Removed for not meeting spot standards
-                </Text>
               )}
             </View>
             <ChevronRightIcon size={18} color={colors.mute} />

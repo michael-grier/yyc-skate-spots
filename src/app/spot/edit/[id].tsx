@@ -14,16 +14,30 @@ export default function EditSpotScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const spot = useQuery(api.spots.get, { id });
+  const moderation = useQuery(api.moderation.viewer);
   // get() tolerates any string; update() wants a real id, which a non-null
   // owner result guarantees this is.
   const spotId = id as Id<"spots">;
   const updateSpot = useMutation(api.spots.update);
 
-  if (spot === undefined) {
+  if (spot === undefined || moderation === undefined) {
     return (
       <View className="flex-1 items-center justify-center bg-base">
         <Stack.Screen options={{ headerShown: false }} />
         <ActivityIndicator color={colors.mute} />
+      </View>
+    );
+  }
+
+  if (moderation.isBanned) {
+    return (
+      <View className="flex-1 items-center justify-center bg-base px-8">
+        <Stack.Screen options={{ headerShown: false }} />
+        <Text className="font-sans-semibold text-[17px] text-ink">Editing is unavailable</Text>
+        <Text className="mt-2 text-center font-sans text-[14px] leading-relaxed text-mute">
+          Your contribution access has been removed. You can still delete spots you added.
+        </Text>
+        <Button label="Back" onPress={() => router.back()} className="mt-6 self-stretch" />
       </View>
     );
   }

@@ -3,6 +3,7 @@ import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 import { useMutation } from "convex/react";
 import { Image } from "expo-image";
+import { Link } from "expo-router";
 import { useState } from "react";
 import {
   Alert,
@@ -182,6 +183,24 @@ export function SpotForm({ title, initialValues, onCancel, onSave }: SpotFormPro
           automaticallyAdjustKeyboardInsets
           contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 40 }}
         >
+          <Card className="mt-4 p-4">
+            <Text className="font-sans-semibold text-[14px] text-ink">Keep the map useful</Text>
+            <Text className="mt-1 font-sans text-[12px] leading-relaxed text-mute">
+              Only submit real, accurate, shareable skate spots. Saving confirms that this listing
+              meets the spot standards.
+            </Text>
+            <Link href="/standards" asChild>
+              <Pressable
+                accessibilityRole="link"
+                className="mt-2 self-start py-1 active:opacity-80"
+              >
+                <Text className="font-sans-semibold text-[12px] text-silver">
+                  Read the spot standards
+                </Text>
+              </Pressable>
+            </Link>
+          </Card>
+
           <Section label="NAME" error={errors.name}>
             <Card className="px-4 py-3">
               <TextInput
