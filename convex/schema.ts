@@ -40,6 +40,9 @@ export default defineSchema({
     // Denormalized at creation for the "Added by …" byline, so reads never
     // need a Clerk lookup. Not updated if the user later renames themselves.
     createdByName: v.optional(v.string()),
+    // Hides a deleted spot while its unbounded favorite rows are removed in
+    // scheduled batches. The final batch physically deletes this document.
+    deletionRequested: v.optional(v.boolean()),
   }).index("by_createdBy", ["createdBy"]),
 
   // One row per saved spot. The Clerk tokenIdentifier stays server-derived,

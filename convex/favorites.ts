@@ -14,11 +14,7 @@ async function requireIdentity(ctx: MutationCtx) {
 }
 
 /** Finds the caller's row for one spot through the uniqueness index. */
-async function favoriteRef(
-  ctx: QueryCtx | MutationCtx,
-  userId: string,
-  spotId: Id<"spots">,
-) {
+async function favoriteRef(ctx: QueryCtx | MutationCtx, userId: string, spotId: Id<"spots">) {
   return await ctx.db
     .query("favorites")
     .withIndex("by_userId_and_spotId", (q) => q.eq("userId", userId).eq("spotId", spotId))
@@ -31,7 +27,7 @@ export const toggle = mutation({
   handler: async (ctx, args) => {
     const identity = await requireIdentity(ctx);
     const spot = await ctx.db.get("spots", args.spotId);
-    if (!spot) {
+    if (!spot || spot.deletionRequested) {
       throw new Error("Spot not found.");
     }
 
@@ -63,10 +59,12 @@ export const list = query({
       .withIndex("by_userId", (q) => q.eq("userId", identity.tokenIdentifier))
       .order("desc")
       .take(MAX_FAVORITES_LISTED);
-    const spots = await Promise.all(favorites.map((favorite) => ctx.db.get("spots", favorite.spotId)));
+    const spots = await Promise.all(
+      favorites.map((favorite) => ctx.db.get("spots", favorite.spotId)),
+    );
 
     return spots.flatMap((spot) =>
-      spot
+      spot && !spot.deletionRequested
         ? [
             {
               _id: spot._id,

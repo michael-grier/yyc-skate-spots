@@ -1,11 +1,22 @@
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { api } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
+
+type Harness = ReturnType<typeof convexTest>;
+
+async function finishScheduled(t: Harness) {
+  vi.useFakeTimers();
+  try {
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+  } finally {
+    vi.useRealTimers();
+  }
+}
 
 const SPOT = {
   name: "Test Ledge",
@@ -83,11 +94,36 @@ describe("favorites", () => {
     await asBob.mutation(api.favorites.toggle, { spotId: kept });
     await asAlice.mutation(api.spots.remove, { id: removed });
 
+    // The soft-deleted spot disappears from reads before physical cleanup.
     expect((await asBob.query(api.favorites.list, {})).map((spot) => spot.name)).toEqual(["Kept"]);
     expect(await asAlice.query(api.favorites.list, {})).toEqual([]);
     expect(await asCara.query(api.favorites.list, {})).toEqual([]);
+    await finishScheduled(t);
     expect(await t.run((ctx) => ctx.db.query("favorites").collect())).toMatchObject([
       { spotId: kept },
     ]);
+  });
+
+  test("spot deletion batches more favourite rows than one worker can remove", async () => {
+    const t = convexTest({ schema, modules, transactionLimits: true });
+    const asAlice = t.withIdentity({ subject: "alice" });
+    const spotId = await asAlice.mutation(api.spots.create, SPOT);
+    await t.run(async (ctx) => {
+      for (let i = 0; i < 101; i += 1) {
+        await ctx.db.insert("favorites", { userId: `user-${i}`, spotId });
+      }
+    });
+
+    vi.useFakeTimers();
+    try {
+      await asAlice.mutation(api.spots.remove, { id: spotId });
+      expect(await t.query(api.spots.get, { id: spotId })).toBeNull();
+      expect(await t.run((ctx) => ctx.db.query("favorites").collect())).toHaveLength(101);
+      await t.finishAllScheduledFunctions(vi.runAllTimers);
+    } finally {
+      vi.useRealTimers();
+    }
+    expect(await t.run((ctx) => ctx.db.get("spots", spotId))).toBeNull();
+    expect(await t.run((ctx) => ctx.db.query("favorites").collect())).toEqual([]);
   });
 });

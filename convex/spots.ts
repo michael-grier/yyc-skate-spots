@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import {
   internalMutation,
@@ -17,6 +18,7 @@ const MAX_NOTES_LENGTH = 2000;
 // City-scale app: one bounded read covers Calgary's realistic spot count.
 // Revisit with pagination + geo indexing if the table ever approaches this.
 const MAX_SPOTS_LISTED = 500;
+const FAVORITE_DELETE_BATCH_SIZE = 100;
 
 // Everything a submitter provides; ownership fields are always derived
 // server-side from the authenticated identity, never accepted as args.
@@ -43,7 +45,7 @@ async function requireIdentity(ctx: QueryCtx | MutationCtx) {
 async function requireOwnedSpot(ctx: MutationCtx, id: Id<"spots">) {
   const identity = await requireIdentity(ctx);
   const spot = await ctx.db.get("spots", id);
-  if (!spot) {
+  if (!spot || spot.deletionRequested) {
     throw new Error("Spot not found.");
   }
   if (spot.createdBy !== identity.tokenIdentifier) {
@@ -165,11 +167,13 @@ export const list = query({
     const identity = await ctx.auth.getUserIdentity();
     const spots = await ctx.db.query("spots").take(MAX_SPOTS_LISTED);
     return Promise.all(
-      spots.map(async ({ photoIds, createdBy, ...spot }) => ({
-        ...spot,
-        isMine: identity !== null && createdBy === identity.tokenIdentifier,
-        previewPhotoUrl: photoIds.length > 0 ? await ctx.storage.getUrl(photoIds[0]) : null,
-      })),
+      spots
+        .filter((spot) => !spot.deletionRequested)
+        .map(async ({ photoIds, createdBy, deletionRequested: _deletionRequested, ...spot }) => ({
+          ...spot,
+          isMine: identity !== null && createdBy === identity.tokenIdentifier,
+          previewPhotoUrl: photoIds.length > 0 ? await ctx.storage.getUrl(photoIds[0]) : null,
+        })),
     );
   },
 });
@@ -187,13 +191,15 @@ export const mine = query({
       .withIndex("by_createdBy", (q) => q.eq("createdBy", identity.tokenIdentifier))
       .order("desc")
       .take(MAX_SPOTS_LISTED);
-    return spots.map(({ _id, _creationTime, name, types, bustFactor }) => ({
-      _id,
-      _creationTime,
-      name,
-      types,
-      bustFactor,
-    }));
+    return spots
+      .filter((spot) => !spot.deletionRequested)
+      .map(({ _id, _creationTime, name, types, bustFactor }) => ({
+        _id,
+        _creationTime,
+        name,
+        types,
+        bustFactor,
+      }));
   },
 });
 
@@ -209,7 +215,7 @@ export const get = query({
   handler: async (ctx, args) => {
     const id = ctx.db.normalizeId("spots", args.id);
     const spot = id ? await ctx.db.get("spots", id) : null;
-    if (!spot) {
+    if (!spot || spot.deletionRequested) {
       return null;
     }
     const identity = await ctx.auth.getUserIdentity();
@@ -225,7 +231,12 @@ export const get = query({
     const photoUrls = (
       await Promise.all(spot.photoIds.map((photoId) => ctx.storage.getUrl(photoId)))
     ).filter((url): url is string => url !== null);
-    const { photoIds, createdBy: _createdBy, ...publicFields } = spot;
+    const {
+      photoIds,
+      createdBy: _createdBy,
+      deletionRequested: _deletionRequested,
+      ...publicFields
+    } = spot;
     return {
       ...publicFields,
       photoUrls,
@@ -287,17 +298,38 @@ export const remove = mutation({
   args: { id: v.id("spots") },
   handler: async (ctx, args) => {
     const { spot } = await requireOwnedSpot(ctx, args.id);
+    await releasePhotos(ctx, spot.photoIds);
+    // Hide the spot immediately. Its favorite count is unbounded, so a queued
+    // worker removes those rows in safe transactions before deleting the spot.
+    await ctx.db.patch("spots", args.id, { deletionRequested: true, photoIds: [] });
+    await ctx.scheduler.runAfter(0, internal.spots.removeFavoriteBatch, { spotId: args.id });
+    return null;
+  },
+});
+
+/** Continues a soft-deleted spot's cascade without exceeding transaction limits. */
+export const removeFavoriteBatch = internalMutation({
+  args: { spotId: v.id("spots") },
+  handler: async (ctx, args): Promise<null> => {
+    const spot = await ctx.db.get("spots", args.spotId);
+    // A stray internal call must never remove favourites from a live spot.
+    if (spot && !spot.deletionRequested) {
+      return null;
+    }
+
     const favorites = await ctx.db
       .query("favorites")
-      .withIndex("by_spotId_and_userId", (q) => q.eq("spotId", args.id))
-      .collect();
-    // Convex has no foreign-key cascade, so keep spot and favorite deletion
-    // in this transaction to prevent stale Profile rows.
+      .withIndex("by_spotId_and_userId", (q) => q.eq("spotId", args.spotId))
+      .take(FAVORITE_DELETE_BATCH_SIZE);
     for (const favorite of favorites) {
       await ctx.db.delete("favorites", favorite._id);
     }
-    await releasePhotos(ctx, spot.photoIds);
-    await ctx.db.delete("spots", args.id);
+
+    if (favorites.length === FAVORITE_DELETE_BATCH_SIZE) {
+      await ctx.scheduler.runAfter(0, internal.spots.removeFavoriteBatch, args);
+    } else if (spot?.deletionRequested) {
+      await ctx.db.delete("spots", spot._id);
+    }
     return null;
   },
 });
