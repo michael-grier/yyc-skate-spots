@@ -16,10 +16,10 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { BackIcon } from "@/components/icons";
+import { ModerationReasonPicker } from "@/components/moderation-reason-picker";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { cn } from "@/lib/cn";
-import { type ReportReason, REPORT_REASONS } from "@/lib/spot-standards";
+import type { ReportReason } from "@/lib/spot-standards";
 import { colors } from "@/theme/colors";
 
 const MAX_DETAILS_LENGTH = 500;
@@ -167,43 +167,14 @@ export default function ReportSpotScreen() {
             Choose the closest reason. Reports are not shown to the contributor.
           </Text>
 
-          <View className="mt-5 gap-2">
-            {REPORT_REASONS.map((option) => {
-              const selected = reason === option.value;
-              return (
-                <Pressable
-                  key={option.value}
-                  accessibilityRole="radio"
-                  accessibilityState={{ checked: selected }}
-                  onPress={() => {
-                    setReason(option.value);
-                    setError(null);
-                  }}
-                  className="active:opacity-80"
-                >
-                  <Card
-                    className={cn("flex-row gap-3 p-4", selected && "border-white/30 bg-ctagrey")}
-                  >
-                    <View
-                      className={cn(
-                        "mt-0.5 h-5 w-5 items-center justify-center rounded-full border border-white/30",
-                        selected && "border-silver",
-                      )}
-                    >
-                      {selected ? <View className="h-2.5 w-2.5 rounded-full bg-silver" /> : null}
-                    </View>
-                    <View className="flex-1">
-                      <Text className="font-sans-semibold text-[14px] text-ink">
-                        {option.label}
-                      </Text>
-                      <Text className="mt-0.5 font-sans text-[12px] leading-relaxed text-mute">
-                        {option.description}
-                      </Text>
-                    </View>
-                  </Card>
-                </Pressable>
-              );
-            })}
+          <View className="mt-5">
+            <ModerationReasonPicker
+              value={reason}
+              onChange={(selectedReason) => {
+                setReason(selectedReason);
+                setError(null);
+              }}
+            />
           </View>
 
           <Text className="mt-5 mb-2 px-1 font-sans-medium text-[11px] text-mute">

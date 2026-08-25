@@ -107,6 +107,24 @@ export function ProfileView() {
             </View>
           </Card>
 
+          {moderation?.isAdmin ? (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push("/admin")}
+              className="mt-3 active:opacity-90"
+            >
+              <Card className="flex-row items-center gap-3 p-4">
+                <View className="flex-1">
+                  <Text className="font-sans-semibold text-[15px] text-ink">Review spots</Text>
+                  <Text className="mt-1 font-sans text-[12px] text-mute">
+                    Check recent submissions, reports, and ban eligibility.
+                  </Text>
+                </View>
+                <ChevronRightIcon size={18} color={colors.mute} />
+              </Card>
+            </Pressable>
+          ) : null}
+
           {moderation?.isBanned ? (
             <Card className="mt-3 p-4">
               <Text className="font-sans-semibold text-[15px] text-ink">

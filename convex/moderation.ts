@@ -92,6 +92,7 @@ export const getSpot = query({
       ctx.db
         .query("spotReports")
         .withIndex("by_spotId", (q) => q.eq("spotId", spot._id))
+        .order("desc")
         .take(MAX_OPEN_REPORTS_PER_SPOT),
     ]);
     const photoUrls = (
