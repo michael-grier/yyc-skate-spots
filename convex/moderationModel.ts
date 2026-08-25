@@ -1,9 +1,9 @@
 import type { Doc, Id } from "./_generated/dataModel";
-import type { MutationCtx } from "./_generated/server";
+import type { MutationCtx, QueryCtx } from "./_generated/server";
 
 export const MAX_OPEN_REPORTS_PER_SPOT = 20;
 
-export async function spotModerationFor(ctx: MutationCtx, spotId: Id<"spots">) {
+export async function spotModerationFor(ctx: QueryCtx | MutationCtx, spotId: Id<"spots">) {
   return await ctx.db
     .query("spotModeration")
     .withIndex("by_spotId", (q) => q.eq("spotId", spotId))

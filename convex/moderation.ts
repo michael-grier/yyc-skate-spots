@@ -47,19 +47,24 @@ export const listSpots = query({
   args: {},
   handler: async (ctx) => {
     await requireAdmin(ctx);
-    const [spots, moderationRows, contributorRows] = await Promise.all([
-      ctx.db.query("spots").order("desc").take(MAX_SPOTS_LISTED),
-      ctx.db.query("spotModeration").take(MAX_SPOTS_LISTED),
-      ctx.db.query("userModeration").take(MAX_SPOTS_LISTED),
+    const spots = await ctx.db.query("spots").order("desc").take(MAX_SPOTS_LISTED);
+    const activeSpots = spots.filter((spot) => !spot.deletionRequested);
+    const creatorIdentifiers = [...new Set(activeSpots.map((spot) => spot.createdBy))];
+    // Indexed lookups keep metadata aligned with the selected spots even after
+    // the moderation tables grow beyond the queue's display limit.
+    const [moderationRows, contributorRows] = await Promise.all([
+      Promise.all(activeSpots.map((spot) => spotModerationFor(ctx, spot._id))),
+      Promise.all(creatorIdentifiers.map((identifier) => userModerationFor(ctx, identifier))),
     ]);
-    const moderationBySpot = new Map(moderationRows.map((row) => [row.spotId, row]));
+    const moderationBySpot = new Map(
+      moderationRows.filter((row) => row !== null).map((row) => [row.spotId, row]),
+    );
     const contributorByIdentifier = new Map(
-      contributorRows.map((row) => [row.userIdentifier, row]),
+      contributorRows.filter((row) => row !== null).map((row) => [row.userIdentifier, row]),
     );
     return await Promise.all(
-      spots
-        .filter((spot) => !spot.deletionRequested)
-        .map(async ({ photoIds, createdBy, deletionRequested: _deletionRequested, ...spot }) => {
+      activeSpots.map(
+        async ({ photoIds, createdBy, deletionRequested: _deletionRequested, ...spot }) => {
           const contributor = contributorByIdentifier.get(createdBy);
           return {
             ...spot,
@@ -70,7 +75,8 @@ export const listSpots = query({
             previewPhotoUrl: photoIds.length > 0 ? await ctx.storage.getUrl(photoIds[0]) : null,
             review: reviewState({ ...spot, photoIds, createdBy }, moderationBySpot.get(spot._id)),
           };
-        }),
+        },
+      ),
     );
   },
 });

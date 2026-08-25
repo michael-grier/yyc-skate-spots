@@ -4,6 +4,7 @@ import { describe, expect, test } from "vitest";
 import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import schema from "./schema";
+import { MAX_SPOTS_LISTED } from "./spots";
 
 const modules = import.meta.glob("./**/*.ts");
 
@@ -59,6 +60,64 @@ describe("spot moderation", () => {
     expect(queue.map((spot) => spot._id)).toEqual([newerId, olderId]);
     expect(queue.every((spot) => spot.review.needsReview)).toBe(true);
     expect(queue.every((spot) => spot.review.attentionReason === "new")).toBe(true);
+  });
+
+  test("queue metadata remains correlated after moderation tables exceed the list limit", async () => {
+    const t = convexTest(schema, modules);
+    const asAdmin = t.withIdentity({ subject: "admin", role: "admin" });
+    const targetId = await t.run(async (ctx) => {
+      const staleSpotId = await ctx.db.insert("spots", {
+        ...SPOT,
+        name: "Pending deletion",
+        createdBy: "stale-owner",
+        deletionRequested: true,
+      });
+      for (let index = 0; index < MAX_SPOTS_LISTED; index += 1) {
+        await ctx.db.insert("spotModeration", {
+          spotId: staleSpotId,
+          spotCreationTime: index,
+          needsReview: false,
+          attentionReason: "new",
+          lastSubmittedAt: index,
+          openReportCount: 0,
+        });
+        await ctx.db.insert("userModeration", {
+          userIdentifier: `stale-user-${index}`,
+          confirmedRemovalCount: 0,
+          isBanned: false,
+        });
+      }
+
+      const id = await ctx.db.insert("spots", {
+        ...SPOT,
+        createdBy: "target-owner",
+        createdByName: "Target Owner",
+      });
+      await ctx.db.insert("spotModeration", {
+        spotId: id,
+        spotCreationTime: Date.now(),
+        needsReview: true,
+        attentionReason: "reported",
+        lastSubmittedAt: Date.now(),
+        openReportCount: 2,
+      });
+      await ctx.db.insert("userModeration", {
+        userIdentifier: "target-owner",
+        name: "Target Owner",
+        confirmedRemovalCount: 3,
+        isBanned: true,
+      });
+      return id;
+    });
+
+    const target = (await asAdmin.query(api.moderation.listSpots, {})).find(
+      (spot) => spot._id === targetId,
+    );
+    expect(target).toMatchObject({
+      creatorRemovalCount: 3,
+      creatorIsBanned: true,
+      review: { needsReview: true, attentionReason: "reported", openReportCount: 2 },
+    });
   });
 
   test("reports are private, unique per reporter, and return a spot to review", async () => {
