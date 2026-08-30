@@ -13,9 +13,11 @@ const colors = {
     medium: "#D4B36F",
     high: "#D08C8C",
   },
-  // Selected map pin is the one deliberately bright element on the map.
+  // Bright pin colors contrast with the dark Google Maps style.
   pinSelected: "#E8EAEE",
   pinSelectedInk: "#17191D",
+  pinMine: "#FFFFFF",
+  pinMineRing: "#FF10F0",
 };
 
 // Google Maps custom style palette; slightly lighter than `base` so floating
