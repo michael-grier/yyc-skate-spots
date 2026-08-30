@@ -2,7 +2,7 @@ import { Text, View } from "react-native";
 import { Marker } from "react-native-maps";
 
 import { BoardMark } from "@/components/board-mark";
-import { colors } from "@/theme/colors";
+import { colors, mapColors } from "@/theme/colors";
 
 type SpotMarkerProps = {
   id: string;
@@ -18,8 +18,50 @@ type SpotMarkerProps = {
 
 // Disc sizes and the label row height, used to keep the marker anchored on
 // the disc's centre whether or not a label is rendered beneath it.
-const DISC = { idle: 32, selected: 52 };
+const DISC = {
+  mine: { idle: 36, selected: 56 },
+  standard: { idle: 32, selected: 52 },
+};
 const LABEL_HEIGHT = 22;
+
+type MarkerDiscProps = {
+  mine: boolean;
+  selected: boolean;
+};
+
+/** Marker face; owned spots add a graphite gap inside the neon ring. */
+function MarkerDisc({ mine, selected }: MarkerDiscProps) {
+  if (mine) {
+    return (
+      <View
+        className={`${selected ? "h-11 w-11" : "h-9 w-9"} rounded-full p-0.5`}
+        style={{ backgroundColor: colors.pinMineRing }}
+      >
+        <View className="flex-1 rounded-full p-0.5" style={{ backgroundColor: mapColors.land }}>
+          <View
+            className="flex-1 items-center justify-center rounded-full"
+            style={{ backgroundColor: colors.pinMine }}
+          >
+            <BoardMark size={selected ? 18 : 15} strokeWidth={2.4} color={colors.pinSelectedInk} />
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <View
+      className={`${selected ? "h-10 w-10" : "h-8 w-8"} items-center justify-center rounded-full`}
+      style={{
+        backgroundColor: colors.pinSelected,
+        borderColor: selected ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.2)",
+        borderWidth: 1,
+      }}
+    >
+      <BoardMark size={selected ? 17 : 14} strokeWidth={2.4} color={colors.pinSelectedInk} />
+    </View>
+  );
+}
 
 /**
  * A spot on the map: the board glyph in a light disc. Selection adds a halo,
@@ -34,19 +76,14 @@ export function SpotMarker({
   label,
   onPress,
 }: SpotMarkerProps) {
-  const fill = mine ? colors.pinMine : colors.pinSelected;
-  const ringColor = mine
-    ? colors.pinMineRing
-    : selected
-      ? "rgba(255,255,255,0.4)"
-      : "rgba(0,0,0,0.2)";
-  const disc = selected ? DISC.selected : DISC.idle;
+  const state = selected ? "selected" : "idle";
+  const disc = (mine ? DISC.mine : DISC.standard)[state];
   const anchorY = label ? disc / 2 / (disc + LABEL_HEIGHT) : 0.5;
   return (
     <Marker
       // Custom marker views are rasterized once (tracksViewChanges off) for
       // scroll performance, so remount on a look change to capture it.
-      key={`${id}-${selected ? "selected" : "idle"}-${mine ? "mine" : "theirs"}-${label ?? ""}`}
+      key={`${id}-${state}-${mine ? "mine" : "theirs"}-${label ?? ""}`}
       identifier={id}
       coordinate={{ latitude, longitude }}
       anchor={{ x: 0.5, y: anchorY }}
@@ -60,23 +97,13 @@ export function SpotMarker({
     >
       <View className="items-center">
         {selected ? (
-          <View className="h-[52px] w-[52px] items-center justify-center rounded-full bg-white/15">
-            <View
-              className="h-10 w-10 items-center justify-center rounded-full"
-              style={{ backgroundColor: fill, borderColor: ringColor, borderWidth: mine ? 2 : 1 }}
-            >
-              <BoardMark size={17} strokeWidth={2.4} color={colors.pinSelectedInk} />
-            </View>
+          <View
+            className={`${mine ? "h-14 w-14" : "h-[52px] w-[52px]"} items-center justify-center rounded-full bg-white/15`}
+          >
+            <MarkerDisc mine={mine === true} selected />
           </View>
         ) : (
-          // Light on the dark map so pins read at a glance; the selected one
-          // is the same colour but larger with a halo.
-          <View
-            className="h-8 w-8 items-center justify-center rounded-full"
-            style={{ backgroundColor: fill, borderColor: ringColor, borderWidth: mine ? 2 : 1 }}
-          >
-            <BoardMark size={14} strokeWidth={2.4} color={colors.pinSelectedInk} />
-          </View>
+          <MarkerDisc mine={mine === true} selected={false} />
         )}
         {label ? (
           <View
