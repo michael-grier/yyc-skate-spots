@@ -9,7 +9,7 @@ type SpotMarkerProps = {
   latitude: number;
   longitude: number;
   selected: boolean;
-  /** The signed-in user's own spot: drawn dark-on-light inverted so it stands out. */
+  /** The signed-in user's own spot: marked with a neon ring so it stands out. */
   mine?: boolean;
   /** Name shown under the disc, used while a search is active. */
   label?: string;
@@ -22,8 +22,8 @@ const DISC = { idle: 32, selected: 52 };
 const LABEL_HEIGHT = 22;
 
 /**
- * A spot on the map: the board glyph in a matte disc; the selected spot
- * flips to the one bright element on the map.
+ * A spot on the map: the board glyph in a light disc. Selection adds a halo,
+ * while the signed-in user's spots get a neon ring.
  */
 export function SpotMarker({
   id,
@@ -34,8 +34,12 @@ export function SpotMarker({
   label,
   onPress,
 }: SpotMarkerProps) {
-  const fill = mine ? colors.card : colors.pinSelected;
-  const glyph = mine ? colors.ink : colors.pinSelectedInk;
+  const fill = mine ? colors.pinMine : colors.pinSelected;
+  const ringColor = mine
+    ? colors.pinMineRing
+    : selected
+      ? "rgba(255,255,255,0.4)"
+      : "rgba(0,0,0,0.2)";
   const disc = selected ? DISC.selected : DISC.idle;
   const anchorY = label ? disc / 2 / (disc + LABEL_HEIGHT) : 0.5;
   return (
@@ -58,20 +62,20 @@ export function SpotMarker({
         {selected ? (
           <View className="h-[52px] w-[52px] items-center justify-center rounded-full bg-white/15">
             <View
-              className="h-10 w-10 items-center justify-center rounded-full border border-white/40"
-              style={{ backgroundColor: fill }}
+              className="h-10 w-10 items-center justify-center rounded-full"
+              style={{ backgroundColor: fill, borderColor: ringColor, borderWidth: mine ? 2 : 1 }}
             >
-              <BoardMark size={17} strokeWidth={2.4} color={glyph} />
+              <BoardMark size={17} strokeWidth={2.4} color={colors.pinSelectedInk} />
             </View>
           </View>
         ) : (
           // Light on the dark map so pins read at a glance; the selected one
           // is the same colour but larger with a halo.
           <View
-            className={`h-8 w-8 items-center justify-center rounded-full border ${mine ? "border-white/40" : "border-black/20"}`}
-            style={{ backgroundColor: fill }}
+            className="h-8 w-8 items-center justify-center rounded-full"
+            style={{ backgroundColor: fill, borderColor: ringColor, borderWidth: mine ? 2 : 1 }}
           >
-            <BoardMark size={14} strokeWidth={2.4} color={glyph} />
+            <BoardMark size={14} strokeWidth={2.4} color={colors.pinSelectedInk} />
           </View>
         )}
         {label ? (
