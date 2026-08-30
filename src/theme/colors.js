@@ -17,7 +17,7 @@ const colors = {
   pinSelected: "#E8EAEE",
   pinSelectedInk: "#17191D",
   pinMine: "#FFFFFF",
-  pinMineRing: "#39FF14",
+  pinMineRing: "#FF10F0",
 };
 
 // Google Maps custom style palette; slightly lighter than `base` so floating
