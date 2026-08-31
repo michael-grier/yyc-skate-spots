@@ -156,6 +156,24 @@ bun x convex run seed:clearModerationScenario
 bun x convex env remove TEST_FIXTURES_ENABLED
 ```
 
+To test the banned contributor's experience, create a second user in the Clerk development
+instance and leave its public metadata without an admin role. Copy that user's Clerk ID and use
+the Issuer from the `convex` JWT template to run the fixture as that identity:
+
+```sh
+bun x convex run seed:createBannedUserScenario --identity '{"subject":"<Clerk user ID>","issuer":"<Clerk JWT issuer>","name":"Banned Workflow Test User"}'
+```
+
+Sign into the app as that user. The profile shows three private removal notices and a contribution
+ban. The Add tab is blocked, editing **Banned User Test Spot** is blocked, and deleting that spot
+remains available. Other signed-in users cannot open the removal notices.
+
+Clear the fixture with the same identity after testing:
+
+```sh
+bun x convex run seed:clearBannedUserScenario --identity '{"subject":"<Clerk user ID>","issuer":"<Clerk JWT issuer>","name":"Banned Workflow Test User"}'
+```
+
 Keep `TEST_FIXTURES_ENABLED` unset on production deployments.
 
 ## Scripts

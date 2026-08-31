@@ -2,9 +2,18 @@
 import { convexTest } from "convex-test";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { api, internal } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
 import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
+const SPOT = {
+  name: "Test Ledge",
+  types: ["ledge" as const],
+  bustFactor: "low" as const,
+  latitude: 51.0447,
+  longitude: -114.0719,
+  photoIds: [] as Id<"_storage">[],
+};
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -14,8 +23,12 @@ describe("moderation workflow fixture", () => {
   test("refuses to run unless test fixtures are enabled", async () => {
     vi.stubEnv("TEST_FIXTURES_ENABLED", "");
     const t = convexTest(schema, modules);
+    const asTestUser = t.withIdentity({ subject: "fixture-user" });
 
     await expect(t.mutation(internal.seed.createModerationScenario, {})).rejects.toThrow(
+      /Test fixtures are disabled/,
+    );
+    await expect(asTestUser.mutation(api.seed.createBannedUserScenario, {})).rejects.toThrow(
       /Test fixtures are disabled/,
     );
   });
@@ -70,5 +83,74 @@ describe("moderation workflow fixture", () => {
       removals: [],
       contributors: [],
     });
+  });
+
+  test("creates and clears a banned-user scenario for the supplied identity", async () => {
+    vi.stubEnv("TEST_FIXTURES_ENABLED", "true");
+    const t = convexTest(schema, modules);
+    const identity = {
+      subject: "fixture-user",
+      issuer: "https://fixture.clerk.accounts.dev",
+      name: "Clerk Test User",
+    };
+    const asTestUser = t.withIdentity(identity);
+    const asOtherUser = t.withIdentity({ subject: "other-user" });
+
+    const first = await asTestUser.mutation(api.seed.createBannedUserScenario, {});
+    const second = await asTestUser.mutation(api.seed.createBannedUserScenario, {});
+    expect(second.activeSpotId).not.toBe(first.activeSpotId);
+    expect(second.removedSpotIds).toHaveLength(3);
+    expect(await asTestUser.query(api.moderation.viewer, {})).toMatchObject({
+      isBanned: true,
+      confirmedRemovalCount: 3,
+    });
+
+    const mine = await asTestUser.query(api.spots.mine, {});
+    expect(mine).toHaveLength(4);
+    expect(mine).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          status: "active",
+          _id: second.activeSpotId,
+          name: "Banned User Test Spot",
+        }),
+        ...[1, 2, 3].map((strikeNumber) =>
+          expect.objectContaining({ status: "removed", strikeNumber }),
+        ),
+      ]),
+    );
+    expect(await asTestUser.query(api.spots.get, { id: second.removedSpotIds[2] })).toMatchObject({
+      status: "removed",
+      strikeNumber: 3,
+    });
+    expect(await asOtherUser.query(api.spots.get, { id: second.removedSpotIds[2] })).toBeNull();
+    await expect(asTestUser.mutation(api.spots.create, SPOT)).rejects.toThrow(/access/);
+    await expect(
+      asTestUser.mutation(api.spots.update, {
+        ...SPOT,
+        id: second.activeSpotId,
+        name: "Changed",
+      }),
+    ).rejects.toThrow(/access/);
+    await expect(
+      asTestUser.mutation(api.spots.remove, { id: second.activeSpotId }),
+    ).resolves.toBeNull();
+
+    await asTestUser.mutation(api.seed.clearBannedUserScenario, {});
+    expect(await asTestUser.query(api.moderation.viewer, {})).toMatchObject({
+      isBanned: false,
+      confirmedRemovalCount: 0,
+    });
+    expect(await asTestUser.query(api.spots.mine, {})).toEqual([]);
+  });
+
+  test("refuses to apply the banned-user fixture to an admin identity", async () => {
+    vi.stubEnv("TEST_FIXTURES_ENABLED", "true");
+    const t = convexTest(schema, modules);
+    const asAdmin = t.withIdentity({ subject: "admin", role: "admin" });
+
+    await expect(asAdmin.mutation(api.seed.createBannedUserScenario, {})).rejects.toThrow(
+      /non-admin Clerk test user/,
+    );
   });
 });
