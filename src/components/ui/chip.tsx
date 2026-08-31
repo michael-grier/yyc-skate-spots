@@ -26,6 +26,7 @@ export function Chip({ label, selected, onPress, dotColor, trailing, className }
         selected ? "border-white/20 bg-white/10" : "border-white/10",
         className,
       )}
+      style={{ maxWidth: "100%" }}
     >
       {dotColor ? (
         <View
@@ -38,6 +39,7 @@ export function Chip({ label, selected, onPress, dotColor, trailing, className }
         adjustsFontSizeToFit
         minimumFontScale={0.85}
         numberOfLines={1}
+        style={{ flexShrink: 1 }}
         className={cn(
           "text-[13px]",
           selected ? "font-sans-semibold text-ink" : "font-sans-medium text-mute",
