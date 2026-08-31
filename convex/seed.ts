@@ -199,6 +199,28 @@ const SEED_SPOTS = [
   },
 ] as const;
 
+function seedSpotFingerprint(spot: {
+  name: string;
+  types: readonly string[];
+  bustFactor: string;
+  surface?: string;
+  notes?: string;
+  latitude: number;
+  longitude: number;
+}) {
+  return JSON.stringify([
+    spot.name,
+    spot.types,
+    spot.bustFactor,
+    spot.surface ?? null,
+    spot.notes ?? null,
+    spot.latitude,
+    spot.longitude,
+  ]);
+}
+
+const SEED_SPOT_FINGERPRINTS = new Set(SEED_SPOTS.map(seedSpotFingerprint));
+
 /** Requires an explicit CLI identity so seeded spots always have a real owner. */
 async function requireSeedOwner(ctx: MutationCtx) {
   const identity = await ctx.auth.getUserIdentity();
@@ -397,24 +419,30 @@ export const claimSeededSpots = mutation({
   args: {},
   handler: async (ctx) => {
     const owner = await requireSeedOwner(ctx);
-    const seededSpots = await ctx.db
+    const unclaimedFingerprints = new Set(SEED_SPOT_FINGERPRINTS);
+    let claimedCount = 0;
+    const legacySpots = ctx.db
       .query("spots")
-      .withIndex("by_createdBy", (q) => q.eq("createdBy", SEED_OWNER))
-      .take(SEED_SPOTS.length + 1);
+      .withIndex("by_createdBy", (q) => q.eq("createdBy", SEED_OWNER));
 
-    // More rows than the fixture contains means "seed" was reused elsewhere.
-    // Abort instead of silently transferring data outside this migration.
-    if (seededSpots.length > SEED_SPOTS.length) {
-      throw new Error("Found more seed-owned spots than expected; no ownership was changed.");
-    }
-
-    for (const spot of seededSpots) {
+    for await (const spot of legacySpots) {
+      const fingerprint = seedSpotFingerprint(spot);
+      // Claim at most one pristine row for each known fixture. This leaves
+      // unrelated or duplicated rows using the legacy sentinel untouched.
+      if (
+        spot.photoIds.length > 0 ||
+        spot.deletionRequested ||
+        !unclaimedFingerprints.delete(fingerprint)
+      ) {
+        continue;
+      }
       await ctx.db.patch("spots", spot._id, {
         createdBy: owner.tokenIdentifier,
         createdByName: owner.name,
       });
+      claimedCount += 1;
     }
 
-    return { claimedCount: seededSpots.length, ownerName: owner.name };
+    return { claimedCount, ownerName: owner.name };
   },
 });

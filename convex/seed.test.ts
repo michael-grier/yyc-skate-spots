@@ -16,8 +16,14 @@ const SPOT = {
   photoIds: [] as Id<"_storage">[],
 };
 const LEGACY_SEEDED_SPOT = {
-  ...SPOT,
-  name: "Legacy Seed Ledge",
+  name: "Harmony Park",
+  types: ["ledge" as const, "stairs" as const],
+  bustFactor: "medium" as const,
+  surface: "smooth" as const,
+  notes: "Formerly known as James Short park.",
+  latitude: 51.049144,
+  longitude: -114.063528,
+  photoIds: [] as Id<"_storage">[],
   createdBy: "seed",
   createdByName: "YYC Skate Spots",
 };
@@ -192,6 +198,14 @@ describe("seed ownership", () => {
       tokenIdentifier: ALICE_TOKEN_IDENTIFIER,
     });
     const asBob = t.withIdentity({ subject: "bob", name: "Bob" });
+    const unrelatedSeedId = await t.run((ctx) =>
+      ctx.db.insert("spots", {
+        ...SPOT,
+        name: "Unrelated Sentinel Spot",
+        createdBy: "seed",
+        createdByName: "Legacy Import",
+      }),
+    );
     const legacyId = await t.run((ctx) => ctx.db.insert("spots", LEGACY_SEEDED_SPOT));
     const bobsId = await asBob.mutation(api.spots.create, {
       ...SPOT,
@@ -214,6 +228,10 @@ describe("seed ownership", () => {
     expect(await asBob.query(api.spots.get, { id: bobsId })).toMatchObject({
       status: "active",
       isOwner: true,
+    });
+    expect(await t.run((ctx) => ctx.db.get("spots", unrelatedSeedId))).toMatchObject({
+      createdBy: "seed",
+      createdByName: "Legacy Import",
     });
     expect(await asAlice.mutation(api.seed.claimSeededSpots, {})).toEqual({
       claimedCount: 0,
