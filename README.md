@@ -176,14 +176,59 @@ bun x convex run seed:clearBannedUserScenario --identity '{"subject":"<Clerk use
 
 Keep `TEST_FIXTURES_ENABLED` unset on production deployments.
 
+## Worktree development
+
+T3 Code runs `bun run setup:worktree` automatically when it creates a worktree. For a worktree
+created with Git directly, run it once yourself:
+
+```sh
+bun run setup:worktree
+```
+
+The command links the primary checkout's `.env` and `.env.local` into the worktree, validates the
+required variable names without printing their values, and runs `bun install --frozen-lockfile`.
+It refuses to replace a local file or a link to another target. Environment changes made in the
+primary checkout are visible through the links immediately.
+
+Expo reloads changed `EXPO_PUBLIC_*` values from local env files. Reload the app to update its
+JavaScript bundle. Google Maps keys live in the native binary, so changing either key requires a
+new development build.
+
+`.env` and `.env.local` stay on this machine. The setup command never downloads EAS variables or
+writes secrets into tracked files. Cloud builds use the environment selected by the matching
+profile in `eas.json`: `development`, `preview`, or `production`.
+
+Run only one `convex dev` watcher against the shared development deployment. Stop the watcher in
+the primary checkout before starting one from a worktree with backend changes. Once setup finishes,
+the usual development commands are:
+
+```sh
+bun x convex dev
+bun run start
+```
+
+An installed development client can load JavaScript from any prepared worktree. Native
+configuration changes still require a new development build. Check or start cloud development
+builds with:
+
+```sh
+bun x eas-cli env:list --environment development
+bun x eas-cli build --profile development --platform ios
+bun x eas-cli build --profile development --platform android
+```
+
+No teardown command is needed. Setup creates no external resource, and Git removes the links and
+branch-local `node_modules` with the worktree.
+
 ## Scripts
 
-| Command             | What it does                              |
-| ------------------- | ----------------------------------------- |
-| `bun run start`     | Start the Metro dev server                |
-| `bun run typecheck` | `tsc --noEmit`                            |
-| `bun run lint`      | ESLint (`eslint-config-expo`)             |
-| `bun run format`    | Biome (formatter only; ESLint owns lint)  |
+| Command                  | What it does                                      |
+| ------------------------ | ------------------------------------------------- |
+| `bun run start`          | Start the Metro dev server                        |
+| `bun run setup:worktree` | Prepare local env links and install dependencies  |
+| `bun run typecheck`      | `tsc --noEmit`                                    |
+| `bun run lint`           | ESLint (`eslint-config-expo`)                     |
+| `bun run format`         | Biome (formatter only; ESLint owns lint)          |
 
 ## Architecture notes
 

@@ -69,6 +69,7 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
+    "setup:worktree": "bash scripts/setup-worktree.sh",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
