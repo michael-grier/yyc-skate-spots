@@ -15,3 +15,10 @@ Convex agent skills for common tasks can be installed by running
 `npx convex ai-files install`.
 
 <!-- convex-ai-end -->
+
+## Linked worktrees
+
+T3 Code runs `bun run setup:worktree` when it creates a worktree. Run it once yourself in a
+manually created worktree. It links `.env` and `.env.local` to the primary checkout, so edit those
+shared files only from the primary checkout. Propose environment-contract changes in the tracked
+`.env.example` instead.
