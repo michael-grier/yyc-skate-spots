@@ -6,6 +6,7 @@ import type { Id } from "./_generated/dataModel";
 import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
+const ALICE_TOKEN_IDENTIFIER = "https://convex.test|alice";
 const SPOT = {
   name: "Test Ledge",
   types: ["ledge" as const],
@@ -13,6 +14,12 @@ const SPOT = {
   latitude: 51.0447,
   longitude: -114.0719,
   photoIds: [] as Id<"_storage">[],
+};
+const LEGACY_SEEDED_SPOT = {
+  ...SPOT,
+  name: "Legacy Seed Ledge",
+  createdBy: "seed",
+  createdByName: "YYC Skate Spots",
 };
 
 afterEach(() => {
@@ -152,5 +159,65 @@ describe("moderation workflow fixture", () => {
     await expect(asAdmin.mutation(api.seed.createBannedUserScenario, {})).rejects.toThrow(
       /non-admin Clerk test user/,
     );
+  });
+});
+
+describe("seed ownership", () => {
+  test("new seed runs require an owner and create editable spots for that account", async () => {
+    vi.stubEnv("SEED_OWNER_TOKEN_IDENTIFIER", ALICE_TOKEN_IDENTIFIER);
+    const t = convexTest(schema, modules);
+    const asAlice = t.withIdentity({
+      subject: "alice",
+      name: "Alice",
+      tokenIdentifier: ALICE_TOKEN_IDENTIFIER,
+    });
+    const asBob = t.withIdentity({ subject: "bob", name: "Bob" });
+
+    await expect(t.mutation(api.seed.run, {})).rejects.toThrow(/--identity/);
+    await expect(asBob.mutation(api.seed.run, {})).rejects.toThrow(/configured seed owner/);
+    expect(await asAlice.mutation(api.seed.run, {})).toBe("Seeded 8 spots.");
+    expect(await asAlice.query(api.spots.mine, {})).toHaveLength(8);
+
+    const [spot] = await asAlice.query(api.spots.mine, {});
+    const editable = await asAlice.query(api.spots.get, { id: spot._id });
+    expect(editable).toMatchObject({ status: "active", isOwner: true, createdByName: "Alice" });
+  });
+
+  test("the migration claims only legacy seed-owned spots and is safe to repeat", async () => {
+    vi.stubEnv("SEED_OWNER_TOKEN_IDENTIFIER", ALICE_TOKEN_IDENTIFIER);
+    const t = convexTest(schema, modules);
+    const asAlice = t.withIdentity({
+      subject: "alice",
+      name: "Alice",
+      tokenIdentifier: ALICE_TOKEN_IDENTIFIER,
+    });
+    const asBob = t.withIdentity({ subject: "bob", name: "Bob" });
+    const legacyId = await t.run((ctx) => ctx.db.insert("spots", LEGACY_SEEDED_SPOT));
+    const bobsId = await asBob.mutation(api.spots.create, {
+      ...SPOT,
+      name: "Bob's Ledge",
+    });
+
+    await expect(t.mutation(api.seed.claimSeededSpots, {})).rejects.toThrow(/--identity/);
+    await expect(asBob.mutation(api.seed.claimSeededSpots, {})).rejects.toThrow(
+      /configured seed owner/,
+    );
+    expect(await asAlice.mutation(api.seed.claimSeededSpots, {})).toEqual({
+      claimedCount: 1,
+      ownerName: "Alice",
+    });
+    expect(await asAlice.query(api.spots.get, { id: legacyId })).toMatchObject({
+      status: "active",
+      isOwner: true,
+      createdByName: "Alice",
+    });
+    expect(await asBob.query(api.spots.get, { id: bobsId })).toMatchObject({
+      status: "active",
+      isOwner: true,
+    });
+    expect(await asAlice.mutation(api.seed.claimSeededSpots, {})).toEqual({
+      claimedCount: 0,
+      ownerName: "Alice",
+    });
   });
 });

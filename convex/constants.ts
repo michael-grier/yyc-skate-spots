@@ -1,4 +1,4 @@
-// Development seed rows use this owner because no Clerk identity can match it.
+// Legacy seed rows use this owner because no Clerk identity can match it.
 export const SEED_OWNER = "seed";
 
 // Separate from ordinary seed rows so the moderation fixture can accrue and

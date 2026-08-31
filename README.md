@@ -61,6 +61,40 @@ with no error in Metro. Confirm with `adb logcat | grep -i "Google Maps Android 
    `CLERK_JWT_ISSUER_DOMAIN` to the Issuer domain from step 2.3.
 3. Leave `bun x convex dev` running while developing — it pushes functions/schema on save.
 
+#### Seed ownership
+
+Seed commands require a Clerk identity so the resulting spots belong to a real account. Copy the
+account's Clerk user ID and the exact Issuer domain from step 2.3, then target the deployment by
+name. The CLI derives the same `tokenIdentifier` that Convex receives from Clerk. Authorize that
+identity on each deployment before running either command:
+
+```sh
+bun x convex env set SEED_OWNER_TOKEN_IDENTIFIER \
+  'https://...clerk.accounts.dev|user_...' \
+  --deployment dev
+```
+
+For an empty deployment:
+
+```sh
+bun x convex run seed:run '{}' \
+  --identity '{"subject":"user_...","issuer":"https://...clerk.accounts.dev","name":"Your Name"}' \
+  --deployment dev
+```
+
+For an existing deployment whose spots still belong to the old `seed` owner:
+
+```sh
+bun x convex run seed:claimSeededSpots '{}' \
+  --identity '{"subject":"user_...","issuer":"https://...clerk.accounts.dev","name":"Your Name"}' \
+  --deployment dev
+```
+
+Run the applicable command again with `--deployment prod` after creating the production
+deployment. If development and production use different Clerk applications, use the user ID and
+Issuer from the matching application in both the environment variable and command. The claim
+command is safe to repeat and never changes spots created by another account.
+
 ### 4. EAS project
 
 1. `bun x eas-cli login` (create an Expo account if needed).

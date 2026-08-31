@@ -4,6 +4,7 @@ import { v } from "convex/values";
 const app = defineApp({
   env: {
     TEST_FIXTURES_ENABLED: v.optional(v.string()),
+    SEED_OWNER_TOKEN_IDENTIFIER: v.optional(v.string()),
   },
 });
 
