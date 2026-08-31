@@ -1,7 +1,7 @@
 import { useSignIn, useSignUp } from "@clerk/expo";
 import { useState } from "react";
 
-import { IDENTIFIER_NOT_FOUND, describeAuthError } from "@/lib/auth-errors";
+import { IDENTIFIER_NOT_FOUND, describeAuthError, hasAuthErrorCode } from "@/lib/auth-errors";
 
 export type EmailCodeStep =
   | { kind: "email" }
@@ -38,7 +38,7 @@ export function useEmailCodeAuth() {
         setStep({ kind: "code", emailAddress, mode: "signIn" });
         return;
       }
-      if (signInError.code !== IDENTIFIER_NOT_FOUND) {
+      if (!hasAuthErrorCode(signInError, IDENTIFIER_NOT_FOUND)) {
         setError(describeAuthError(signInError));
         return;
       }

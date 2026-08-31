@@ -18,6 +18,7 @@ import { BackIcon, MoreIcon, NavigateIcon } from "@/components/icons";
 import { FavoriteButton } from "@/components/favorite-button";
 import { PhotoCarousel } from "@/components/photo-carousel";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Hairline } from "@/components/ui/hairline";
 import { formatMonthYear } from "@/lib/dates";
 import { distanceKm, formatDistance } from "@/lib/geo";
@@ -28,6 +29,7 @@ import {
   SURFACE_LABELS,
   formatSpotTypes,
 } from "@/lib/spot-labels";
+import { reportReasonLabel } from "@/lib/spot-standards";
 import { useSpotAddress } from "@/lib/use-spot-address";
 import { useUserLocation } from "@/lib/use-user-location";
 import { colors } from "@/theme/colors";
@@ -66,8 +68,13 @@ export default function SpotDetailScreen() {
   const toggleFavorite = useMutation(api.favorites.toggle);
   const [favoritePending, setFavoritePending] = useState(false);
   const { coords, granted } = useUserLocation();
+  const activeSpot = spot?.status === "active" ? spot : null;
   // Android's geocoder needs location permission; iOS's does not.
-  const address = useSpotAddress(spot?.latitude, spot?.longitude, Platform.OS === "ios" || granted);
+  const address = useSpotAddress(
+    activeSpot?.latitude,
+    activeSpot?.longitude,
+    Platform.OS === "ios" || granted,
+  );
 
   const backButton = (
     <Pressable
@@ -99,6 +106,48 @@ export default function SpotDetailScreen() {
         <Text className="mt-2 text-center font-sans text-[14px] text-mute">
           It may have been removed by the person who added it.
         </Text>
+        {backButton}
+      </View>
+    );
+  }
+
+  if (spot.status === "removed") {
+    return (
+      <View className="flex-1 bg-base">
+        <Stack.Screen options={{ headerShown: false }} />
+        <ScrollView
+          contentContainerStyle={{
+            paddingTop: insets.top + 72,
+            paddingHorizontal: 20,
+            paddingBottom: insets.bottom + 24,
+          }}
+        >
+          <Card className="p-5">
+            <Text className="font-sans-medium text-[11px] text-mute">SPOT REMOVED</Text>
+            <Text className="mt-2 font-sans-semibold text-[22px] tracking-tight text-ink">
+              {spot.name}
+            </Text>
+            <Text className="mt-3 font-sans text-[15px] leading-relaxed text-mute">
+              This spot was removed because it did not meet YYC Skate Spots standards. Other users
+              can no longer see it; this notice is visible only to you.
+            </Text>
+          </Card>
+          <Card className="mt-3 p-5">
+            <Text className="font-sans-medium text-[11px] text-mute">REMOVAL REASON</Text>
+            <Text className="mt-2 font-sans-semibold text-[16px] text-ink">
+              {reportReasonLabel(spot.reason)}
+            </Text>
+            <Text className="mt-2 font-sans text-[13px] leading-relaxed text-mute">
+              This was confirmed removal {spot.strikeNumber}. At three, an administrator may block
+              an account from adding or editing spots.
+            </Text>
+          </Card>
+          <Button
+            label="Read the spot standards"
+            onPress={() => router.push("/standards")}
+            className="mt-4"
+          />
+        </ScrollView>
         {backButton}
       </View>
     );
@@ -200,6 +249,28 @@ export default function SpotDetailScreen() {
             </Text>
           ) : null}
           <Text className="mt-4 font-sans text-[12px] text-mute">{byline}</Text>
+
+          {!spot.isOwner ? (
+            <Card className="mt-6 p-4">
+              <Text className="font-sans-semibold text-[15px] text-ink">Spot not right?</Text>
+              <Text className="mt-1 font-sans text-[13px] leading-relaxed text-mute">
+                Send a private report if this listing does not meet the spot standards.
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() =>
+                  isSignedIn
+                    ? router.push({ pathname: "/spot/report/[id]", params: { id: spotId } })
+                    : router.push("/account")
+                }
+                className="mt-3 self-start py-1 active:opacity-80"
+              >
+                <Text className="font-sans-semibold text-[13px] text-silver">
+                  {isSignedIn ? "Report this spot" : "Sign in to report"}
+                </Text>
+              </Pressable>
+            </Card>
+          ) : null}
         </View>
       </ScrollView>
 

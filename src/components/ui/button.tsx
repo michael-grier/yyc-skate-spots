@@ -9,8 +9,8 @@ type ButtonProps = {
   disabled?: boolean;
   /** Rendered left of the label, e.g. a small icon. */
   icon?: ReactNode;
-  /** "light" is the one bright button in the app (Sign in with Apple). */
-  variant?: "matte" | "light";
+  /** "light" is bright; "danger" is reserved for confirmed destructive actions. */
+  variant?: "matte" | "light" | "danger";
   className?: string;
 };
 
@@ -30,7 +30,11 @@ export function Button({
       disabled={disabled}
       className={cn(
         "flex-row items-center justify-center gap-2 rounded-2xl border py-4 active:opacity-80",
-        variant === "light" ? "border-white/30 bg-pinSelected" : "border-white/15 bg-ctagrey",
+        variant === "light"
+          ? "border-white/30 bg-pinSelected"
+          : variant === "danger"
+            ? "border-bust-high/40 bg-bust-high/15"
+            : "border-white/15 bg-ctagrey",
         disabled && "opacity-40",
         className,
       )}

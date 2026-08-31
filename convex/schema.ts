@@ -22,6 +22,18 @@ export const bustFactor = v.union(v.literal("low"), v.literal("medium"), v.liter
 
 export const surface = v.union(v.literal("smooth"), v.literal("rough"));
 
+export const reportReason = v.union(
+  v.literal("not_a_spot"),
+  v.literal("duplicate_or_inaccurate"),
+  v.literal("private_or_sensitive"),
+  v.literal("gone_or_unusable"),
+  v.literal("inappropriate_content"),
+  v.literal("spam_or_abuse"),
+  v.literal("other"),
+);
+
+const reviewReason = v.union(v.literal("new"), v.literal("edited"), v.literal("reported"));
+
 export default defineSchema({
   spots: defineTable({
     name: v.string(),
@@ -70,4 +82,59 @@ export default defineSchema({
     storageId: v.id("_storage"),
     uploadedBy: v.string(),
   }).index("by_storageId", ["storageId"]),
+
+  // Reports stay private and exist only while a spot awaits a decision.
+  // Removing them on resolution lets the same person report a later edit.
+  spotReports: defineTable({
+    spotId: v.id("spots"),
+    reportedBy: v.string(),
+    reason: reportReason,
+    details: v.optional(v.string()),
+  })
+    .index("by_spotId", ["spotId"])
+    .index("by_spotId_and_reportedBy", ["spotId", "reportedBy"]),
+
+  // Operational review state is separate from the public spot document so
+  // owner edits cannot overwrite moderation fields through spots.update.
+  spotModeration: defineTable({
+    spotId: v.id("spots"),
+    spotCreationTime: v.number(),
+    needsReview: v.boolean(),
+    attentionReason: reviewReason,
+    lastSubmittedAt: v.number(),
+    openReportCount: v.number(),
+    reviewedAt: v.optional(v.number()),
+    reviewedBy: v.optional(v.string()),
+  }).index("by_spotId", ["spotId"]),
+
+  // Admin removal deletes the public spot but keeps this small owner-visible
+  // record. Photos, coordinates, notes, and report identities are not retained.
+  spotRemovals: defineTable({
+    spotId: v.id("spots"),
+    spotCreationTime: v.number(),
+    name: v.string(),
+    createdBy: v.string(),
+    createdByName: v.optional(v.string()),
+    reason: reportReason,
+    details: v.optional(v.string()),
+    removedAt: v.number(),
+    removedBy: v.string(),
+    reportCount: v.number(),
+    strikeNumber: v.number(),
+  })
+    .index("by_spotId", ["spotId"])
+    .index("by_createdBy_and_spotCreationTime", ["createdBy", "spotCreationTime"]),
+
+  // A contribution ban leaves sign-in intact so the user can still browse,
+  // delete their remaining spots, and read removal notices.
+  userModeration: defineTable({
+    userIdentifier: v.string(),
+    name: v.optional(v.string()),
+    confirmedRemovalCount: v.number(),
+    isBanned: v.boolean(),
+    bannedAt: v.optional(v.number()),
+    bannedBy: v.optional(v.string()),
+  })
+    .index("by_userIdentifier", ["userIdentifier"])
+    .index("by_isBanned_and_confirmedRemovalCount", ["isBanned", "confirmedRemovalCount"]),
 });

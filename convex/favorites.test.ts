@@ -47,9 +47,22 @@ describe("favorites", () => {
     expect((await asBob.query(api.favorites.list, {})).map((spot) => spot.name)).toEqual([
       "Test Ledge",
     ]);
-    expect((await asBob.query(api.spots.get, { id: spotId }))?.isFavorite).toBe(true);
-    expect((await asAlice.query(api.spots.get, { id: spotId }))?.isFavorite).toBe(false);
-    expect((await t.query(api.spots.get, { id: spotId }))?.isFavorite).toBe(false);
+    const seenByBob = await asBob.query(api.spots.get, { id: spotId });
+    const seenByAlice = await asAlice.query(api.spots.get, { id: spotId });
+    const seenAnonymously = await t.query(api.spots.get, { id: spotId });
+    expect(seenByBob?.status).toBe("active");
+    expect(seenByAlice?.status).toBe("active");
+    expect(seenAnonymously?.status).toBe("active");
+    if (
+      seenByBob?.status !== "active" ||
+      seenByAlice?.status !== "active" ||
+      seenAnonymously?.status !== "active"
+    ) {
+      throw new Error("Expected active spots.");
+    }
+    expect(seenByBob.isFavorite).toBe(true);
+    expect(seenByAlice.isFavorite).toBe(false);
+    expect(seenAnonymously.isFavorite).toBe(false);
 
     expect(await asBob.mutation(api.favorites.toggle, { spotId })).toBe(false);
     expect(await asBob.query(api.favorites.list, {})).toEqual([]);

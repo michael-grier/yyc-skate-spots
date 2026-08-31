@@ -40,8 +40,10 @@ describe("spots authz", () => {
     const id = await asAlice.mutation(api.spots.create, SPOT);
     await asAlice.mutation(api.spots.update, { ...SPOT, id, bustFactor: "low" });
     const updated = await t.query(api.spots.get, { id });
-    expect(updated?.bustFactor).toBe("low");
-    expect(updated?.createdByName).toBe("Alice");
+    expect(updated?.status).toBe("active");
+    if (updated?.status !== "active") throw new Error("Expected an active spot.");
+    expect(updated.bustFactor).toBe("low");
+    expect(updated.createdByName).toBe("Alice");
 
     await asAlice.mutation(api.spots.remove, { id });
     expect(await t.query(api.spots.get, { id })).toBeNull();
@@ -57,9 +59,11 @@ describe("spots authz", () => {
     });
     await asAlice.mutation(api.spots.update, { ...SPOT, id });
     const spot = await t.query(api.spots.get, { id });
-    expect(spot?.notes).toBeUndefined();
-    expect(spot?.surface).toBeUndefined();
-    expect(spot?.createdByName).toBeUndefined();
+    expect(spot?.status).toBe("active");
+    if (spot?.status !== "active") throw new Error("Expected an active spot.");
+    expect(spot.notes).toBeUndefined();
+    expect(spot.surface).toBeUndefined();
+    expect(spot.createdByName).toBeUndefined();
   });
 
   test("a different user cannot update or delete someone else's spot", async () => {
@@ -110,14 +114,18 @@ describe("spots authz", () => {
     const id = await asAlice.mutation(api.spots.create, { ...SPOT, photoIds: [photoId] });
 
     const anonymous = await t.query(api.spots.get, { id });
-    expect(anonymous?.isOwner).toBe(false);
-    expect(anonymous?.photoIds).toBeNull();
+    expect(anonymous?.status).toBe("active");
+    if (anonymous?.status !== "active") throw new Error("Expected an active spot.");
+    expect(anonymous.isOwner).toBe(false);
+    expect(anonymous.photoIds).toBeNull();
     expect(anonymous).not.toHaveProperty("createdBy");
     expect((await t.query(api.spots.list, {}))[0]).not.toHaveProperty("photoIds");
 
     const asOwner = await asAlice.query(api.spots.get, { id });
-    expect(asOwner?.isOwner).toBe(true);
-    expect(asOwner?.photoIds).toEqual([photoId]);
+    expect(asOwner?.status).toBe("active");
+    if (asOwner?.status !== "active") throw new Error("Expected an active spot.");
+    expect(asOwner.isOwner).toBe(true);
+    expect(asOwner.photoIds).toEqual([photoId]);
   });
 
   test("a photo attached to one spot cannot be attached to another", async () => {
@@ -141,7 +149,9 @@ describe("spots authz", () => {
 
     // Alice's file is still there.
     const spot = await t.query(api.spots.get, { id: alicesSpot });
-    expect(spot?.photoUrls).toHaveLength(1);
+    expect(spot?.status).toBe("active");
+    if (spot?.status !== "active") throw new Error("Expected an active spot.");
+    expect(spot.photoUrls).toHaveLength(1);
   });
 
   test("list flags the caller's own spots and mine lists only those", async () => {
@@ -226,7 +236,10 @@ describe("spots authz", () => {
 
     // And it is usable exactly like any other upload of Alice's.
     const id = await asAlice.mutation(api.spots.create, { ...SPOT, photoIds: [storageId] });
-    expect((await t.query(api.spots.get, { id }))?.photoUrls).toHaveLength(1);
+    const spot = await t.query(api.spots.get, { id });
+    expect(spot?.status).toBe("active");
+    if (spot?.status !== "active") throw new Error("Expected an active spot.");
+    expect(spot.photoUrls).toHaveLength(1);
   });
 
   test("dropping or deleting a spot's photos removes the files and their claims", async () => {

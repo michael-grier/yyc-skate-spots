@@ -44,9 +44,12 @@ with no error in Metro. Confirm with `adb logcat | grep -i "Google Maps Android 
 1. Create an application at dashboard.clerk.com.
 2. **Configure → Native applications**: make sure the **Native API** is enabled (required for
    any Expo integration).
-3. **Configure → JWT templates → New template → Convex.** Leave the name as `convex`. Note the
+3. **Configure → JWT templates → New template → Convex.** Leave the name as `convex`. Add
+   `"role": "{{user.public_metadata.role}}"` to the template's existing claims, then note the
    **Issuer** domain (`https://<something>.clerk.accounts.dev`).
 4. Copy the **Publishable key** into `.env` as `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY`.
+5. In **Users**, open the account that should have moderation access and set its public metadata
+   to `{ "role": "admin" }`. Sign out and back in after changing this so Clerk issues a new token.
 
 ### 3. Convex
 
@@ -131,6 +134,47 @@ bun run start
 Open the installed dev build on your phone (same Wi-Fi) and it connects to the dev server. If
 anything in `.env` is missing the app shows a red "Environment not configured" screen listing
 exactly what to fix.
+
+### Moderation workflow fixture
+
+Enable test fixtures on the development Convex deployment, then create a reported spot:
+
+```sh
+bun x convex env set TEST_FIXTURES_ENABLED true
+bun x convex run seed:createModerationScenario
+```
+
+In the app, open **Profile → Review spots → Reported**, then open **Reported Test Spot**. Mark it
+as meeting the standards, or remove it. The fixture contributor starts with two confirmed
+removals, so removing the spot also exposes the third-strike ban flow.
+
+The create command resets an earlier copy. Clear the scenario after testing, then disable test
+fixtures:
+
+```sh
+bun x convex run seed:clearModerationScenario
+bun x convex env remove TEST_FIXTURES_ENABLED
+```
+
+To test the banned contributor's experience, create a second user in the Clerk development
+instance and leave its public metadata without an admin role. Copy that user's Clerk ID and use
+the Issuer from the `convex` JWT template to run the fixture as that identity:
+
+```sh
+bun x convex run seed:createBannedUserScenario --identity '{"subject":"<Clerk user ID>","issuer":"<Clerk JWT issuer>","name":"Banned Workflow Test User"}'
+```
+
+Sign into the app as that user. The profile shows three private removal notices and a contribution
+ban. The Add tab is blocked, editing **Banned User Test Spot** is blocked, and deleting that spot
+remains available. Other signed-in users cannot open the removal notices.
+
+Clear the fixture with the same identity after testing:
+
+```sh
+bun x convex run seed:clearBannedUserScenario --identity '{"subject":"<Clerk user ID>","issuer":"<Clerk JWT issuer>","name":"Banned Workflow Test User"}'
+```
+
+Keep `TEST_FIXTURES_ENABLED` unset on production deployments.
 
 ## Scripts
 

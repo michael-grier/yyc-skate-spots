@@ -19,6 +19,13 @@ jest.mock("@clerk/expo", () => ({
 
 const ok = { error: null };
 const err = (code: string, message = code) => ({ error: { code, message } });
+const apiErr = (code: string, message = code) => ({
+  error: {
+    code: "api_response_error",
+    message,
+    errors: [{ code, message }],
+  },
+});
 
 const ALL_MOCKS = [
   mockSignIn.emailCode.sendCode,
@@ -42,7 +49,9 @@ describe("useEmailCodeAuth", () => {
     const { result } = await renderHook(() => useEmailCodeAuth());
 
     await act(() => result.current.sendCode("  skater@example.com "));
-    expect(mockSignIn.emailCode.sendCode).toHaveBeenCalledWith({ emailAddress: "skater@example.com" });
+    expect(mockSignIn.emailCode.sendCode).toHaveBeenCalledWith({
+      emailAddress: "skater@example.com",
+    });
     expect(mockSignUp.create).not.toHaveBeenCalled();
     expect(result.current.step).toEqual({
       kind: "code",
@@ -57,7 +66,7 @@ describe("useEmailCodeAuth", () => {
   });
 
   test("unknown address falls through to a sign-up with the same email", async () => {
-    mockSignIn.emailCode.sendCode.mockResolvedValue(err("form_identifier_not_found"));
+    mockSignIn.emailCode.sendCode.mockResolvedValue(apiErr("form_identifier_not_found"));
     const { result } = await renderHook(() => useEmailCodeAuth());
 
     await act(() => result.current.sendCode("new@example.com"));

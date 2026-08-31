@@ -1,13 +1,9 @@
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
-import {
-  internalMutation,
-  mutation,
-  query,
-  type MutationCtx,
-  type QueryCtx,
-} from "./_generated/server";
+import { internalMutation, mutation, query, type MutationCtx } from "./_generated/server";
+import { requireCanContribute, requireIdentity } from "./auth";
+import { clearSpotModeration, queueEditedSpot, queueNewSpot } from "./moderationModel";
 import { bustFactor, spotType, surface } from "./schema";
 
 // Caps chosen so a spot document stays far under Convex's 1MB limit and
@@ -17,7 +13,7 @@ const MAX_NAME_LENGTH = 80;
 const MAX_NOTES_LENGTH = 2000;
 // City-scale app: one bounded read covers Calgary's realistic spot count.
 // Revisit with pagination + geo indexing if the table ever approaches this.
-const MAX_SPOTS_LISTED = 500;
+export const MAX_SPOTS_LISTED = 500;
 const FAVORITE_DELETE_BATCH_SIZE = 100;
 
 // Everything a submitter provides; ownership fields are always derived
@@ -33,17 +29,11 @@ const spotFields = v.object({
   photoIds: v.array(v.id("_storage")),
 });
 
-async function requireIdentity(ctx: QueryCtx | MutationCtx) {
-  const identity = await ctx.auth.getUserIdentity();
-  if (!identity) {
-    throw new Error("You must be signed in to do that.");
-  }
-  return identity;
-}
-
 /** Loads a spot and verifies the caller owns it; throws otherwise. */
-async function requireOwnedSpot(ctx: MutationCtx, id: Id<"spots">) {
-  const identity = await requireIdentity(ctx);
+async function requireOwnedSpot(ctx: MutationCtx, id: Id<"spots">, contributionRequired = false) {
+  const identity = contributionRequired
+    ? await requireCanContribute(ctx)
+    : await requireIdentity(ctx);
   const spot = await ctx.db.get("spots", id);
   if (!spot || spot.deletionRequested) {
     throw new Error("Spot not found.");
@@ -143,7 +133,7 @@ async function claimPhotos(ctx: MutationCtx, photoIds: Id<"_storage">[], spotId:
  * Drops the references and deletes the files. Safe to delete outright:
  * claims are unique, so a released photo cannot belong to another spot.
  */
-async function releasePhotos(ctx: MutationCtx, photoIds: Id<"_storage">[]) {
+export async function releasePhotos(ctx: MutationCtx, photoIds: Id<"_storage">[]) {
   for (const photoId of photoIds) {
     const ref = await photoRef(ctx, photoId);
     if (ref) {
@@ -151,6 +141,12 @@ async function releasePhotos(ctx: MutationCtx, photoIds: Id<"_storage">[]) {
     }
     await ctx.storage.delete(photoId);
   }
+}
+
+/** Hides a departing spot and queues its potentially unbounded favorites cleanup. */
+export async function scheduleSpotDeletion(ctx: MutationCtx, spotId: Id<"spots">) {
+  await ctx.db.patch("spots", spotId, { deletionRequested: true, photoIds: [] });
+  await ctx.scheduler.runAfter(0, internal.spots.removeFavoriteBatch, { spotId });
 }
 
 /**
@@ -178,7 +174,7 @@ export const list = query({
   },
 });
 
-/** The caller's own spots, newest first, for the profile's "Your spots" list. */
+/** Live spots and admin-removal notices visible only to their creator. */
 export const mine = query({
   args: {},
   handler: async (ctx) => {
@@ -191,15 +187,35 @@ export const mine = query({
       .withIndex("by_createdBy", (q) => q.eq("createdBy", identity.tokenIdentifier))
       .order("desc")
       .take(MAX_SPOTS_LISTED);
-    return spots
-      .filter((spot) => !spot.deletionRequested)
-      .map(({ _id, _creationTime, name, types, bustFactor }) => ({
-        _id,
-        _creationTime,
+    const removals = await ctx.db
+      .query("spotRemovals")
+      .withIndex("by_createdBy_and_spotCreationTime", (q) =>
+        q.eq("createdBy", identity.tokenIdentifier),
+      )
+      .order("desc")
+      .take(MAX_SPOTS_LISTED);
+    return [
+      ...spots
+        .filter((spot) => !spot.deletionRequested)
+        .map(({ _id, _creationTime, name, types, bustFactor }) => ({
+          status: "active" as const,
+          _id,
+          _creationTime,
+          name,
+          types,
+          bustFactor,
+        })),
+      ...removals.map(({ spotId, spotCreationTime, name, reason, strikeNumber }) => ({
+        status: "removed" as const,
+        _id: spotId,
+        _creationTime: spotCreationTime,
         name,
-        types,
-        bustFactor,
-      }));
+        reason,
+        strikeNumber,
+      })),
+    ]
+      .sort((a, b) => b._creationTime - a._creationTime)
+      .slice(0, MAX_SPOTS_LISTED);
   },
 });
 
@@ -216,7 +232,29 @@ export const get = query({
     const id = ctx.db.normalizeId("spots", args.id);
     const spot = id ? await ctx.db.get("spots", id) : null;
     if (!spot || spot.deletionRequested) {
-      return null;
+      if (!id) {
+        return null;
+      }
+      const identity = await ctx.auth.getUserIdentity();
+      if (!identity) {
+        return null;
+      }
+      const removal = await ctx.db
+        .query("spotRemovals")
+        .withIndex("by_spotId", (q) => q.eq("spotId", id))
+        .unique();
+      if (!removal || removal.createdBy !== identity.tokenIdentifier) {
+        return null;
+      }
+      return {
+        status: "removed" as const,
+        _id: removal.spotId,
+        _creationTime: removal.spotCreationTime,
+        name: removal.name,
+        reason: removal.reason,
+        removedAt: removal.removedAt,
+        strikeNumber: removal.strikeNumber,
+      };
     }
     const identity = await ctx.auth.getUserIdentity();
     const isOwner = identity !== null && spot.createdBy === identity.tokenIdentifier;
@@ -238,6 +276,7 @@ export const get = query({
       ...publicFields
     } = spot;
     return {
+      status: "active" as const,
       ...publicFields,
       photoUrls,
       isOwner,
@@ -250,7 +289,7 @@ export const get = query({
 export const create = mutation({
   args: spotFields.fields,
   handler: async (ctx, args) => {
-    const identity = await requireIdentity(ctx);
+    const identity = await requireCanContribute(ctx);
     validateSpotFields(args);
     await assertPhotosUnclaimed(ctx, args.photoIds, null);
     await consumeUploads(ctx, identity.tokenIdentifier, args.photoIds);
@@ -261,6 +300,11 @@ export const create = mutation({
       createdByName: identity.name,
     });
     await claimPhotos(ctx, args.photoIds, id);
+    const spot = await ctx.db.get("spots", id);
+    if (!spot) {
+      throw new Error("Spot not found after creation.");
+    }
+    await queueNewSpot(ctx, spot);
     return id;
   },
 });
@@ -269,7 +313,7 @@ export const update = mutation({
   args: { id: v.id("spots"), ...spotFields.fields },
   handler: async (ctx, args) => {
     const { id, ...fields } = args;
-    const { spot: existing, identity } = await requireOwnedSpot(ctx, id);
+    const { spot: existing, identity } = await requireOwnedSpot(ctx, id, true);
     validateSpotFields(fields);
     await assertPhotosUnclaimed(ctx, fields.photoIds, id);
     const before = new Set(existing.photoIds);
@@ -290,6 +334,11 @@ export const update = mutation({
       createdBy: existing.createdBy,
       createdByName: existing.createdByName,
     });
+    const updated = await ctx.db.get("spots", id);
+    if (!updated) {
+      throw new Error("Spot not found after update.");
+    }
+    await queueEditedSpot(ctx, updated);
     return null;
   },
 });
@@ -299,10 +348,8 @@ export const remove = mutation({
   handler: async (ctx, args) => {
     const { spot } = await requireOwnedSpot(ctx, args.id);
     await releasePhotos(ctx, spot.photoIds);
-    // Hide the spot immediately. Its favorite count is unbounded, so a queued
-    // worker removes those rows in safe transactions before deleting the spot.
-    await ctx.db.patch("spots", args.id, { deletionRequested: true, photoIds: [] });
-    await ctx.scheduler.runAfter(0, internal.spots.removeFavoriteBatch, { spotId: args.id });
+    await clearSpotModeration(ctx, args.id);
+    await scheduleSpotDeletion(ctx, args.id);
     return null;
   },
 });
@@ -342,7 +389,7 @@ export const removeFavoriteBatch = internalMutation({
 export const recordUpload = internalMutation({
   args: { storageId: v.id("_storage") },
   handler: async (ctx, args) => {
-    const identity = await requireIdentity(ctx);
+    const identity = await requireCanContribute(ctx);
     await ctx.db.insert("uploads", {
       storageId: args.storageId,
       uploadedBy: identity.tokenIdentifier,

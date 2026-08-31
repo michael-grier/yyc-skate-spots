@@ -1,10 +1,126 @@
-import { internalMutation } from "./_generated/server";
+import type { Doc } from "./_generated/dataModel";
+import { env, internalMutation, mutation, type MutationCtx } from "./_generated/server";
+import { requireIdentity } from "./auth";
+import { MODERATION_FIXTURE_OWNER, SEED_OWNER } from "./constants";
+
+const MODERATION_FIXTURE_REPORTER = "seed:moderation-reporter";
+const BANNED_USER_FIXTURE_ADMIN = "seed:banned-user-scenario";
+const BANNED_USER_FIXTURE_NAME = "Banned Workflow Test User";
+const BANNED_USER_FIXTURE_ACTIVE_SPOT = "Banned User Test Spot";
+const BANNED_USER_FIXTURE_NOTES =
+  "Development fixture for testing the signed-in experience after a contribution ban.";
+const BANNED_USER_FIXTURE_REMOVALS = [
+  "Removed Test Spot 1",
+  "Removed Test Spot 2",
+  "Removed Test Spot 3",
+] as const;
+const MAX_MODERATION_FIXTURE_ROWS = 20;
+
+function requireTestFixturesEnabled() {
+  if (env.TEST_FIXTURES_ENABLED !== "true") {
+    throw new Error(
+      "Test fixtures are disabled. Set TEST_FIXTURES_ENABLED=true on the development deployment.",
+    );
+  }
+}
+
+/** Deletes one fixture spot and its bounded child rows. */
+async function deleteFixtureSpot(ctx: MutationCtx, spot: Doc<"spots">) {
+  let deletedRecords = 0;
+  const [reports, moderationRows, favorites] = await Promise.all([
+    ctx.db
+      .query("spotReports")
+      .withIndex("by_spotId", (q) => q.eq("spotId", spot._id))
+      .take(MAX_MODERATION_FIXTURE_ROWS),
+    ctx.db
+      .query("spotModeration")
+      .withIndex("by_spotId", (q) => q.eq("spotId", spot._id))
+      .take(MAX_MODERATION_FIXTURE_ROWS),
+    ctx.db
+      .query("favorites")
+      .withIndex("by_spotId_and_userId", (q) => q.eq("spotId", spot._id))
+      .take(MAX_MODERATION_FIXTURE_ROWS),
+  ]);
+  for (const row of [...reports, ...moderationRows, ...favorites]) {
+    await ctx.db.delete(row._id);
+    deletedRecords += 1;
+  }
+  await ctx.db.delete("spots", spot._id);
+  return deletedRecords + 1;
+}
+
+/** Removes every record owned by the repeatable moderation workflow fixture. */
+async function clearModerationScenarioData(ctx: MutationCtx) {
+  let deletedRecords = 0;
+  const spots = await ctx.db
+    .query("spots")
+    .withIndex("by_createdBy", (q) => q.eq("createdBy", MODERATION_FIXTURE_OWNER))
+    .take(MAX_MODERATION_FIXTURE_ROWS);
+
+  for (const spot of spots) {
+    deletedRecords += await deleteFixtureSpot(ctx, spot);
+  }
+
+  const removals = await ctx.db
+    .query("spotRemovals")
+    .withIndex("by_createdBy_and_spotCreationTime", (q) =>
+      q.eq("createdBy", MODERATION_FIXTURE_OWNER),
+    )
+    .take(MAX_MODERATION_FIXTURE_ROWS);
+  for (const removal of removals) {
+    await ctx.db.delete("spotRemovals", removal._id);
+    deletedRecords += 1;
+  }
+
+  const contributor = await ctx.db
+    .query("userModeration")
+    .withIndex("by_userIdentifier", (q) => q.eq("userIdentifier", MODERATION_FIXTURE_OWNER))
+    .unique();
+  if (contributor) {
+    await ctx.db.delete("userModeration", contributor._id);
+    deletedRecords += 1;
+  }
+  return deletedRecords;
+}
+
+/** Removes only the rows created for one real banned-user test identity. */
+async function clearBannedUserScenarioData(ctx: MutationCtx, userIdentifier: string) {
+  let deletedRecords = 0;
+  const spots = await ctx.db
+    .query("spots")
+    .withIndex("by_createdBy", (q) => q.eq("createdBy", userIdentifier))
+    .take(MAX_MODERATION_FIXTURE_ROWS);
+  for (const spot of spots) {
+    if (spot.name === BANNED_USER_FIXTURE_ACTIVE_SPOT && spot.notes === BANNED_USER_FIXTURE_NOTES) {
+      deletedRecords += await deleteFixtureSpot(ctx, spot);
+    }
+  }
+
+  const removals = await ctx.db
+    .query("spotRemovals")
+    .withIndex("by_createdBy_and_spotCreationTime", (q) => q.eq("createdBy", userIdentifier))
+    .take(MAX_MODERATION_FIXTURE_ROWS);
+  for (const removal of removals) {
+    if (removal.removedBy === BANNED_USER_FIXTURE_ADMIN) {
+      await ctx.db.delete("spotRemovals", removal._id);
+      deletedRecords += 1;
+    }
+  }
+
+  const contributor = await ctx.db
+    .query("userModeration")
+    .withIndex("by_userIdentifier", (q) => q.eq("userIdentifier", userIdentifier))
+    .unique();
+  if (contributor?.name === BANNED_USER_FIXTURE_NAME) {
+    await ctx.db.delete("userModeration", contributor._id);
+    deletedRecords += 1;
+  }
+  return deletedRecords;
+}
 
 // Development fixture spots around Calgary, from the maintainer's own list.
 // createdBy is a sentinel no Clerk tokenIdentifier can equal, so seeded
 // spots are browsable but not editable through the app.
-const SEED_OWNER = "seed";
-
 const SEED_SPOTS = [
   {
     name: "Harmony Park",
@@ -101,5 +217,158 @@ export const run = internalMutation({
       });
     }
     return `Seeded ${SEED_SPOTS.length} spots.`;
+  },
+});
+
+/** Resets and creates one reported spot for manual admin workflow testing. */
+export const createModerationScenario = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    requireTestFixturesEnabled();
+    await clearModerationScenarioData(ctx);
+
+    const spotId = await ctx.db.insert("spots", {
+      name: "Reported Test Spot",
+      types: ["ledge"],
+      bustFactor: "low",
+      surface: "smooth",
+      notes: "Development fixture for testing the admin review and removal workflow.",
+      latitude: 51.045,
+      longitude: -114.0572,
+      photoIds: [],
+      createdBy: MODERATION_FIXTURE_OWNER,
+      createdByName: "Workflow Test User",
+    });
+    const spot = await ctx.db.get("spots", spotId);
+    if (!spot) {
+      throw new Error("Failed to create the moderation fixture spot.");
+    }
+
+    const submittedAt = Date.now();
+    await ctx.db.insert("spotModeration", {
+      spotId,
+      spotCreationTime: spot._creationTime,
+      needsReview: true,
+      attentionReason: "reported",
+      lastSubmittedAt: submittedAt,
+      openReportCount: 1,
+    });
+    await ctx.db.insert("spotReports", {
+      spotId,
+      reportedBy: MODERATION_FIXTURE_REPORTER,
+      reason: "not_a_spot",
+      details: "Test report: this location is not a real skate spot.",
+    });
+    await ctx.db.insert("userModeration", {
+      userIdentifier: MODERATION_FIXTURE_OWNER,
+      name: "Workflow Test User",
+      confirmedRemovalCount: 2,
+      isBanned: false,
+    });
+
+    return { spotId, message: "Created Reported Test Spot with one open report." };
+  },
+});
+
+/** Clears the moderation workflow fixture after either review outcome. */
+export const clearModerationScenario = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    requireTestFixturesEnabled();
+    const deletedRecords = await clearModerationScenarioData(ctx);
+    return { deletedRecords, message: "Cleared the moderation workflow fixture." };
+  },
+});
+
+/** Authenticated dev fixture; public so the CLI can supply a real test identity. */
+export const createBannedUserScenario = mutation({
+  args: {},
+  handler: async (ctx) => {
+    requireTestFixturesEnabled();
+    const identity = await requireIdentity(ctx);
+    if (identity.role === "admin") {
+      throw new Error("Use a non-admin Clerk test user for the banned-user fixture.");
+    }
+
+    const existingContributor = await ctx.db
+      .query("userModeration")
+      .withIndex("by_userIdentifier", (q) => q.eq("userIdentifier", identity.tokenIdentifier))
+      .unique();
+    if (existingContributor && existingContributor.name !== BANNED_USER_FIXTURE_NAME) {
+      throw new Error("This user already has a non-fixture moderation record.");
+    }
+    await clearBannedUserScenarioData(ctx, identity.tokenIdentifier);
+
+    const removedSpotIds = [];
+    for (const [index, name] of BANNED_USER_FIXTURE_REMOVALS.entries()) {
+      const spotId = await ctx.db.insert("spots", {
+        name,
+        types: ["ledge"],
+        bustFactor: "low",
+        surface: "smooth",
+        notes: BANNED_USER_FIXTURE_NOTES,
+        latitude: 51.045 + index * 0.0001,
+        longitude: -114.0572,
+        photoIds: [],
+        createdBy: identity.tokenIdentifier,
+        createdByName: BANNED_USER_FIXTURE_NAME,
+      });
+      const spot = await ctx.db.get("spots", spotId);
+      if (!spot) {
+        throw new Error("Failed to create a banned-user fixture removal.");
+      }
+      await ctx.db.insert("spotRemovals", {
+        spotId,
+        spotCreationTime: spot._creationTime,
+        name,
+        createdBy: identity.tokenIdentifier,
+        createdByName: BANNED_USER_FIXTURE_NAME,
+        reason: "spam_or_abuse",
+        removedAt: Date.now(),
+        removedBy: BANNED_USER_FIXTURE_ADMIN,
+        reportCount: 1,
+        strikeNumber: index + 1,
+      });
+      await ctx.db.delete("spots", spotId);
+      removedSpotIds.push(spotId);
+    }
+
+    const activeSpotId = await ctx.db.insert("spots", {
+      name: BANNED_USER_FIXTURE_ACTIVE_SPOT,
+      types: ["ledge"],
+      bustFactor: "low",
+      surface: "smooth",
+      notes: BANNED_USER_FIXTURE_NOTES,
+      latitude: 51.0453,
+      longitude: -114.0572,
+      photoIds: [],
+      createdBy: identity.tokenIdentifier,
+      createdByName: BANNED_USER_FIXTURE_NAME,
+    });
+    await ctx.db.insert("userModeration", {
+      userIdentifier: identity.tokenIdentifier,
+      name: BANNED_USER_FIXTURE_NAME,
+      confirmedRemovalCount: 3,
+      isBanned: true,
+      bannedAt: Date.now(),
+      bannedBy: BANNED_USER_FIXTURE_ADMIN,
+    });
+
+    return {
+      activeSpotId,
+      removedSpotIds,
+      message: "Created a banned-user scenario with three removal notices and one active spot.",
+    };
+  },
+});
+
+/** Clears the banned-user rows belonging to the authenticated test identity. */
+export const clearBannedUserScenario = mutation({
+  args: {},
+  handler: async (ctx) => {
+    requireTestFixturesEnabled();
+    const identity = await requireIdentity(ctx);
+    const deletedRecords = await clearBannedUserScenarioData(ctx, identity.tokenIdentifier);
+    return { deletedRecords, message: "Cleared the banned-user workflow fixture." };
   },
 });
