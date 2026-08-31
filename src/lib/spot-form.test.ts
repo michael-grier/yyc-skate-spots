@@ -44,7 +44,7 @@ describe("validateSpotForm", () => {
         name: "Give the spot a name.",
         types: "Pick at least one type.",
         bustFactor: "Pick a bust factor.",
-        location: "Drop the pin on the map.",
+        location: "Set the spot location.",
       });
     }
   });

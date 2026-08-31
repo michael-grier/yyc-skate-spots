@@ -280,9 +280,6 @@ export function SpotForm({ title, initialValues, onCancel, onSave }: SpotFormPro
                 setValues((current) => ({ ...current, latitude, longitude }))
               }
             />
-            <Text className="mt-1.5 px-1 font-sans text-[12px] text-mute">
-              Drag the map until the pin sits on the spot.
-            </Text>
           </Section>
 
           <Section label="NOTES" error={errors.notes}>
