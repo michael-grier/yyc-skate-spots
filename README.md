@@ -135,6 +135,29 @@ Open the installed dev build on your phone (same Wi-Fi) and it connects to the d
 anything in `.env` is missing the app shows a red "Environment not configured" screen listing
 exactly what to fix.
 
+### Moderation workflow fixture
+
+Enable test fixtures on the development Convex deployment, then create a reported spot:
+
+```sh
+bun x convex env set TEST_FIXTURES_ENABLED true
+bun x convex run seed:createModerationScenario
+```
+
+In the app, open **Profile → Review spots → Reported**, then open **Reported Test Spot**. Mark it
+as meeting the standards, or remove it. The fixture contributor starts with two confirmed
+removals, so removing the spot also exposes the third-strike ban flow.
+
+The create command resets an earlier copy. Clear the scenario after testing, then disable test
+fixtures:
+
+```sh
+bun x convex run seed:clearModerationScenario
+bun x convex env remove TEST_FIXTURES_ENABLED
+```
+
+Keep `TEST_FIXTURES_ENABLED` unset on production deployments.
+
 ## Scripts
 
 | Command             | What it does                              |

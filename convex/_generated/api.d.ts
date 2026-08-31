@@ -8,9 +8,12 @@
  * @module
  */
 
+import type * as auth from "../auth.js";
+import type * as constants from "../constants.js";
 import type * as favorites from "../favorites.js";
 import type * as http from "../http.js";
 import type * as moderation from "../moderation.js";
+import type * as moderationModel from "../moderationModel.js";
 import type * as reports from "../reports.js";
 import type * as seed from "../seed.js";
 import type * as spots from "../spots.js";
@@ -22,9 +25,12 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  auth: typeof auth;
+  constants: typeof constants;
   favorites: typeof favorites;
   http: typeof http;
   moderation: typeof moderation;
+  moderationModel: typeof moderationModel;
   reports: typeof reports;
   seed: typeof seed;
   spots: typeof spots;
