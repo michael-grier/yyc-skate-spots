@@ -47,7 +47,7 @@ function git(cwd: string, ...args: string[]): string {
 }
 
 /** Creates a primary checkout, one linked worktree, and a Bun command recorder. */
-function createFixture(): Fixture {
+function createFixture({ separateGitDir = false }: { separateGitDir?: boolean } = {}): Fixture {
   const main = path.join(testRoot, "main");
   const worktree = path.join(testRoot, "worktree");
   const bin = path.join(testRoot, "bin");
@@ -55,7 +55,18 @@ function createFixture(): Fixture {
 
   mkdirSync(main);
   mkdirSync(bin);
-  git(main, "init", "-b", "main");
+  if (separateGitDir) {
+    git(
+      testRoot,
+      "init",
+      `--separate-git-dir=${path.join(testRoot, "git-data")}`,
+      "-b",
+      "main",
+      main,
+    );
+  } else {
+    git(main, "init", "-b", "main");
+  }
   writeFileSync(path.join(main, ".gitignore"), ".env\n.env*.local\nnode_modules/\n");
   writeFileSync(path.join(main, ".env.example"), "GOOGLE_MAPS_API_KEY_ANDROID=\n");
   writeFileSync(path.join(main, "package.json"), '{"private":true}\n');
@@ -145,6 +156,22 @@ describe("setup-worktree", () => {
     expect(readFileSync(fixture.bunCalls, "utf8")).toBe(
       "install --frozen-lockfile\ninstall --frozen-lockfile\n",
     );
+  });
+
+  test("accepts an explicit primary checkout when Git stores its metadata separately", () => {
+    const fixture = createFixture({ separateGitDir: true });
+    const automatic = runSetup(fixture);
+
+    expect(automatic.status).toBe(1);
+    expect(automatic.stderr).toContain("set T3CODE_PROJECT_ROOT to its path");
+
+    const result = runSetup(fixture, fixture.worktree, {
+      T3CODE_PROJECT_ROOT: fixture.main,
+    });
+
+    expect(result.status, result.stderr).toBe(0);
+    expect(readlinkSync(path.join(fixture.worktree, ".env"))).toBe(path.join(fixture.main, ".env"));
+    expect(readFileSync(fixture.bunCalls, "utf8")).toBe("install --frozen-lockfile\n");
   });
 
   test("does nothing in the primary checkout", () => {

@@ -24,6 +24,20 @@ git_common_dir() {
   (cd "$common_dir" && pwd -P)
 }
 
+# Git lists the primary checkout first; -z keeps unusual path characters intact.
+primary_worktree_root() {
+  local worktree_record
+  IFS= read -r -d '' worktree_record < <(git -C "$1" worktree list --porcelain -z 2>/dev/null) ||
+    return 1
+
+  case "$worktree_record" in
+    "worktree "*)
+      git_root "${worktree_record#worktree }"
+      ;;
+    *) return 1 ;;
+  esac
+}
+
 worktree_root=$(git_root ".") || fail "run this command inside a Git checkout."
 worktree_common_dir=$(git_common_dir "$worktree_root") || fail "could not resolve this repository."
 
@@ -39,8 +53,8 @@ if [ -n "${T3CODE_PROJECT_ROOT:-}" ]; then
   main_root=$(git_root "$T3CODE_PROJECT_ROOT") ||
     fail "T3CODE_PROJECT_ROOT is not a Git checkout: $T3CODE_PROJECT_ROOT"
 else
-  main_root=$(git_root "$(dirname "$worktree_common_dir")") ||
-    fail "could not derive the primary checkout from Git's common directory."
+  main_root=$(primary_worktree_root "$worktree_root") ||
+    fail "could not resolve the primary checkout; set T3CODE_PROJECT_ROOT to its path."
 fi
 
 main_common_dir=$(git_common_dir "$main_root") || fail "could not resolve the primary repository."

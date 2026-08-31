@@ -179,10 +179,18 @@ Keep `TEST_FIXTURES_ENABLED` unset on production deployments.
 ## Worktree development
 
 T3 Code runs `bun run setup:worktree` automatically when it creates a worktree. For a worktree
-created with Git directly, run it once yourself:
+created with Git directly, run it once yourself. Bash must be available on `PATH`; macOS and most
+Linux distributions include it, while Windows users can use Git Bash or WSL.
 
 ```sh
 bun run setup:worktree
+```
+
+Git does not record the original checkout path when a repository uses `--separate-git-dir`.
+Provide it explicitly when running setup outside T3 Code:
+
+```sh
+T3CODE_PROJECT_ROOT=/path/to/primary-checkout bun run setup:worktree
 ```
 
 The command links the primary checkout's `.env` and `.env.local` into the worktree, validates the
