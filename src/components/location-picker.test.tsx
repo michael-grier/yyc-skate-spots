@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from "@testing-library/react-native";
 import { LocationPicker } from "./location-picker";
 
 const mockAnimateToRegion = jest.fn();
+let mockCoords: { latitude: number; longitude: number } | null = null;
 
 jest.mock("react-native-maps", () => {
   const React = jest.requireActual<typeof import("react")>("react");
@@ -48,11 +49,12 @@ jest.mock("react-native-maps", () => {
 });
 
 jest.mock("@/lib/use-user-location", () => ({
-  useUserLocation: () => ({ coords: null, granted: false, locate: jest.fn() }),
+  useUserLocation: () => ({ coords: mockCoords, granted: false, locate: jest.fn() }),
 }));
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockCoords = null;
 });
 
 describe("LocationPicker", () => {
@@ -113,5 +115,35 @@ describe("LocationPicker", () => {
     await fireEvent.press(screen.getByText("How to copy from Google or Apple Maps"));
     expect(screen.getByText("Google Maps: ")).toBeOnTheScreen();
     expect(screen.getByText("Apple Maps: ")).toBeOnTheScreen();
+  });
+
+  test("shows a GPS location that arrives while coordinate entry is open", async () => {
+    const onChange = jest.fn();
+    const view = await render(<LocationPicker value={null} onChange={onChange} />);
+
+    await fireEvent.press(screen.getByText("Or paste coordinates instead"));
+    mockCoords = { latitude: 51.05, longitude: -114.08 };
+    await view.rerender(<LocationPicker value={null} onChange={onChange} />);
+    await view.rerender(<LocationPicker value={mockCoords} onChange={onChange} />);
+
+    expect(onChange).toHaveBeenCalledWith(mockCoords);
+    expect(screen.getByLabelText("Latitude and longitude")).toHaveProp(
+      "value",
+      "51.050000, -114.080000",
+    );
+  });
+
+  test("keeps a coordinate draft when the GPS location arrives", async () => {
+    const onChange = jest.fn();
+    const view = await render(<LocationPicker value={null} onChange={onChange} />);
+
+    await fireEvent.press(screen.getByText("Or paste coordinates instead"));
+    await fireEvent.changeText(screen.getByLabelText("Latitude and longitude"), "51.06, ");
+    mockCoords = { latitude: 51.05, longitude: -114.08 };
+    await view.rerender(<LocationPicker value={null} onChange={onChange} />);
+    await view.rerender(<LocationPicker value={mockCoords} onChange={onChange} />);
+
+    expect(onChange).toHaveBeenCalledWith(mockCoords);
+    expect(screen.getByLabelText("Latitude and longitude")).toHaveProp("value", "51.06, ");
   });
 });

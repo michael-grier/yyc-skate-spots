@@ -25,6 +25,7 @@ export function LocationPicker({ value, onChange }: LocationPickerProps) {
   const mapRef = useRef<MapView>(null);
   const { coords } = useUserLocation();
   const centredOnUser = useRef(false);
+  const coordinateDraftDirty = useRef(false);
   const formattedValue = value ? formatCoordinatePair(value) : "";
   const [coordinatesOpen, setCoordinatesOpen] = useState(false);
   const [coordinateText, setCoordinateText] = useState(formattedValue);
@@ -42,12 +43,18 @@ export function LocationPicker({ value, onChange }: LocationPickerProps) {
       { ...coords, latitudeDelta: PICK_DELTA, longitudeDelta: PICK_DELTA },
       300,
     );
+    // Reflect the late GPS result unless the user started entering a different location.
+    if (!coordinateDraftDirty.current) {
+      setCoordinateText(formatCoordinatePair(coords));
+      setCoordinateError(null);
+    }
     onChange(coords);
   }, [coords, value, onChange]);
 
   function toggleCoordinates() {
     if (!coordinatesOpen) {
       setCoordinateText(formattedValue);
+      coordinateDraftDirty.current = false;
     }
     setCoordinateError(null);
     setCoordinatesOpen((open) => !open);
@@ -56,6 +63,7 @@ export function LocationPicker({ value, onChange }: LocationPickerProps) {
   function setLocationFromMap(region: Region) {
     const next = { latitude: region.latitude, longitude: region.longitude };
     setCoordinateText(formatCoordinatePair(next));
+    coordinateDraftDirty.current = false;
     setCoordinateError(null);
     onChange(next);
   }
@@ -68,6 +76,7 @@ export function LocationPicker({ value, onChange }: LocationPickerProps) {
     }
 
     setCoordinateText(formatCoordinatePair(next));
+    coordinateDraftDirty.current = false;
     setCoordinateError(null);
     onChange(next);
     mapRef.current?.animateToRegion(
@@ -137,6 +146,7 @@ export function LocationPicker({ value, onChange }: LocationPickerProps) {
               value={coordinateText}
               onChangeText={(text) => {
                 setCoordinateText(text);
+                coordinateDraftDirty.current = true;
                 setCoordinateError(null);
               }}
               placeholder="51.0447, -114.0719"
