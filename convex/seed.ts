@@ -119,8 +119,8 @@ async function clearBannedUserScenarioData(ctx: MutationCtx, userIdentifier: str
 }
 
 // Development fixture spots around Calgary, from the maintainer's own list.
-// createdBy is a sentinel no Clerk tokenIdentifier can equal, so seeded
-// spots are browsable but not editable through the app.
+// Older deployments used this sentinel, so claimSeededSpots can transfer
+// those rows to the maintainer without touching user-created spots.
 const SEED_SPOTS = [
   {
     name: "Harmony Park",
@@ -199,10 +199,51 @@ const SEED_SPOTS = [
   },
 ] as const;
 
-/** Idempotent dev fixture loader: `npx convex run seed:run`. */
-export const run = internalMutation({
+function seedSpotFingerprint(spot: {
+  name: string;
+  types: readonly string[];
+  bustFactor: string;
+  surface?: string;
+  notes?: string;
+  latitude: number;
+  longitude: number;
+}) {
+  return JSON.stringify([
+    spot.name,
+    spot.types,
+    spot.bustFactor,
+    spot.surface ?? null,
+    spot.notes ?? null,
+    spot.latitude,
+    spot.longitude,
+  ]);
+}
+
+const SEED_SPOT_FINGERPRINTS = new Set(SEED_SPOTS.map(seedSpotFingerprint));
+
+/** Requires an explicit CLI identity so seeded spots always have a real owner. */
+async function requireSeedOwner(ctx: MutationCtx) {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) {
+    throw new Error("Run this command with --identity so the seeded spots have an owner.");
+  }
+  if (
+    !env.SEED_OWNER_TOKEN_IDENTIFIER ||
+    identity.tokenIdentifier !== env.SEED_OWNER_TOKEN_IDENTIFIER
+  ) {
+    throw new Error("Only the configured seed owner can run this command.");
+  }
+  if (!identity.name?.trim()) {
+    throw new Error('The --identity value must include a non-empty "name".');
+  }
+  return { tokenIdentifier: identity.tokenIdentifier, name: identity.name.trim() };
+}
+
+/** Idempotent fixture loader for an explicitly selected Convex deployment. */
+export const run = mutation({
   args: {},
   handler: async (ctx) => {
+    const owner = await requireSeedOwner(ctx);
     const existing = await ctx.db.query("spots").take(1);
     if (existing.length > 0) {
       return "Spots table is not empty; seed skipped.";
@@ -212,8 +253,8 @@ export const run = internalMutation({
         ...spot,
         types: [...spot.types],
         photoIds: [],
-        createdBy: SEED_OWNER,
-        createdByName: "YYC Skate Spots",
+        createdBy: owner.tokenIdentifier,
+        createdByName: owner.name,
       });
     }
     return `Seeded ${SEED_SPOTS.length} spots.`;
@@ -370,5 +411,38 @@ export const clearBannedUserScenario = mutation({
     const identity = await requireIdentity(ctx);
     const deletedRecords = await clearBannedUserScenarioData(ctx, identity.tokenIdentifier);
     return { deletedRecords, message: "Cleared the banned-user workflow fixture." };
+  },
+});
+
+/** Transfers legacy seed-owned spots to the CLI identity running this migration. */
+export const claimSeededSpots = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const owner = await requireSeedOwner(ctx);
+    const unclaimedFingerprints = new Set(SEED_SPOT_FINGERPRINTS);
+    let claimedCount = 0;
+    const legacySpots = ctx.db
+      .query("spots")
+      .withIndex("by_createdBy", (q) => q.eq("createdBy", SEED_OWNER));
+
+    for await (const spot of legacySpots) {
+      const fingerprint = seedSpotFingerprint(spot);
+      // Claim at most one pristine row for each known fixture. This leaves
+      // unrelated or duplicated rows using the legacy sentinel untouched.
+      if (
+        spot.photoIds.length > 0 ||
+        spot.deletionRequested ||
+        !unclaimedFingerprints.delete(fingerprint)
+      ) {
+        continue;
+      }
+      await ctx.db.patch("spots", spot._id, {
+        createdBy: owner.tokenIdentifier,
+        createdByName: owner.name,
+      });
+      claimedCount += 1;
+    }
+
+    return { claimedCount, ownerName: owner.name };
   },
 });
