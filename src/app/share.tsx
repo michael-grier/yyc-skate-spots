@@ -4,7 +4,7 @@ import { Text, View } from "react-native";
 /** Converts the public /share?id= link into the existing spot detail route. */
 export default function SharedSpotRoute() {
   const { id } = useLocalSearchParams<{ id?: string | string[] }>();
-  const spotId = typeof id === "string" && id.length > 0 ? id : null;
+  const spotId = typeof id === "string" && id.trim().length > 0 ? id : null;
 
   if (spotId) {
     return <Redirect href={{ pathname: "/spot/[id]", params: { id: spotId } }} />;

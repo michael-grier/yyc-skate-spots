@@ -24,7 +24,7 @@ test("redirects a shared id to the public spot detail route", async () => {
   });
 });
 
-test.each([{ id: undefined }, { id: "" }, { id: ["spot-1", "spot-2"] }])(
+test.each([{ id: undefined }, { id: "" }, { id: " " }, { id: ["spot-1", "spot-2"] }])(
   "rejects an incomplete share link",
   async (params) => {
     mockParams = params;
