@@ -101,7 +101,10 @@ describe("SpotForm", () => {
     );
 
     await fireEvent.press(screen.getByRole("button", { name: "Add photos" }));
-    expect(screen.getByLabelText("Selected photo 1").props.style).toMatchObject({
+
+    const thumbnail = screen.getByLabelText("Selected photo 1");
+    expect(thumbnail.props.accessible).toBe(true);
+    expect(thumbnail.props.style).toMatchObject({
       width: 80,
       height: 80,
       borderRadius: 12,

@@ -265,6 +265,7 @@ export function SpotForm({ title, initialValues, onCancel, onSave }: SpotFormPro
                   <Image
                     source={{ uri: photo.uri }}
                     contentFit="cover"
+                    accessible
                     accessibilityLabel={`Selected photo ${index + 1}`}
                     style={{ width: 80, height: 80, borderRadius: 12 }}
                   />
