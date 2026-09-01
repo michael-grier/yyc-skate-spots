@@ -94,8 +94,8 @@ const schema = z.object({
     .string()
     .trim()
     .max(MAX_NOTES_LENGTH, `Keep notes under ${MAX_NOTES_LENGTH} characters.`),
-  latitude: z.number({ error: "Drop the pin on the map." }).min(-90).max(90),
-  longitude: z.number({ error: "Drop the pin on the map." }).min(-180).max(180),
+  latitude: z.number({ error: "Set the spot location." }).min(-90).max(90),
+  longitude: z.number({ error: "Set the spot location." }).min(-180).max(180),
 });
 
 export type SpotFormErrors = Partial<

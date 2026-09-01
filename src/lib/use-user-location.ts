@@ -12,9 +12,9 @@ export function useUserLocation() {
   const [coords, setCoords] = useState<LatLng | null>(null);
   const [granted, setGranted] = useState(false);
 
-  const readPosition = useCallback(async () => {
+  const readPosition = useCallback(async (accuracy = Location.Accuracy.Balanced) => {
     const position = await Location.getCurrentPositionAsync({
-      accuracy: Location.Accuracy.Balanced,
+      accuracy,
     });
     const next = { latitude: position.coords.latitude, longitude: position.coords.longitude };
     setCoords(next);
@@ -45,7 +45,9 @@ export function useUserLocation() {
     if (!permission.granted) {
       return null;
     }
-    return await readPosition().catch(() => null);
+    // A deliberate locate action needs tighter accuracy than the silent read
+    // used for distance labels and the browsing map's blue dot.
+    return await readPosition(Location.Accuracy.High).catch(() => null);
   }, [readPosition]);
 
   return { coords, granted, locate };

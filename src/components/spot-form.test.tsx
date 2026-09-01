@@ -21,21 +21,23 @@ jest.mock("expo-image", () => {
   const { Image } = jest.requireActual<typeof import("react-native")>("react-native");
   return { Image };
 });
-// The picker needs react-native-maps; stand in with a stub that adopts a
-// position once, as the real one does with the user's location.
+// The picker needs react-native-maps; this stub preserves the new explicit
+// selection boundary without loading the native map in a form test.
 jest.mock("@/components/location-picker", () => {
-  const React = jest.requireActual<typeof import("react")>("react");
+  const { Pressable, Text } = jest.requireActual<typeof import("react-native")>("react-native");
   return {
-    LocationPicker: ({ onChange }: { onChange: (v: { latitude: number; longitude: number }) => void }) => {
-      const fired = React.useRef(false);
-      React.useEffect(() => {
-        if (!fired.current) {
-          fired.current = true;
-          onChange({ latitude: 51.05, longitude: -114.07 });
-        }
-      });
-      return null;
-    },
+    LocationPicker: ({
+      onChange,
+    }: {
+      onChange: (v: { latitude: number; longitude: number }) => void;
+    }) => (
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => onChange({ latitude: 51.05, longitude: -114.07 })}
+      >
+        <Text>Set test location</Text>
+      </Pressable>
+    ),
   };
 });
 
@@ -55,25 +57,37 @@ describe("SpotForm", () => {
   test("an empty save shows field errors and never calls onSave", async () => {
     const onSave = jest.fn();
     await render(
-      <SpotForm title="New spot" initialValues={EMPTY_SPOT_FORM} onCancel={jest.fn()} onSave={onSave} />,
+      <SpotForm
+        title="New spot"
+        initialValues={EMPTY_SPOT_FORM}
+        onCancel={jest.fn()}
+        onSave={onSave}
+      />,
     );
 
     await fireEvent.press(screen.getByText("Save"));
     expect(await screen.findByText("Give the spot a name.")).toBeOnTheScreen();
     expect(screen.getByText("Pick at least one type.")).toBeOnTheScreen();
     expect(screen.getByText("Pick a bust factor.")).toBeOnTheScreen();
+    expect(screen.getByText("Set the spot location.")).toBeOnTheScreen();
     expect(onSave).not.toHaveBeenCalled();
   });
 
-  test("a completed form saves with the picked options and adopted location", async () => {
+  test("a completed form saves with the picked options and selected location", async () => {
     const onSave = jest.fn().mockResolvedValue(undefined);
     await render(
-      <SpotForm title="New spot" initialValues={EMPTY_SPOT_FORM} onCancel={jest.fn()} onSave={onSave} />,
+      <SpotForm
+        title="New spot"
+        initialValues={EMPTY_SPOT_FORM}
+        onCancel={jest.fn()}
+        onSave={onSave}
+      />,
     );
 
     await fireEvent.changeText(screen.getByLabelText("Spot name"), "Test Ledge");
     await fireEvent.press(screen.getByText("Ledge"));
     await fireEvent.press(screen.getByText("Low"));
+    await fireEvent.press(screen.getByText("Set test location"));
     await fireEvent.press(screen.getByText("Save"));
 
     expect(onSave).toHaveBeenCalledWith(
@@ -114,9 +128,7 @@ describe("SpotForm", () => {
   });
 
   test("a failed upload discards the photos uploaded before it and keeps the spot unsaved", async () => {
-    mockUploadPhoto
-      .mockResolvedValueOnce("storage-1")
-      .mockRejectedValueOnce(new Error("network"));
+    mockUploadPhoto.mockResolvedValueOnce("storage-1").mockRejectedValueOnce(new Error("network"));
     const alertSpy = jest.spyOn(Alert, "alert").mockImplementation(() => {});
     const onSave = jest.fn();
 
