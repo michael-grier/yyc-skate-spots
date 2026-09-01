@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { distanceKm, formatDistance } from "./geo";
+import { distanceKm, formatCoordinatePair, formatDistance, parseCoordinatePair } from "./geo";
 
 // Two seed spots at opposite ends of the city.
 const HARMONY_PARK = { latitude: 51.049144, longitude: -114.063528 };
@@ -31,5 +31,44 @@ describe("formatDistance", () => {
     expect(formatDistance(1)).toBe("1.0 km");
     expect(formatDistance(1.25)).toBe("1.3 km");
     expect(formatDistance(12.04)).toBe("12.0 km");
+  });
+});
+
+describe("coordinate pairs", () => {
+  test("parses decimal coordinates copied from common map apps", () => {
+    expect(parseCoordinatePair("51.0447, -114.0719")).toEqual({
+      latitude: 51.0447,
+      longitude: -114.0719,
+    });
+    expect(parseCoordinatePair("51.0447° N, 114.0719° W")).toEqual({
+      latitude: 51.0447,
+      longitude: -114.0719,
+    });
+    expect(parseCoordinatePair("51.0447N, 114.0719W")).toEqual({
+      latitude: 51.0447,
+      longitude: -114.0719,
+    });
+    expect(parseCoordinatePair("[51.0447, -114.0719]")).toEqual({
+      latitude: 51.0447,
+      longitude: -114.0719,
+    });
+    expect(parseCoordinatePair("(51.0447, -114.0719)")).toEqual({
+      latitude: 51.0447,
+      longitude: -114.0719,
+    });
+  });
+
+  test("rejects malformed, contradictory, and out-of-range pairs", () => {
+    expect(parseCoordinatePair("51.0447 -114.0719")).toBeNull();
+    expect(parseCoordinatePair("[51.0447, -114.0719)")).toBeNull();
+    expect(parseCoordinatePair("-51.0447 N, -114.0719 W")).toBeNull();
+    expect(parseCoordinatePair("91, -114")).toBeNull();
+    expect(parseCoordinatePair("51, -181")).toBeNull();
+  });
+
+  test("formats coordinates consistently for display and editing", () => {
+    expect(formatCoordinatePair({ latitude: 51.0447, longitude: -114.0719 })).toBe(
+      "51.044700, -114.071900",
+    );
   });
 });

@@ -73,6 +73,43 @@ export function LocateIcon({ size = 24, color }: IconProps) {
   );
 }
 
+export function PinIcon({ size = 24, color }: IconProps) {
+  return (
+    <Svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <Path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z" />
+      <Circle cx="12" cy="10" r="2.5" />
+    </Svg>
+  );
+}
+
+export function ClipboardIcon({ size = 24, color }: IconProps) {
+  return (
+    <Svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <Path d="M9 6V5a3 3 0 0 1 6 0v1" />
+      <Path d="M8 6h8a3 3 0 0 1 3 3v9a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3V9a3 3 0 0 1 3-3Z" />
+      <Path d="M9 11h6M9 15h4" />
+    </Svg>
+  );
+}
+
 export function ChevronRightIcon({ size = 24, color }: IconProps) {
   return (
     <Svg
