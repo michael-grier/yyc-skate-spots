@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react-native";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import { Alert } from "react-native";
 
 import type { FormPhoto } from "@/lib/spot-form";
@@ -139,9 +139,12 @@ describe("SpotCreateForm", () => {
     await fireEvent.press(screen.getByText("Low"));
     await fireEvent.press(screen.getByText("Save spot"));
 
+    // The alert is the last step of the save chain, so waiting on it means the
+    // rollback before it has run. Asserting straight after the press only holds
+    // while the mocks happen to settle within microtasks.
+    await waitFor(() => expect(alertSpy).toHaveBeenCalledWith("Couldn't save the spot", "network"));
     expect(mockUploadPhoto).toHaveBeenCalledTimes(2);
     expect(mockDiscardUpload).toHaveBeenCalledWith({ storageId: "storage-1" });
     expect(onSave).not.toHaveBeenCalled();
-    expect(alertSpy).toHaveBeenCalledWith("Couldn't save the spot", "network");
   });
 });

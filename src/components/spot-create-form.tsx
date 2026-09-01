@@ -212,6 +212,9 @@ export function SpotCreateForm({ onCancel, onSave }: SpotCreateFormProps) {
                     placeholderTextColor={colors.mute}
                     multiline
                     textAlignVertical="top"
+                    // The counter below advertises this cap, so hold the input to it
+                    // instead of letting a save fail validation after the fact.
+                    maxLength={MAX_NOTES_LENGTH}
                     accessibilityLabel="Notes"
                     className="min-h-[150px] font-sans text-[15px] leading-relaxed text-ink"
                     style={{ paddingVertical: 0 }}
