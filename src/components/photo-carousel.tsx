@@ -34,7 +34,11 @@ export function PhotoCarousel({ urls, spotName, variant = "compact" }: PhotoCaro
   const { width, height } = useWindowDimensions();
   const scrollRef = useRef<ScrollView>(null);
   const [index, setIndex] = useState(0);
-  const [viewerIndex, setViewerIndex] = useState<number | null>(null);
+  // Tracked by URL rather than position: if the open photo is deleted elsewhere the
+  // viewer closes instead of silently showing its neighbour, and a gallery that empties
+  // and refills cannot reopen a viewer the user never asked for.
+  const [viewerUrl, setViewerUrl] = useState<string | null>(null);
+  const viewerIndex = viewerUrl === null ? -1 : urls.indexOf(viewerUrl);
   // Keep the gallery dominant without hiding all spot context on shorter phones. The
   // empty-state placeholder keeps the compact height so a photo-less spot stays small.
   const carouselHeight =
@@ -42,11 +46,15 @@ export function PhotoCarousel({ urls, spotName, variant = "compact" }: PhotoCaro
       ? Math.round(Math.min(height * 0.56, Math.max(width * 1.15, CAROUSEL_HEIGHT + 64)))
       : CAROUSEL_HEIGHT;
 
+  // `urls` is reactive, so a photo deleted on another device can leave the stored index
+  // past the end, which would otherwise leave no dot active.
+  const activeIndex = urls.length > 0 ? Math.min(index, urls.length - 1) : 0;
+
   // Page offsets are absolute, so without this a rotation leaves the list parked between
   // two photos, and paging inside the viewer never moves the carousel underneath it.
   useEffect(() => {
-    scrollRef.current?.scrollTo({ x: index * width, animated: false });
-  }, [index, width]);
+    scrollRef.current?.scrollTo({ x: activeIndex * width, animated: false });
+  }, [activeIndex, width]);
 
   function handleMomentumEnd(event: NativeSyntheticEvent<NativeScrollEvent>) {
     const pageWidth = event.nativeEvent.layoutMeasurement.width;
@@ -55,7 +63,7 @@ export function PhotoCarousel({ urls, spotName, variant = "compact" }: PhotoCaro
   }
 
   function handleViewerIndexChange(next: number) {
-    setViewerIndex(next);
+    setViewerUrl(urls[next] ?? null);
     setIndex(next);
   }
 
@@ -83,7 +91,7 @@ export function PhotoCarousel({ urls, spotName, variant = "compact" }: PhotoCaro
                   : undefined
               }
               disabled={variant !== "gallery"}
-              onPress={() => setViewerIndex(i)}
+              onPress={() => setViewerUrl(url)}
               style={{ width, height: carouselHeight }}
             >
               {/* In the gallery the wrapping button carries the label, so the image
@@ -128,7 +136,7 @@ export function PhotoCarousel({ urls, spotName, variant = "compact" }: PhotoCaro
               key={`${url}-${i}`}
               testID={`photo-dot-${i}`}
               className="h-1.5 w-1.5 rounded-full"
-              style={{ backgroundColor: i === index ? ACTIVE_DOT_COLOR : INACTIVE_DOT_COLOR }}
+              style={{ backgroundColor: i === activeIndex ? ACTIVE_DOT_COLOR : INACTIVE_DOT_COLOR }}
             />
           ))}
         </View>
@@ -154,10 +162,10 @@ export function PhotoCarousel({ urls, spotName, variant = "compact" }: PhotoCaro
         <PhotoViewer
           urls={urls}
           spotName={spotName}
-          index={viewerIndex ?? 0}
-          visible={viewerIndex !== null && urls.length > 0}
+          index={viewerIndex < 0 ? 0 : viewerIndex}
+          visible={viewerIndex >= 0}
           onIndexChange={handleViewerIndexChange}
-          onClose={() => setViewerIndex(null)}
+          onClose={() => setViewerUrl(null)}
         />
       ) : null}
     </View>

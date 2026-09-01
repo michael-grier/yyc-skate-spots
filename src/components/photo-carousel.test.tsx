@@ -89,6 +89,35 @@ describe("PhotoCarousel gallery", () => {
     });
   });
 
+  test("closes the viewer when its photo is deleted, and stays closed on a refill", async () => {
+    const gallery = (urls: string[]) => (
+      <PhotoCarousel urls={urls} spotName="Chinatown 12 Stair" variant="gallery" />
+    );
+    const { rerender } = await render(
+      gallery(["https://example.com/one.jpg", "https://example.com/two.jpg"]),
+    );
+
+    await fireEvent.press(
+      screen.getByRole("button", { name: "Open Chinatown 12 Stair, photo 2 of 2" }),
+    );
+    expect(mockPhotoViewer).toHaveBeenLastCalledWith(
+      expect.objectContaining({ visible: true }),
+    );
+
+    await rerender(gallery(["https://example.com/one.jpg"]));
+
+    expect(mockPhotoViewer).toHaveBeenLastCalledWith(
+      expect.objectContaining({ visible: false }),
+    );
+
+    // A photo added later must not reopen a viewer the user never asked for.
+    await rerender(gallery(["https://example.com/one.jpg", "https://example.com/three.jpg"]));
+
+    expect(mockPhotoViewer).toHaveBeenLastCalledWith(
+      expect.objectContaining({ visible: false }),
+    );
+  });
+
   test("keeps the compact admin carousel non-interactive", async () => {
     await render(
       <PhotoCarousel urls={["https://example.com/one.jpg"]} spotName="Chinatown 12 Stair" />,

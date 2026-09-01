@@ -124,14 +124,24 @@ export function PhotoViewer({
     translateY.value = withTiming(clamp(translateY.value, -maxY, maxY));
   }
 
-  function goToPage(next: number) {
-    if (next < 0 || next >= urls.length || next === safeIndex) return;
-    // Snap rather than animate: a page always arrives unzoomed.
+  /** Drops zoom and pan with no animation, for moments with nothing to animate from. */
+  function snapZoomReset() {
     zoomTarget.value = 1;
     scale.value = 1;
     translateX.value = 0;
     translateY.value = 0;
+  }
+
+  function goToPage(next: number) {
+    if (next < 0 || next >= urls.length || next === safeIndex) return;
+    // A page always arrives unzoomed.
+    snapZoomReset();
     onIndexChange(next);
+  }
+
+  function handleClose() {
+    snapZoomReset();
+    onClose();
   }
 
   function handlePageEnd(event: NativeSyntheticEvent<NativeScrollEvent>) {
@@ -239,7 +249,8 @@ export function PhotoViewer({
       backdropColor="#000"
       hardwareAccelerated
       navigationBarTranslucent
-      onRequestClose={onClose}
+      onRequestClose={handleClose}
+      onShow={snapZoomReset}
       presentationStyle="fullScreen"
       statusBarTranslucent
       visible={visible}
@@ -255,7 +266,7 @@ export function PhotoViewer({
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Close photo viewer"
-              onPress={onClose}
+              onPress={handleClose}
               className="h-10 w-10 items-center justify-center rounded-full bg-white/10 active:opacity-80"
             >
               <CloseIcon size={19} color={colors.ink} />
