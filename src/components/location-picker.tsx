@@ -2,6 +2,7 @@ import { StatusBar } from "expo-status-bar";
 import { useRef, useState, type ReactNode } from "react";
 import { Alert, Modal, Pressable, Text, TextInput, View } from "react-native";
 import MapView, { PROVIDER_GOOGLE, type Region } from "react-native-maps";
+import Svg, { Path } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { BoardMark } from "@/components/board-mark";
@@ -12,13 +13,22 @@ import { cn } from "@/lib/cn";
 import { CALGARY_CENTER, formatCoordinatePair, type LatLng, parseCoordinatePair } from "@/lib/geo";
 import { useUserLocation } from "@/lib/use-user-location";
 import { colors } from "@/theme/colors";
+import { darkMapStyle } from "@/theme/map-style";
 
 // Block-scale framing: tight enough to place a pin on the right ledge.
 const PICK_DELTA = 0.004;
 
+const PREVIEW_HEIGHT = 160;
+
 type LocationPickerProps = {
   value: LatLng | null;
   onChange: (value: LatLng) => void;
+  /**
+   * "expanded" shows a map preview with every method laid out, for the add
+   * wizard step that is only about location. "compact" collapses to a summary
+   * row that opens the methods on tap, for the edit form.
+   */
+  variant?: "expanded" | "compact";
 };
 
 type LocationMethodButtonProps = {
@@ -55,8 +65,58 @@ function LocationMethodButton({
   );
 }
 
+/**
+ * The map pin, dropped on the centre of whatever it overlays — the full-screen
+ * picker and the inline preview both aim at the middle of their map.
+ *
+ * It is one SVG outline rather than a disc stacked on a rotated square: stacked
+ * views cannot share an edge, so whichever paints last cuts a gap through the
+ * other's white ring. The tail meets the head at its tangent points, which is
+ * what makes the join read as a single teardrop at any size.
+ */
+function CenterPin({ size = 44 }: { size?: number }) {
+  const radius = size / 2;
+  const ring = Math.max(2, size * 0.1);
+  const tip = radius * 1.9;
+  // Where the tangent lines from the tip touch the head.
+  const tangentX = radius * Math.sqrt(1 - (radius / tip) ** 2);
+  const tangentY = radius ** 2 / tip;
+  // Half the stroke sits outside the path, so inset the head by that much.
+  const center = radius + ring / 2;
+  const width = size + ring;
+  const height = radius + tip + ring;
+  const board = size * 0.42;
+
+  return (
+    <View pointerEvents="none" className="absolute inset-0 items-center">
+      <View
+        // The stroke overhangs the tip by half its width, so drop the box by
+        // that much to land the point itself on the centre.
+        style={{ position: "absolute", bottom: "50%", marginBottom: -ring / 2, width, height }}
+      >
+        <Svg width={width} height={height}>
+          <Path
+            d={[
+              `M ${center} ${center + tip}`,
+              `L ${center - tangentX} ${center + tangentY}`,
+              `A ${radius} ${radius} 0 1 1 ${center + tangentX} ${center + tangentY}`,
+              "Z",
+            ].join(" ")}
+            fill={colors.pinSelectedInk}
+            stroke="#fff"
+            strokeWidth={ring}
+          />
+        </Svg>
+        <View style={{ position: "absolute", left: center - board / 2, top: center - board / 2 }}>
+          <BoardMark size={board} strokeWidth={2.4} color={colors.ink} />
+        </View>
+      </View>
+    </View>
+  );
+}
+
 /** Explicit GPS, coordinate, and full-screen map methods for setting one spot location. */
-export function LocationPicker({ value, onChange }: LocationPickerProps) {
+export function LocationPicker({ value, onChange, variant = "expanded" }: LocationPickerProps) {
   const insets = useSafeAreaInsets();
   const mapRef = useRef<MapView>(null);
   const { coords, locate } = useUserLocation();
@@ -69,6 +129,8 @@ export function LocationPicker({ value, onChange }: LocationPickerProps) {
   const [coordinateText, setCoordinateText] = useState(value ? formatCoordinatePair(value) : "");
   const [coordinateError, setCoordinateError] = useState<string | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
+  // The compact variant keeps the methods behind a tap; the expanded one never hides them.
+  const [methodsOpen, setMethodsOpen] = useState(variant === "expanded");
 
   function setLocation(next: LatLng) {
     setCoordinateText(formatCoordinatePair(next));
@@ -145,104 +207,179 @@ export function LocationPicker({ value, onChange }: LocationPickerProps) {
 
   const formattedValue = value ? formatCoordinatePair(value) : null;
 
+  const methods = (
+    <>
+      <Button
+        label={formattedValue ? "Move the pin on the map" : "Choose on map"}
+        variant="light"
+        icon={<MapIcon size={18} color={colors.pinSelectedInk} />}
+        onPress={openMap}
+        className="py-3.5"
+      />
+      <View className="mt-2.5 flex-row gap-2.5">
+        <LocationMethodButton
+          label={locating ? "Locating…" : "Current location"}
+          icon={<LocateIcon size={16} color={colors.silver} />}
+          onPress={() => void handleUseCurrentLocation()}
+          disabled={locating}
+        />
+        <LocationMethodButton
+          label="Paste coordinates"
+          icon={<ClipboardIcon size={16} color={colors.silver} />}
+          onPress={toggleCoordinates}
+          expanded={coordinatesOpen}
+        />
+      </View>
+
+      {coordinatesOpen ? (
+        <View className="mt-4 border-t border-white/10 pt-4">
+          <TextInput
+            value={coordinateText}
+            onChangeText={(text) => {
+              setCoordinateText(text);
+              setCoordinateError(null);
+            }}
+            placeholder="51.0447, -114.0719"
+            placeholderTextColor={colors.mute}
+            autoCapitalize="characters"
+            autoCorrect={false}
+            spellCheck={false}
+            returnKeyType="done"
+            selectTextOnFocus
+            onSubmitEditing={applyCoordinates}
+            accessibilityLabel="Latitude and longitude"
+            className={cn(
+              "rounded-xl border border-white/10 bg-base px-3.5 py-3 font-sans text-[14px] text-ink",
+              !!coordinateError && "border-bust-high/60",
+            )}
+            // A numeric keyboard omits punctuation and compass letters used by valid pairs.
+            style={{ paddingVertical: 12 }}
+          />
+          {coordinateError ? (
+            <Text
+              accessibilityRole="alert"
+              className="mt-1.5 px-1 font-sans text-[12px] text-bust-high"
+            >
+              {coordinateError}
+            </Text>
+          ) : null}
+          <Button label="Apply location" onPress={applyCoordinates} className="mt-3 py-3.5" />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ expanded: helpOpen }}
+            onPress={() => setHelpOpen((open) => !open)}
+            className="mt-3 self-start py-1 active:opacity-80"
+          >
+            <Text className="font-sans text-[11px] text-silver underline">
+              How to copy coordinates
+            </Text>
+          </Pressable>
+          {helpOpen ? (
+            <View className="mt-2 rounded-xl bg-base p-3">
+              <Text className="font-sans text-[11px] leading-4 text-mute">
+                <Text className="font-sans-semibold text-ink">Google Maps: </Text>
+                Touch and hold the spot, open its details, then copy the coordinates.
+              </Text>
+              <Text className="mt-2 font-sans text-[11px] leading-4 text-mute">
+                <Text className="font-sans-semibold text-ink">Apple Maps: </Text>
+                Drop a pin, open its details, then touch and hold the coordinates.
+              </Text>
+            </View>
+          ) : null}
+        </View>
+      ) : null}
+    </>
+  );
+
   return (
     <>
-      <Card className="p-4">
-        <View className="flex-row items-start gap-3">
-          <View className="h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10">
-            <PinIcon size={19} color={colors.silver} />
-          </View>
-          <View className="flex-1 pt-0.5">
-            <Text className="font-sans-semibold text-[14px] text-ink">
-              {formattedValue ? "Location set" : "No location set"}
-            </Text>
-            <Text className="mt-1 font-sans text-[12px] leading-[18px] text-mute">
-              {formattedValue ?? "Choose the quickest method for this spot."}
-            </Text>
-          </View>
-        </View>
-
-        <Button
-          label="Choose on map"
-          variant="light"
-          icon={<MapIcon size={18} color={colors.pinSelectedInk} />}
-          onPress={openMap}
-          className="mt-4 py-3.5"
-        />
-
-        <View className="mt-2.5 flex-row gap-2.5">
-          <LocationMethodButton
-            label={locating ? "Locating…" : "Current location"}
-            icon={<LocateIcon size={16} color={colors.silver} />}
-            onPress={() => void handleUseCurrentLocation()}
-            disabled={locating}
-          />
-          <LocationMethodButton
-            label="Paste coordinates"
-            icon={<ClipboardIcon size={16} color={colors.silver} />}
-            onPress={toggleCoordinates}
-            expanded={coordinatesOpen}
-          />
-        </View>
-
-        {coordinatesOpen ? (
-          <View className="mt-4 border-t border-white/10 pt-4">
-            <TextInput
-              value={coordinateText}
-              onChangeText={(text) => {
-                setCoordinateText(text);
-                setCoordinateError(null);
-              }}
-              placeholder="51.0447, -114.0719"
-              placeholderTextColor={colors.mute}
-              autoCapitalize="characters"
-              autoCorrect={false}
-              spellCheck={false}
-              returnKeyType="done"
-              selectTextOnFocus
-              onSubmitEditing={applyCoordinates}
-              accessibilityLabel="Latitude and longitude"
-              className={cn(
-                "rounded-xl border border-white/10 bg-base px-3.5 py-3 font-sans text-[14px] text-ink",
-                !!coordinateError && "border-bust-high/60",
-              )}
-              // A numeric keyboard omits punctuation and compass letters used by valid pairs.
-              style={{ paddingVertical: 12 }}
-            />
-            {coordinateError ? (
-              <Text
-                accessibilityRole="alert"
-                className="mt-1.5 px-1 font-sans text-[12px] text-bust-high"
-              >
-                {coordinateError}
-              </Text>
-            ) : null}
-            <Button label="Apply location" onPress={applyCoordinates} className="mt-3 py-3.5" />
-            <Pressable
-              accessibilityRole="button"
-              accessibilityState={{ expanded: helpOpen }}
-              onPress={() => setHelpOpen((open) => !open)}
-              className="mt-3 self-start py-1 active:opacity-80"
-            >
-              <Text className="font-sans text-[11px] text-silver underline">
-                How to copy coordinates
-              </Text>
-            </Pressable>
-            {helpOpen ? (
-              <View className="mt-2 rounded-xl bg-base p-3">
-                <Text className="font-sans text-[11px] leading-4 text-mute">
-                  <Text className="font-sans-semibold text-ink">Google Maps: </Text>
-                  Touch and hold the spot, open its details, then copy the coordinates.
-                </Text>
-                <Text className="mt-2 font-sans text-[11px] leading-4 text-mute">
-                  <Text className="font-sans-semibold text-ink">Apple Maps: </Text>
-                  Drop a pin, open its details, then touch and hold the coordinates.
-                </Text>
+      {variant === "expanded" ? (
+        <Card className="overflow-hidden">
+          {/* A preview answers "is the pin on the right block?" without opening the map. */}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={formattedValue ? "Change spot location" : "Set spot location"}
+            onPress={openMap}
+            className="active:opacity-90"
+          >
+            {value ? (
+              <View style={{ height: PREVIEW_HEIGHT }}>
+                <MapView
+                  provider={PROVIDER_GOOGLE}
+                  customMapStyle={darkMapStyle}
+                  style={{ flex: 1 }}
+                  region={{ ...value, latitudeDelta: PICK_DELTA, longitudeDelta: PICK_DELTA }}
+                  scrollEnabled={false}
+                  zoomEnabled={false}
+                  rotateEnabled={false}
+                  pitchEnabled={false}
+                  toolbarEnabled={false}
+                  // Android renders a static bitmap in lite mode, which is all a preview needs.
+                  liteMode
+                  pointerEvents="none"
+                  accessibilityElementsHidden
+                  importantForAccessibility="no-hide-descendants"
+                />
+                <CenterPin size={30} />
               </View>
-            ) : null}
+            ) : (
+              <View
+                className="items-center justify-center bg-base"
+                style={{ height: PREVIEW_HEIGHT }}
+              >
+                <PinIcon size={22} color={colors.mute} />
+                <Text className="mt-2 font-sans text-[13px] text-mute">No location set</Text>
+              </View>
+            )}
+          </Pressable>
+
+          <View className="border-t border-white/10 p-4">
+            {/* The preview above already says when nothing is set, and the step
+                heading already asks the question, so only repeat the coordinates. */}
+            {formattedValue ? (
+              <>
+                <Text className="font-sans-semibold text-[14px] text-ink">Location set</Text>
+                <Text className="mt-1 font-sans text-[12px] leading-[18px] text-mute">
+                  {formattedValue}
+                </Text>
+              </>
+            ) : (
+              <Text className="font-sans text-[12px] leading-[18px] text-mute">
+                Choose the quickest method for this spot.
+              </Text>
+            )}
+            <View className="mt-4">{methods}</View>
           </View>
-        ) : null}
-      </Card>
+        </Card>
+      ) : (
+        <Card className="p-4">
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ expanded: methodsOpen }}
+            accessibilityLabel={formattedValue ? "Change spot location" : "Set spot location"}
+            onPress={() => setMethodsOpen((open) => !open)}
+            className="flex-row items-center gap-3 active:opacity-80"
+          >
+            <View className="h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/10">
+              <PinIcon size={19} color={colors.silver} />
+            </View>
+            <View className="flex-1">
+              <Text className="font-sans-semibold text-[14px] text-ink">
+                {formattedValue ? "Location set" : "No location set"}
+              </Text>
+              <Text className="mt-0.5 font-sans text-[12px] text-mute">
+                {formattedValue ?? "Choose the quickest method for this spot."}
+              </Text>
+            </View>
+            <Text className="font-sans-semibold text-[13px] text-silver">
+              {methodsOpen ? "Close" : "Change"}
+            </Text>
+          </Pressable>
+          {methodsOpen ? (
+            <View className="mt-4 border-t border-white/10 pt-4">{methods}</View>
+          ) : null}
+        </Card>
+      )}
 
       {mapOpen ? (
         <Modal
@@ -325,27 +462,7 @@ export function LocationPicker({ value, onChange }: LocationPickerProps) {
                 })}
               </View>
 
-              <View pointerEvents="none" className="absolute inset-0">
-                <View
-                  style={{
-                    position: "absolute",
-                    left: "50%",
-                    top: "50%",
-                    transform: [{ translateX: -22 }, { translateY: -52 }],
-                  }}
-                >
-                  <View
-                    className="h-11 w-11 items-center justify-center rounded-full border-4 border-white"
-                    style={{ backgroundColor: colors.pinSelectedInk }}
-                  >
-                    <BoardMark size={18} strokeWidth={2.4} color={colors.ink} />
-                  </View>
-                  <View
-                    className="mx-auto -mt-1.5 h-4 w-4 rotate-45"
-                    style={{ backgroundColor: colors.pinSelectedInk }}
-                  />
-                </View>
-              </View>
+              <CenterPin />
 
               <Pressable
                 accessibilityRole="button"
