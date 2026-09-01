@@ -98,9 +98,25 @@ const schema = z.object({
   longitude: z.number({ error: "Set the spot location." }).min(-180).max(180),
 });
 
-export type SpotFormErrors = Partial<
-  Record<"name" | "types" | "bustFactor" | "notes" | "location" | "photos", string>
->;
+/** Ordered steps of the add-spot wizard. */
+export const SPOT_FORM_STEPS = ["basics", "place", "details"] as const;
+
+export type SpotFormStep = (typeof SPOT_FORM_STEPS)[number];
+
+/** Which validated fields each step is responsible for. */
+const STEP_FIELDS = {
+  basics: ["name", "types"],
+  place: ["location", "photos"],
+  details: ["bustFactor", "notes"],
+} as const;
+
+/**
+ * Derived from the step map rather than declared alongside it, so a field that
+ * belongs to no step cannot be expressed. An unassigned one would leave
+ * firstInvalidStep with nowhere to send the skater on a blocked save: no error
+ * rendered, and a Save button that does nothing on every tap.
+ */
+export type SpotFormErrors = Partial<Record<(typeof STEP_FIELDS)[SpotFormStep][number], string>>;
 
 /** What create/update accept, minus photoIds (uploaded separately on save). */
 export type SpotPayload = {
@@ -145,18 +161,6 @@ export function validateSpotForm(
     },
   };
 }
-
-/** Ordered steps of the add-spot wizard. */
-export const SPOT_FORM_STEPS = ["basics", "place", "details"] as const;
-
-export type SpotFormStep = (typeof SPOT_FORM_STEPS)[number];
-
-/** Which validated fields each step is responsible for. */
-const STEP_FIELDS = {
-  basics: ["name", "types"],
-  place: ["location", "photos"],
-  details: ["bustFactor", "notes"],
-} as const satisfies Record<SpotFormStep, readonly (keyof SpotFormErrors)[]>;
 
 /**
  * Errors for one step only, so "Next" can block on the fields in front of the

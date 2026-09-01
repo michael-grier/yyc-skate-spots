@@ -2,9 +2,10 @@ import { useEffect, useState } from "react";
 import { Keyboard, Platform } from "react-native";
 
 /**
- * True while the software keyboard is on screen. Forms use it to swap a footer
- * for a keyboard accessory bar, not to position anything — layout stays with
- * KeyboardAvoidingView so each platform keeps its own inset behaviour.
+ * True while the software keyboard is on screen. Forms use it to decide what to
+ * render — swapping a footer for an accessory bar, dropping a heading — never to
+ * compute an offset. Layout stays with KeyboardAvoidingView so each platform
+ * keeps its own inset behaviour.
  */
 export function useKeyboardVisible() {
   const [visible, setVisible] = useState(false);

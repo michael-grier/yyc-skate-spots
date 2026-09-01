@@ -48,6 +48,8 @@ export function useSpotForm(initialValues: SpotFormValues, onSave: SpotFormSave)
     setValues((current) => {
       // The picker can hand back a photo that is already attached. Appending it
       // again would show two identical tiles and upload the same bytes twice.
+      // Only photos picked in this session can be matched: once one is saved its
+      // key is the Convex storage id, and the asset id it came from is gone.
       const attached = new Set(current.photos.map((photo) => photo.key));
       const added = picked.filter((photo) => !attached.has(photo.key));
       return { ...current, photos: [...current.photos, ...added].slice(0, MAX_PHOTOS) };
@@ -98,5 +100,23 @@ export function useSpotForm(initialValues: SpotFormValues, onSave: SpotFormSave)
     return null;
   }
 
-  return { values, errors, saving, setField, setValues, setErrors, addPhotos, removePhoto, save };
+  // Both forms hand this to the picker; deriving it here keeps the null-pair
+  // check in one place rather than repeated at each call site.
+  const location =
+    values.latitude !== null && values.longitude !== null
+      ? { latitude: values.latitude, longitude: values.longitude }
+      : null;
+
+  return {
+    values,
+    errors,
+    saving,
+    location,
+    setField,
+    setValues,
+    setErrors,
+    addPhotos,
+    removePhoto,
+    save,
+  };
 }

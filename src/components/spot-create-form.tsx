@@ -62,12 +62,26 @@ export function SpotCreateForm({ onCancel, onSave }: SpotCreateFormProps) {
   const keyboardVisible = useKeyboardVisible();
   const standardsRef = useRef<BottomSheetModal>(null);
   const [step, setStep] = useState<SpotFormStep>("basics");
-  const [notesFocused, setNotesFocused] = useState(false);
-  const { values, errors, saving, setField, setValues, setErrors, addPhotos, removePhoto, save } =
-    useSpotForm(EMPTY_SPOT_FORM, onSave);
+  const {
+    values,
+    errors,
+    saving,
+    location,
+    setField,
+    setValues,
+    setErrors,
+    addPhotos,
+    removePhoto,
+    save,
+  } = useSpotForm(EMPTY_SPOT_FORM, onSave);
 
   const stepIndex = SPOT_FORM_STEPS.indexOf(step);
   const isLastStep = stepIndex === SPOT_FORM_STEPS.length - 1;
+  // Notes is the only input on the details step, so a keyboard there means it is
+  // being typed into. Reading the keyboard rather than the field's focus events
+  // is what keeps a hardware back press or a step change — neither of which
+  // reliably fires onBlur — from stranding the form with no Save button.
+  const editingNotes = keyboardVisible && step === "details";
 
   function goNext() {
     const stepErrors = validateSpotStep(values, step);
@@ -96,11 +110,6 @@ export function SpotCreateForm({ onCancel, onSave }: SpotCreateFormProps) {
       setStep(target);
     }
   }
-
-  const location =
-    values.latitude !== null && values.longitude !== null
-      ? { latitude: values.latitude, longitude: values.longitude }
-      : null;
 
   return (
     <View className="flex-1 bg-base">
@@ -199,8 +208,6 @@ export function SpotCreateForm({ onCancel, onSave }: SpotCreateFormProps) {
                   <TextInput
                     value={values.notes}
                     onChangeText={(notes) => setField("notes", notes)}
-                    onFocus={() => setNotesFocused(true)}
-                    onBlur={() => setNotesFocused(false)}
                     placeholder="Run-up, ground, when security does laps…"
                     placeholderTextColor={colors.mute}
                     multiline
@@ -227,7 +234,7 @@ export function SpotCreateForm({ onCancel, onSave }: SpotCreateFormProps) {
           ) : null}
         </ScrollView>
 
-        {notesFocused ? (
+        {editingNotes ? (
           <View className="flex-row items-center justify-between border-t border-white/10 bg-card px-5 py-2.5">
             <Text className="font-sans text-[12px] text-mute">
               {values.notes.length} / {MAX_NOTES_LENGTH}
@@ -238,8 +245,9 @@ export function SpotCreateForm({ onCancel, onSave }: SpotCreateFormProps) {
           </View>
         ) : (
           <View
-            className="border-t border-white/10 px-5 pt-3"
-            style={{ paddingBottom: keyboardVisible ? 12 : insets.bottom + 12 }}
+            // No safe-area padding here: this screen sits in the tab navigator,
+            // and the tab bar below already consumes the bottom inset.
+            className="border-t border-white/10 px-5 pb-3 pt-3"
           >
             {isLastStep ? (
               <View className="mb-2.5">

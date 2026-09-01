@@ -5,6 +5,7 @@ import type { FormPhoto } from "@/lib/spot-form";
 
 import { SpotCreateForm } from "./spot-create-form";
 
+let mockKeyboardVisible = false;
 const mockDiscardUpload = jest.fn();
 const mockPickPhotos = jest.fn();
 const mockUploadPhoto = jest.fn();
@@ -14,6 +15,9 @@ jest.mock("@clerk/expo", () => ({
 }));
 jest.mock("convex/react", () => ({ useMutation: () => mockDiscardUpload }));
 jest.mock("expo-router", () => ({ useRouter: () => ({ push: jest.fn() }) }));
+jest.mock("@/lib/use-keyboard-visible", () => ({
+  useKeyboardVisible: () => mockKeyboardVisible,
+}));
 jest.mock("@/lib/spot-photos", () => ({
   pickPhotos: (...args: unknown[]) => mockPickPhotos(...args),
   uploadPhoto: (...args: unknown[]) => mockUploadPhoto(...args),
@@ -63,6 +67,7 @@ async function fillBasics() {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockKeyboardVisible = false;
   mockPickPhotos.mockResolvedValue([]);
 });
 
@@ -99,6 +104,24 @@ describe("SpotCreateForm", () => {
       },
       [],
     );
+  });
+
+  test("leaving the details step restores its button even with the keyboard up", async () => {
+    // The notes accessory bar replaces the step button while notes is being
+    // typed into. Tying it to focus events instead of the keyboard used to leave
+    // it stuck on other steps, which hid Save and dead-ended the wizard.
+    mockKeyboardVisible = true;
+    await render(<SpotCreateForm onCancel={jest.fn()} onSave={jest.fn()} />);
+
+    await fillBasics();
+    await fireEvent.press(screen.getByText("Set test location"));
+    await fireEvent.press(screen.getByText("Next · Details"));
+    expect(screen.getByText("Done")).toBeOnTheScreen();
+    expect(screen.queryByText("Save spot")).not.toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByText("Back"));
+    expect(screen.getByText("Next · Details")).toBeOnTheScreen();
+    expect(screen.queryByText("Done")).not.toBeOnTheScreen();
   });
 
   test("a failed upload discards the photos uploaded before it and keeps the spot unsaved", async () => {

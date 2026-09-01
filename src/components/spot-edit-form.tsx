@@ -54,16 +54,15 @@ function NotesFocusEditor({
   const insets = useSafeAreaInsets();
   const inputRef = useRef<TextInput>(null);
 
-  if (!visible) {
-    return null;
-  }
-
   return (
     <Modal
-      visible
+      // Driven by the prop rather than unmounted, or there is nothing left for
+      // the fade-out to animate. No statusBarTranslucent: it sets
+      // FLAG_LAYOUT_NO_LIMITS on Android, which disables the window resize that
+      // KeyboardAvoidingView relies on there, leaving the keyboard over the text.
+      visible={visible}
       transparent
       animationType="fade"
-      statusBarTranslucent
       onRequestClose={onClose}
       onShow={() => inputRef.current?.focus()}
     >
@@ -121,15 +120,8 @@ export function SpotEditForm({ initialValues, onCancel, onSave }: SpotEditFormPr
   const router = useRouter();
   const standardsRef = useRef<BottomSheetModal>(null);
   const [notesOpen, setNotesOpen] = useState(false);
-  const { values, errors, saving, setField, setValues, addPhotos, removePhoto, save } = useSpotForm(
-    initialValues,
-    onSave,
-  );
-
-  const location =
-    values.latitude !== null && values.longitude !== null
-      ? { latitude: values.latitude, longitude: values.longitude }
-      : null;
+  const { values, errors, saving, location, setField, setValues, addPhotos, removePhoto, save } =
+    useSpotForm(initialValues, onSave);
 
   return (
     <View className="flex-1 bg-base">

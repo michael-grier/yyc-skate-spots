@@ -126,21 +126,36 @@ describe("SpotEditForm", () => {
     expect(StyleSheet.flatten(addPhotos.props.style)).toMatchObject({ width: 80, height: 80 });
   });
 
-  test("re-picking an already attached photo does not duplicate it", async () => {
-    mockPickPhotos.mockResolvedValueOnce([localPhoto("a")]);
+  // Only same-session picks share a key with what is already attached: a saved
+  // photo is keyed by its Convex storage id, so re-picking that one cannot be
+  // detected and is not what this covers.
+  test("picking the same photo twice in one session attaches it once", async () => {
+    mockPickPhotos
+      .mockResolvedValueOnce([localPhoto("asset-1")])
+      .mockResolvedValueOnce([localPhoto("asset-1")]);
 
-    await render(
-      <SpotEditForm
-        initialValues={{ ...EXISTING, photos: [localPhoto("a")] }}
-        onCancel={jest.fn()}
-        onSave={jest.fn()}
-      />,
-    );
+    await render(<SpotEditForm initialValues={EXISTING} onCancel={jest.fn()} onSave={jest.fn()} />);
 
     await fireEvent.press(screen.getByRole("button", { name: "Add photos" }));
-
     expect(screen.getByLabelText("Selected photo 1")).toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByRole("button", { name: "Add photos" }));
     expect(screen.queryByLabelText("Selected photo 2")).not.toBeOnTheScreen();
+  });
+
+  test("a save with required fields cleared shows errors and never calls onSave", async () => {
+    const onSave = jest.fn();
+    await render(
+      <SpotEditForm initialValues={EMPTY_SPOT_FORM} onCancel={jest.fn()} onSave={onSave} />,
+    );
+
+    await fireEvent.press(screen.getByText("Save changes"));
+
+    expect(await screen.findByText("Give the spot a name.")).toBeOnTheScreen();
+    expect(screen.getByText("Pick at least one type.")).toBeOnTheScreen();
+    expect(screen.getByText("Pick a bust factor.")).toBeOnTheScreen();
+    expect(screen.getByText("Set the spot location.")).toBeOnTheScreen();
+    expect(onSave).not.toHaveBeenCalled();
   });
 
   test("a failed upload discards the photos uploaded before it and keeps the spot unsaved", async () => {

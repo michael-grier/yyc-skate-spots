@@ -129,8 +129,9 @@ export function LocationPicker({ value, onChange, variant = "expanded" }: Locati
   const [coordinateText, setCoordinateText] = useState(value ? formatCoordinatePair(value) : "");
   const [coordinateError, setCoordinateError] = useState<string | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
-  // The compact variant keeps the methods behind a tap; the expanded one never hides them.
-  const [methodsOpen, setMethodsOpen] = useState(variant === "expanded");
+  // Only the compact summary row reads this; the expanded variant renders the
+  // methods unconditionally and never toggles.
+  const [methodsOpen, setMethodsOpen] = useState(false);
 
   function setLocation(next: LatLng) {
     setCoordinateText(formatCoordinatePair(next));
@@ -316,10 +317,13 @@ export function LocationPicker({ value, onChange, variant = "expanded" }: Locati
                   toolbarEnabled={false}
                   // Android renders a static bitmap in lite mode, which is all a preview needs.
                   liteMode
-                  pointerEvents="none"
                   accessibilityElementsHidden
                   importantForAccessibility="no-hide-descendants"
                 />
+                {/* React Native only honours pointerEvents on its own view classes,
+                    and the Android MapView extends the Google Maps one, so it would
+                    swallow this tap. A plain view on top takes it to the Pressable. */}
+                <View className="absolute inset-0" />
                 <CenterPin size={30} />
               </View>
             ) : (

@@ -1,20 +1,12 @@
-import {
-  BottomSheetBackdrop,
-  type BottomSheetBackdropProps,
-  BottomSheetModal,
-  BottomSheetView,
-} from "@gorhom/bottom-sheet";
+import { BottomSheetModal, BottomSheetView } from "@gorhom/bottom-sheet";
 import type { Ref } from "react";
 import { Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Button } from "@/components/ui/button";
+import { renderSheetBackdrop } from "@/components/ui/sheet-backdrop";
 import { SPOT_STANDARDS } from "@/lib/spot-standards";
 import { colors } from "@/theme/colors";
-
-function renderBackdrop(props: BottomSheetBackdropProps) {
-  return <BottomSheetBackdrop {...props} appearsOnIndex={0} disappearsOnIndex={-1} opacity={0.5} />;
-}
 
 /** The one line that replaces the old standards card, sitting where saving happens. */
 export function StandardsLine({ onPress }: { onPress: () => void }) {
@@ -50,7 +42,7 @@ export function StandardsSheet({
     <BottomSheetModal
       ref={ref}
       enableDynamicSizing
-      backdropComponent={renderBackdrop}
+      backdropComponent={renderSheetBackdrop}
       backgroundStyle={{
         backgroundColor: colors.base,
         borderRadius: 28,

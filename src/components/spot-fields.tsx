@@ -7,6 +7,7 @@ import { CloseIcon } from "@/components/icons";
 import { Chip } from "@/components/ui/chip";
 import { Segmented } from "@/components/ui/segmented";
 import { type FormPhoto, MAX_PHOTOS } from "@/lib/spot-form";
+import { toggle } from "@/lib/toggle";
 import {
   BUST_FACTOR_COLORS,
   BUST_FACTOR_LABELS,
@@ -42,10 +43,6 @@ const SURFACE_OPTIONS = SURFACES.map((surface) => ({
   value: surface,
   label: SURFACE_LABELS[surface],
 }));
-
-function toggle<T>(list: T[], item: T) {
-  return list.includes(item) ? list.filter((x) => x !== item) : [...list, item];
-}
 
 export function Field({
   label,
