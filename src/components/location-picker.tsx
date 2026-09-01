@@ -322,8 +322,11 @@ export function LocationPicker({ value, onChange, variant = "expanded" }: Locati
                 />
                 {/* React Native only honours pointerEvents on its own view classes,
                     and the Android MapView extends the Google Maps one, so it would
-                    swallow this tap. A plain view on top takes it to the Pressable. */}
-                <View className="absolute inset-0" />
+                    swallow this tap. A view on top takes it to the Pressable instead
+                    — collapsable={false} because a plain absolute view draws nothing
+                    and handles nothing, so Android's view flattening would drop it
+                    from the native hierarchy before it could receive anything. */}
+                <View collapsable={false} className="absolute inset-0" />
                 <CenterPin size={30} />
               </View>
             ) : (

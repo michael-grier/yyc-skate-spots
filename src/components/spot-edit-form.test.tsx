@@ -115,7 +115,9 @@ describe("SpotEditForm", () => {
 
     await fireEvent.press(screen.getByRole("button", { name: "Add photos" }));
 
-    const thumbnail = screen.getByLabelText("Selected photo 1");
+    // The picker result arrives asynchronously and the press handler discards
+    // its promise, so the press alone does not settle it.
+    const thumbnail = await screen.findByLabelText("Selected photo 1");
     const addPhotos = screen.getByRole("button", { name: "Add photos" });
     expect(thumbnail.props.accessible).toBe(true);
     expect(StyleSheet.flatten(thumbnail.props.style)).toMatchObject({
@@ -132,15 +134,19 @@ describe("SpotEditForm", () => {
   test("picking the same photo twice in one session attaches it once", async () => {
     mockPickPhotos
       .mockResolvedValueOnce([localPhoto("asset-1")])
-      .mockResolvedValueOnce([localPhoto("asset-1")]);
+      .mockResolvedValueOnce([localPhoto("asset-1"), localPhoto("asset-2")]);
 
     await render(<SpotEditForm initialValues={EXISTING} onCancel={jest.fn()} onSave={jest.fn()} />);
 
     await fireEvent.press(screen.getByRole("button", { name: "Add photos" }));
-    expect(screen.getByLabelText("Selected photo 1")).toBeOnTheScreen();
+    await screen.findByLabelText("Selected photo 1");
 
+    // The second pick returns the photo already attached plus a new one. Waiting
+    // for the new tile proves the pick settled, so the missing third tile is
+    // de-duplication rather than an assertion that ran too early.
     await fireEvent.press(screen.getByRole("button", { name: "Add photos" }));
-    expect(screen.queryByLabelText("Selected photo 2")).not.toBeOnTheScreen();
+    await screen.findByLabelText("Selected photo 2");
+    expect(screen.queryByLabelText("Selected photo 3")).not.toBeOnTheScreen();
   });
 
   test("a save with required fields cleared shows errors and never calls onSave", async () => {

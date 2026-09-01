@@ -135,6 +135,9 @@ describe("SpotCreateForm", () => {
     await fillBasics();
     await fireEvent.press(screen.getByText("Set test location"));
     await fireEvent.press(screen.getByRole("button", { name: "Add photos" }));
+    // Both picks must land before saving, or the upload assertions below would
+    // be checking a spot that carries no photos at all.
+    await screen.findByLabelText("Selected photo 2");
     await fireEvent.press(screen.getByText("Next · Details"));
     await fireEvent.press(screen.getByText("Low"));
     await fireEvent.press(screen.getByText("Save spot"));
