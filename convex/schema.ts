@@ -15,6 +15,10 @@ export const spotType = v.union(
   v.literal("bump"),
   v.literal("hubba"),
   v.literal("drop"),
+  v.literal("skate_park"),
+  v.literal("diy"),
+  v.literal("wallride"),
+  v.literal("flatground"),
   v.literal("other"),
 );
 
