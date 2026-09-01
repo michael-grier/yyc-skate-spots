@@ -33,6 +33,7 @@ import { reportReasonLabel } from "@/lib/spot-standards";
 import { useSpotAddress } from "@/lib/use-spot-address";
 import { useUserLocation } from "@/lib/use-user-location";
 import { colors } from "@/theme/colors";
+import { TOOLBAR_HEIGHT } from "@/theme/layout";
 
 type FactProps = { label: string; value: string; dotColor?: string; column: 0 | 1 };
 
@@ -69,7 +70,7 @@ export default function SpotDetailScreen() {
   const [favoritePending, setFavoritePending] = useState(false);
   const { coords, granted } = useUserLocation();
   const activeSpot = spot?.status === "active" ? spot : null;
-  const detailHeaderHeight = insets.top + 56;
+  const detailHeaderHeight = insets.top + TOOLBAR_HEIGHT;
   // Android's geocoder needs location permission; iOS's does not.
   const address = useSpotAddress(
     activeSpot?.latitude,

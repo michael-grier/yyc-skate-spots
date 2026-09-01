@@ -143,7 +143,10 @@ export default function AdminSpotReviewScreen() {
   return (
     <View className="flex-1 bg-base">
       <Stack.Screen options={{ headerShown: false }} />
-      <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}>
+      {/* Keep the first photo clear of system status-bar content, as the public screen does. */}
+      <ScrollView
+        contentContainerStyle={{ paddingTop: insets.top, paddingBottom: insets.bottom + 32 }}
+      >
         <PhotoCarousel urls={spot.photoUrls} spotName={spot.name} />
         <View className="px-5">
           <View className="flex-row items-center gap-2">
