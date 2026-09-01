@@ -260,12 +260,13 @@ export function SpotForm({ title, initialValues, onCancel, onSave }: SpotFormPro
 
           <Section label="PHOTOS" error={errors.photos}>
             <View className="flex-row flex-wrap gap-2.5">
-              {values.photos.map((photo) => (
+              {values.photos.map((photo, index) => (
                 <View key={photo.key} className="h-20 w-20">
                   <Image
                     source={{ uri: photo.uri }}
                     contentFit="cover"
-                    className="h-20 w-20 rounded-xl"
+                    accessibilityLabel={`Selected photo ${index + 1}`}
+                    style={{ width: 80, height: 80, borderRadius: 12 }}
                   />
                   <Pressable
                     accessibilityRole="button"
