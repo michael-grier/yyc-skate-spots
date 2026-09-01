@@ -318,6 +318,9 @@ branch-local `node_modules` with the worktree.
 
 - `app.config.ts` (not `app.json`) so native config can read env vars. Map keys are baked into
   binaries at **build** time; Convex/Clerk `EXPO_PUBLIC_*` vars are read by JS at **runtime**.
+- App icons are generated, not hand-drawn: `assets/brand/*.svg` are the sources, and each
+  `assets/images/*.png` is `inkscape -w N -h N assets/brand/<name>.svg -o assets/images/<name>.png`
+  at that PNG's existing size. Edit the SVG and re-render; never edit the PNG.
 - `src/app/` is Expo Router's file-based routing directory — files become routes, like Next.js.
 - Distance filtering is client-side haversine over one reactive Convex query — deliberate; the
   dataset is one city. Do not add a geospatial index.
