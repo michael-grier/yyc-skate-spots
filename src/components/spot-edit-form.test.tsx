@@ -1,9 +1,9 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
 import { Alert, StyleSheet } from "react-native";
 
-import { EMPTY_SPOT_FORM, type FormPhoto } from "@/lib/spot-form";
+import { EMPTY_SPOT_FORM, type FormPhoto, type SpotFormValues } from "@/lib/spot-form";
 
-import { SpotForm } from "./spot-form";
+import { SpotEditForm } from "./spot-edit-form";
 
 const mockDiscardUpload = jest.fn();
 const mockPickPhotos = jest.fn();
@@ -13,6 +13,7 @@ jest.mock("@clerk/expo", () => ({
   useAuth: () => ({ getToken: jest.fn().mockResolvedValue("token") }),
 }));
 jest.mock("convex/react", () => ({ useMutation: () => mockDiscardUpload }));
+jest.mock("expo-router", () => ({ useRouter: () => ({ push: jest.fn() }) }));
 jest.mock("@/lib/spot-photos", () => ({
   pickPhotos: (...args: unknown[]) => mockPickPhotos(...args),
   uploadPhoto: (...args: unknown[]) => mockUploadPhoto(...args),
@@ -21,7 +22,13 @@ jest.mock("expo-image", () => {
   const { Image } = jest.requireActual<typeof import("react-native")>("react-native");
   return { Image };
 });
-// The picker needs react-native-maps; this stub preserves the new explicit
+// The standards sheet is reachable from the footer but is not what these tests exercise.
+jest.mock("@gorhom/bottom-sheet", () => ({
+  BottomSheetModal: () => null,
+  BottomSheetView: () => null,
+  BottomSheetBackdrop: () => null,
+}));
+// The picker needs react-native-maps; this stub preserves the explicit
 // selection boundary without loading the native map in a form test.
 jest.mock("@/components/location-picker", () => {
   const { Pressable, Text } = jest.requireActual<typeof import("react-native")>("react-native");
@@ -48,53 +55,52 @@ const localPhoto = (key: string): FormPhoto => ({
   height: 100,
 });
 
+const EXISTING: SpotFormValues = {
+  ...EMPTY_SPOT_FORM,
+  name: "Harmony Park",
+  types: ["ledge", "stairs"],
+  bustFactor: "medium",
+  latitude: 51.05,
+  longitude: -114.07,
+};
+
 beforeEach(() => {
   jest.clearAllMocks();
   mockPickPhotos.mockResolvedValue([]);
 });
 
-describe("SpotForm", () => {
-  test("an empty save shows field errors and never calls onSave", async () => {
-    const onSave = jest.fn();
-    await render(
-      <SpotForm
-        title="New spot"
-        initialValues={EMPTY_SPOT_FORM}
-        onCancel={jest.fn()}
-        onSave={onSave}
-      />,
-    );
+describe("SpotEditForm", () => {
+  test("notes are edited in their own overlay and land back on the form", async () => {
+    await render(<SpotEditForm initialValues={EXISTING} onCancel={jest.fn()} onSave={jest.fn()} />);
 
-    await fireEvent.press(screen.getByText("Save"));
-    expect(await screen.findByText("Give the spot a name.")).toBeOnTheScreen();
-    expect(screen.getByText("Pick at least one type.")).toBeOnTheScreen();
-    expect(screen.getByText("Pick a bust factor.")).toBeOnTheScreen();
-    expect(screen.getByText("Set the spot location.")).toBeOnTheScreen();
-    expect(onSave).not.toHaveBeenCalled();
+    await fireEvent.press(screen.getByRole("button", { name: "Edit notes" }));
+    await fireEvent.changeText(screen.getByLabelText("Notes"), "Security does laps at 5.");
+    await fireEvent.press(screen.getByText("Done"));
+
+    expect(screen.queryByLabelText("Notes")).not.toBeOnTheScreen();
+    expect(screen.getByText("Security does laps at 5.")).toBeOnTheScreen();
   });
 
-  test("a completed form saves with the picked options and selected location", async () => {
+  test("saves the edited fields, including a surface cleared back to unanswered", async () => {
     const onSave = jest.fn().mockResolvedValue(undefined);
     await render(
-      <SpotForm
-        title="New spot"
-        initialValues={EMPTY_SPOT_FORM}
+      <SpotEditForm
+        initialValues={{ ...EXISTING, surface: "smooth" }}
         onCancel={jest.fn()}
         onSave={onSave}
       />,
     );
 
-    await fireEvent.changeText(screen.getByLabelText("Spot name"), "Test Ledge");
-    await fireEvent.press(screen.getByText("Ledge"));
-    await fireEvent.press(screen.getByText("Low"));
-    await fireEvent.press(screen.getByText("Set test location"));
-    await fireEvent.press(screen.getByText("Save"));
+    await fireEvent.changeText(screen.getByLabelText("Spot name"), "Harmony Park Ledges");
+    // Tapping the chosen surface is what clears an optional field.
+    await fireEvent.press(screen.getByText("Smooth"));
+    await fireEvent.press(screen.getByText("Save changes"));
 
     expect(onSave).toHaveBeenCalledWith(
       {
-        name: "Test Ledge",
-        types: ["ledge"],
-        bustFactor: "low",
+        name: "Harmony Park Ledges",
+        types: ["ledge", "stairs"],
+        bustFactor: "medium",
         latitude: 51.05,
         longitude: -114.07,
       },
@@ -105,14 +111,7 @@ describe("SpotForm", () => {
   test("picked photos and the add control use matching tile dimensions", async () => {
     mockPickPhotos.mockResolvedValueOnce([localPhoto("thumbnail")]);
 
-    await render(
-      <SpotForm
-        title="New spot"
-        initialValues={EMPTY_SPOT_FORM}
-        onCancel={jest.fn()}
-        onSave={jest.fn()}
-      />,
-    );
+    await render(<SpotEditForm initialValues={EXISTING} onCancel={jest.fn()} onSave={jest.fn()} />);
 
     await fireEvent.press(screen.getByRole("button", { name: "Add photos" }));
 
@@ -127,29 +126,38 @@ describe("SpotForm", () => {
     expect(StyleSheet.flatten(addPhotos.props.style)).toMatchObject({ width: 80, height: 80 });
   });
 
+  test("re-picking an already attached photo does not duplicate it", async () => {
+    mockPickPhotos.mockResolvedValueOnce([localPhoto("a")]);
+
+    await render(
+      <SpotEditForm
+        initialValues={{ ...EXISTING, photos: [localPhoto("a")] }}
+        onCancel={jest.fn()}
+        onSave={jest.fn()}
+      />,
+    );
+
+    await fireEvent.press(screen.getByRole("button", { name: "Add photos" }));
+
+    expect(screen.getByLabelText("Selected photo 1")).toBeOnTheScreen();
+    expect(screen.queryByLabelText("Selected photo 2")).not.toBeOnTheScreen();
+  });
+
   test("a failed upload discards the photos uploaded before it and keeps the spot unsaved", async () => {
     mockUploadPhoto.mockResolvedValueOnce("storage-1").mockRejectedValueOnce(new Error("network"));
     const alertSpy = jest.spyOn(Alert, "alert").mockImplementation(() => {});
     const onSave = jest.fn();
 
     await render(
-      <SpotForm
-        title="New spot"
-        initialValues={{
-          ...EMPTY_SPOT_FORM,
-          name: "Test Ledge",
-          types: ["ledge"],
-          bustFactor: "low",
-          latitude: 51.05,
-          longitude: -114.07,
-          photos: [localPhoto("a"), localPhoto("b")],
-        }}
+      <SpotEditForm
+        initialValues={{ ...EXISTING, photos: [localPhoto("a"), localPhoto("b")] }}
         onCancel={jest.fn()}
         onSave={onSave}
       />,
     );
 
-    await fireEvent.press(screen.getByText("Save"));
+    await fireEvent.press(screen.getByText("Save changes"));
+
     expect(mockUploadPhoto).toHaveBeenCalledTimes(2);
     expect(mockDiscardUpload).toHaveBeenCalledWith({ storageId: "storage-1" });
     expect(onSave).not.toHaveBeenCalled();
