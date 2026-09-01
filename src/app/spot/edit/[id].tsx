@@ -4,7 +4,7 @@ import { useMutation, useQuery } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { ActivityIndicator, Text, View } from "react-native";
 
-import { SpotForm } from "@/components/spot-form";
+import { SpotEditForm } from "@/components/spot-edit-form";
 import { Button } from "@/components/ui/button";
 import { spotToFormValues } from "@/lib/spot-form";
 import { colors } from "@/theme/colors";
@@ -59,8 +59,7 @@ export default function EditSpotScreen() {
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
-      <SpotForm
-        title="Edit spot"
+      <SpotEditForm
         initialValues={spotToFormValues({ ...spot, photoIds: spot.photoIds })}
         onCancel={() => router.back()}
         onSave={async (payload, photoIds) => {
