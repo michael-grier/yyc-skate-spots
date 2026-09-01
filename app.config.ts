@@ -1,4 +1,4 @@
-import { ConfigContext, ExpoConfig } from "expo/config";
+import type { ConfigContext, ExpoConfig } from "expo/config";
 
 // Google Maps keys are baked into the native binaries at build time.
 // A build with a missing key does NOT error — it just renders a blank/gray
