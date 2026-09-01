@@ -48,6 +48,9 @@ const UPLOAD_HOST = resolveConvexSiteUrl(
   process.env.EXPO_PUBLIC_CONVEX_SITE_URL,
 );
 
+// NativeWind uses a 14-point rem on native, so h-20 would render smaller than an 80-point photo.
+const PHOTO_TILE_DIMENSIONS = { width: 80, height: 80 };
+
 type SpotFormProps = {
   title: string;
   initialValues: SpotFormValues;
@@ -261,13 +264,13 @@ export function SpotForm({ title, initialValues, onCancel, onSave }: SpotFormPro
           <Section label="PHOTOS" error={errors.photos}>
             <View className="flex-row flex-wrap gap-2.5">
               {values.photos.map((photo, index) => (
-                <View key={photo.key} className="h-20 w-20">
+                <View key={photo.key} style={PHOTO_TILE_DIMENSIONS}>
                   <Image
                     source={{ uri: photo.uri }}
                     contentFit="cover"
                     accessible
                     accessibilityLabel={`Selected photo ${index + 1}`}
-                    style={{ width: 80, height: 80, borderRadius: 12 }}
+                    style={{ ...PHOTO_TILE_DIMENSIONS, borderRadius: 12 }}
                   />
                   <Pressable
                     accessibilityRole="button"
@@ -286,7 +289,8 @@ export function SpotForm({ title, initialValues, onCancel, onSave }: SpotFormPro
                   accessibilityRole="button"
                   accessibilityLabel="Add photos"
                   onPress={() => void addPhotos()}
-                  className="h-20 w-20 items-center justify-center rounded-xl border border-dashed border-white/20 active:opacity-80"
+                  className="items-center justify-center rounded-xl border border-dashed border-white/20 active:opacity-80"
+                  style={PHOTO_TILE_DIMENSIONS}
                 >
                   <Text className="font-sans text-[24px] text-mute">+</Text>
                 </Pressable>

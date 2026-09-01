@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
-import { Alert } from "react-native";
+import { Alert, StyleSheet } from "react-native";
 
 import { EMPTY_SPOT_FORM, type FormPhoto } from "@/lib/spot-form";
 
@@ -88,7 +88,7 @@ describe("SpotForm", () => {
     );
   });
 
-  test("picked photos have explicit thumbnail dimensions", async () => {
+  test("picked photos and the add control use matching tile dimensions", async () => {
     mockPickPhotos.mockResolvedValueOnce([localPhoto("thumbnail")]);
 
     await render(
@@ -103,12 +103,14 @@ describe("SpotForm", () => {
     await fireEvent.press(screen.getByRole("button", { name: "Add photos" }));
 
     const thumbnail = screen.getByLabelText("Selected photo 1");
+    const addPhotos = screen.getByRole("button", { name: "Add photos" });
     expect(thumbnail.props.accessible).toBe(true);
-    expect(thumbnail.props.style).toMatchObject({
+    expect(StyleSheet.flatten(thumbnail.props.style)).toMatchObject({
       width: 80,
       height: 80,
       borderRadius: 12,
     });
+    expect(StyleSheet.flatten(addPhotos.props.style)).toMatchObject({ width: 80, height: 80 });
   });
 
   test("a failed upload discards the photos uploaded before it and keeps the spot unsaved", async () => {
