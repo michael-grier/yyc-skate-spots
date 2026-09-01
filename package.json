@@ -74,7 +74,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "format": "biome format --write .",
-    "test:ui": "jest"
+    "test:ui": "jest",
+    "build:share-site": "node scripts/build-share-site.mjs"
   },
   "private": true
 }

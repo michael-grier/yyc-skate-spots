@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#141517" />
+    <meta name="apple-itunes-app" content="app-id={{APP_STORE_ID}}" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="A Calgary skate spot was shared with you" />
+    <meta
+      property="og:description"
+      content="Open YYC Skate Spots to see photos, notes, and directions."
+    />
+    <meta property="og:image" content="{{SHARE_ORIGIN}}/icon.png" />
+    <meta property="og:url" content="{{SHARE_ORIGIN}}/share" />
+    <link rel="canonical" href="{{SHARE_ORIGIN}}/share" />
+    <title>A skate spot was shared with you | YYC Skate Spots</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: #141517;
+        color: #f0f1f3;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        min-height: 100svh;
+        margin: 0;
+        background:
+          radial-gradient(circle at 50% -15%, rgba(255, 255, 255, 0.08), transparent 36%),
+          #141517;
+      }
+
+      main {
+        min-height: 100svh;
+        display: grid;
+        place-items: center;
+        padding: max(48px, env(safe-area-inset-top)) 28px max(36px, env(safe-area-inset-bottom));
+      }
+
+      .content { width: min(100%, 420px); text-align: center; }
+
+      .icon {
+        width: 84px;
+        height: 84px;
+        margin: 0 auto;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 24px;
+        background: #1b1d20;
+        box-shadow: 0 18px 48px rgba(0, 0, 0, 0.35);
+      }
+
+      .eyebrow {
+        margin: 30px 0 0;
+        color: #989ea8;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.15em;
+        line-height: 1.5;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 12px 0 0;
+        font-size: clamp(30px, 8vw, 38px);
+        font-weight: 600;
+        letter-spacing: -0.035em;
+        line-height: 1.08;
+      }
+
+      .description {
+        margin: 18px auto 0;
+        color: #989ea8;
+        font-size: 15px;
+        line-height: 1.65;
+      }
+
+      .download {
+        display: block;
+        margin-top: 32px;
+        padding: 17px 20px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 16px;
+        background: #d9dde3;
+        color: #17191d;
+        font-size: 15px;
+        font-weight: 600;
+        text-decoration: none;
+      }
+
+      .download:focus-visible { outline: 3px solid #ff10f0; outline-offset: 4px; }
+      .download:active { opacity: 0.82; }
+
+      .note { margin: 14px 0 0; color: #989ea8; font-size: 12px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="content">
+        <img class="icon" src="/icon.png" alt="" width="84" height="84" />
+        <p class="eyebrow">A Calgary skate spot was shared with you</p>
+        <h1>Calgary street spots,<br />mapped by skaters.</h1>
+        <p class="description">
+          Download YYC Skate Spots to see the shared spot, browse photos, and get directions.
+        </p>
+        <a class="download" href="{{APP_STORE_URL}}">Download on the App Store</a>
+        <p class="note">No account needed to browse</p>
+      </div>
+    </main>
+  </body>
+</html>
