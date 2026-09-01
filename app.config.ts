@@ -1,12 +1,38 @@
-import { ConfigContext, ExpoConfig } from "expo/config";
+import type { ConfigContext, ExpoConfig } from "expo/config";
 
 // Google Maps keys are baked into the native binaries at build time.
 // A build with a missing key does NOT error — it just renders a blank/gray
 // map — so we fail the EAS build instead of letting that happen.
 const GOOGLE_MAPS_API_KEY_ANDROID = process.env.GOOGLE_MAPS_API_KEY_ANDROID;
 const GOOGLE_MAPS_API_KEY_IOS = process.env.GOOGLE_MAPS_API_KEY_IOS;
+const SHARE_BASE_URL = process.env.EXPO_PUBLIC_SHARE_BASE_URL;
 
 const isEasBuild = process.env.EAS_BUILD === "true";
+
+function shareHost(baseUrl: string | undefined): string | null {
+  if (!baseUrl) {
+    return null;
+  }
+  try {
+    const url = new URL(baseUrl);
+    if (
+      url.protocol !== "https:" ||
+      url.pathname !== "/" ||
+      url.search ||
+      url.hash ||
+      url.username ||
+      url.password ||
+      url.port
+    ) {
+      return null;
+    }
+    return url.hostname;
+  } catch {
+    return null;
+  }
+}
+
+const SHARE_HOST = shareHost(SHARE_BASE_URL);
 
 for (const [name, value] of [
   ["GOOGLE_MAPS_API_KEY_ANDROID", GOOGLE_MAPS_API_KEY_ANDROID],
@@ -19,6 +45,15 @@ for (const [name, value] of [
     }
     console.warn(`⚠️  ${message}`);
   }
+}
+
+if (!SHARE_HOST) {
+  const message =
+    "EXPO_PUBLIC_SHARE_BASE_URL must be an HTTPS origin without a path. See the share links section of README.md.";
+  if (isEasBuild) {
+    throw new Error(message);
+  }
+  console.warn(message);
 }
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
@@ -36,6 +71,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   userInterfaceStyle: "dark",
   ios: {
     bundleIdentifier: "com.yycskatespots.app",
+    associatedDomains: SHARE_HOST ? [`applinks:${SHARE_HOST}`] : [],
     infoPlist: {
       NSLocationWhenInUseUsageDescription:
         "YYC Skate Spots shows your position on the map and sorts spots by distance from you.",

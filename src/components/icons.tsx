@@ -227,6 +227,23 @@ export function NavigateIcon({ size = 24, color }: IconProps) {
   );
 }
 
+export function ShareIcon({ size = 24, color }: IconProps) {
+  return (
+    <Svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth={2.2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <Path d="M12 16V3M7 8l5-5 5 5M5 13v7h14v-7" />
+    </Svg>
+  );
+}
+
 export function MoreIcon({ size = 24, color }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>

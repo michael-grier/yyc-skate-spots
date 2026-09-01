@@ -130,6 +130,47 @@ builds read the EAS env vars above, not `.env`. To check what Expo actually reso
 
 ### 5. Development build → device
 
+Before making an EAS build that includes spot sharing, set the public origin that will host the
+fallback page and Universal Link association:
+
+```sh
+bun x eas-cli env:set --environment development --name EXPO_PUBLIC_SHARE_BASE_URL \
+  --value https://<share-domain> --visibility plaintext
+```
+
+Repeat for `preview` and `production`. The value must be an HTTPS origin with no path, query,
+fragment, credentials, or port. EAS builds fail if it is missing or malformed; local development
+only prints a warning so the rest of the app can run while the public site is being set up.
+
+Build the static fallback after the App Store record exists:
+
+```sh
+EXPO_PUBLIC_SHARE_BASE_URL=https://<share-domain> \
+APPLE_TEAM_ID=<10-character-team-id> \
+APP_STORE_ID=<numeric-app-store-id> \
+bun run build:share-site
+```
+
+Deploy the contents of `dist-share/` at that exact origin. The host must serve
+`/.well-known/apple-app-site-association` over HTTPS with `Content-Type: application/json`, without
+authentication or a redirect. The generated `/share` page has the App Store prompt for recipients
+who do not have the app. The build also generates Cloudflare Pages' `_headers` file so the
+extensionless association file gets the required content type.
+
+For automatic Cloudflare Pages deployments, connect the GitHub repository and use:
+
+- Production branch: `main`
+- Framework preset: None
+- Build command: `node scripts/build-share-site.mjs`
+- Build output directory: `dist-share`
+- Root directory: leave blank
+
+Set `EXPO_PUBLIC_SHARE_BASE_URL`, `APPLE_TEAM_ID`, and `APP_STORE_ID` for both Production and
+Preview in the Pages project's environment variables. Set `SKIP_DEPENDENCY_INSTALL=1` there too;
+the static builder only uses Node's built-in modules, so installing the Expo app's dependencies
+would waste build time. Pushes to `main` will deploy the production site, while other branches get
+preview deployments.
+
 Android (works from Linux):
 
 ```sh
@@ -264,13 +305,14 @@ branch-local `node_modules` with the worktree.
 
 ## Scripts
 
-| Command                  | What it does                                      |
-| ------------------------ | ------------------------------------------------- |
-| `bun run start`          | Start the Metro dev server                        |
-| `bun run setup:worktree` | Prepare local env links and install dependencies  |
-| `bun run typecheck`      | `tsc --noEmit`                                    |
-| `bun run lint`           | ESLint (`eslint-config-expo`)                     |
-| `bun run format`         | Biome (formatter only; ESLint owns lint)          |
+| Command                    | What it does                                      |
+| -------------------------- | ------------------------------------------------- |
+| `bun run start`            | Start the Metro dev server                        |
+| `bun run setup:worktree`   | Prepare local env links and install dependencies  |
+| `bun run typecheck`        | `tsc --noEmit`                                    |
+| `bun run lint`             | ESLint (`eslint-config-expo`)                     |
+| `bun run build:share-site` | Build the share fallback and AASA file            |
+| `bun run format`           | Biome (formatter only; ESLint owns lint)          |
 
 ## Architecture notes
 
