@@ -1,6 +1,6 @@
 import type { Id } from "@convex/_generated/dataModel";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
-import { Alert } from "react-native";
+import { Alert, Share } from "react-native";
 
 import SpotDetailScreen from "@/app/spot/[id]";
 
@@ -49,6 +49,7 @@ beforeEach(() => {
   mockAuthState.isLoaded = true;
   mockAuthState.isSignedIn = false;
   mockToggleFavorite.mockResolvedValue(true);
+  process.env.EXPO_PUBLIC_SHARE_BASE_URL = "https://share.example.com";
 });
 
 describe("SpotDetailScreen favourites", () => {
@@ -70,5 +71,37 @@ describe("SpotDetailScreen favourites", () => {
 
     await fireEvent.press(screen.getByRole("button", { name: "Add to favourites" }));
     await waitFor(() => expect(mockToggleFavorite).toHaveBeenCalledWith({ spotId: "spot-1" }));
+  });
+});
+
+describe("SpotDetailScreen sharing", () => {
+  test("shares a public link while signed out", async () => {
+    const shareSpy = jest.spyOn(Share, "share").mockResolvedValue({ action: Share.sharedAction });
+    await render(<SpotDetailScreen />);
+
+    fireEvent.press(screen.getByRole("button", { name: "Share spot" }));
+
+    await waitFor(() =>
+      expect(shareSpy).toHaveBeenCalledWith({
+        message: "Check out Harmony Park on YYC Skate Spots.",
+        url: "https://share.example.com/share?id=spot-1",
+      }),
+    );
+    expect(mockToggleFavorite).not.toHaveBeenCalled();
+  });
+
+  test("reports a share-sheet failure", async () => {
+    jest.spyOn(Share, "share").mockRejectedValue(new Error("unavailable"));
+    const alertSpy = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+    await render(<SpotDetailScreen />);
+
+    fireEvent.press(screen.getByRole("button", { name: "Share spot" }));
+
+    await waitFor(() =>
+      expect(alertSpy).toHaveBeenCalledWith(
+        "Couldn't share this spot",
+        "Check your connection and try again.",
+      ),
+    );
   });
 });

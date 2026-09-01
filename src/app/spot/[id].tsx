@@ -9,12 +9,13 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  Share,
   Text,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { BackIcon, MoreIcon, NavigateIcon } from "@/components/icons";
+import { BackIcon, MoreIcon, NavigateIcon, ShareIcon } from "@/components/icons";
 import { FavoriteButton } from "@/components/favorite-button";
 import { PhotoCarousel } from "@/components/photo-carousel";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,7 @@ import { Hairline } from "@/components/ui/hairline";
 import { formatMonthYear } from "@/lib/dates";
 import { distanceKm, formatDistance } from "@/lib/geo";
 import { openDirections } from "@/lib/open-directions";
+import { spotShareUrl } from "@/lib/share-spot";
 import {
   BUST_FACTOR_COLORS,
   BUST_FACTOR_LABELS,
@@ -157,7 +159,8 @@ export default function SpotDetailScreen() {
 
   // Captured here because TS narrowing of `spot` doesn't reach the closures below.
   const spotId = spot._id;
-  const destination = { name: spot.name, latitude: spot.latitude, longitude: spot.longitude };
+  const spotName = spot.name;
+  const destination = { name: spotName, latitude: spot.latitude, longitude: spot.longitude };
 
   async function handleDirections() {
     try {
@@ -165,6 +168,20 @@ export default function SpotDetailScreen() {
     } catch {
       // openURL rejects when nothing handles the URL or the user cancels.
       Alert.alert("Couldn't open a maps app", "Install Google Maps or Apple Maps and try again.");
+    }
+  }
+
+  async function handleShare() {
+    try {
+      const url = spotShareUrl(spotId);
+      const message = `Check out ${spotName} on YYC Skate Spots.`;
+      await Share.share(
+        Platform.OS === "ios"
+          ? { message, url }
+          : { message: `${message}\n${url}`, title: spotName },
+      );
+    } catch {
+      Alert.alert("Couldn't share this spot", "Check your connection and try again.");
     }
   }
 
@@ -293,6 +310,15 @@ export default function SpotDetailScreen() {
       </View>
       {backButton}
       <View className="absolute right-4 flex-row gap-2" style={{ top: insets.top + 8 }}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Share spot"
+          onPress={() => void handleShare()}
+          className="h-9 w-9 items-center justify-center rounded-full border border-white/10 active:opacity-80"
+          style={{ backgroundColor: "rgba(30,32,36,0.72)" }}
+        >
+          <ShareIcon size={18} color={colors.ink} />
+        </Pressable>
         <FavoriteButton
           isFavorite={spot.isFavorite}
           busy={favoritePending}
