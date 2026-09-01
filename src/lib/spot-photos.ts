@@ -1,4 +1,6 @@
 import type { Id } from "@convex/_generated/dataModel";
+import { fetch } from "expo/fetch";
+import { File } from "expo-file-system";
 import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
 
@@ -52,11 +54,12 @@ export async function uploadPhoto(
   const rendered = await context.renderAsync();
   const saved = await rendered.saveAsync({ format: SaveFormat.JPEG, compress: JPEG_QUALITY });
 
-  const body = await (await fetch(saved.uri)).blob();
+  // Expo's File body preserves local file bytes; React Native's file:// Blob
+  // round trip can produce an empty request body on device.
   const response = await fetch(`${siteUrl}/upload`, {
     method: "POST",
     headers: { "Content-Type": "image/jpeg", Authorization: `Bearer ${token}` },
-    body,
+    body: new File(saved.uri),
   });
   if (!response.ok) {
     throw new Error(

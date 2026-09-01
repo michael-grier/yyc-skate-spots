@@ -1,11 +1,12 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
-import { Alert } from "react-native";
+import { Alert, StyleSheet } from "react-native";
 
 import { EMPTY_SPOT_FORM, type FormPhoto } from "@/lib/spot-form";
 
 import { SpotForm } from "./spot-form";
 
 const mockDiscardUpload = jest.fn();
+const mockPickPhotos = jest.fn();
 const mockUploadPhoto = jest.fn();
 
 jest.mock("@clerk/expo", () => ({
@@ -13,7 +14,7 @@ jest.mock("@clerk/expo", () => ({
 }));
 jest.mock("convex/react", () => ({ useMutation: () => mockDiscardUpload }));
 jest.mock("@/lib/spot-photos", () => ({
-  pickPhotos: jest.fn().mockResolvedValue([]),
+  pickPhotos: (...args: unknown[]) => mockPickPhotos(...args),
   uploadPhoto: (...args: unknown[]) => mockUploadPhoto(...args),
 }));
 jest.mock("expo-image", () => {
@@ -47,6 +48,7 @@ const localPhoto = (key: string): FormPhoto => ({
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockPickPhotos.mockResolvedValue([]);
 });
 
 describe("SpotForm", () => {
@@ -84,6 +86,31 @@ describe("SpotForm", () => {
       },
       [],
     );
+  });
+
+  test("picked photos and the add control use matching tile dimensions", async () => {
+    mockPickPhotos.mockResolvedValueOnce([localPhoto("thumbnail")]);
+
+    await render(
+      <SpotForm
+        title="New spot"
+        initialValues={EMPTY_SPOT_FORM}
+        onCancel={jest.fn()}
+        onSave={jest.fn()}
+      />,
+    );
+
+    await fireEvent.press(screen.getByRole("button", { name: "Add photos" }));
+
+    const thumbnail = screen.getByLabelText("Selected photo 1");
+    const addPhotos = screen.getByRole("button", { name: "Add photos" });
+    expect(thumbnail.props.accessible).toBe(true);
+    expect(StyleSheet.flatten(thumbnail.props.style)).toMatchObject({
+      width: 80,
+      height: 80,
+      borderRadius: 12,
+    });
+    expect(StyleSheet.flatten(addPhotos.props.style)).toMatchObject({ width: 80, height: 80 });
   });
 
   test("a failed upload discards the photos uploaded before it and keeps the spot unsaved", async () => {
