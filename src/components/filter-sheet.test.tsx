@@ -15,7 +15,10 @@ jest.mock("@gorhom/bottom-sheet", () => {
   };
 });
 
-function renderSheet(filters: SpotFilters, overrides: Partial<Parameters<typeof FilterSheet>[0]> = {}) {
+function renderSheet(
+  filters: SpotFilters,
+  overrides: Partial<Parameters<typeof FilterSheet>[0]> = {},
+) {
   const onChange = jest.fn();
   const props = {
     ref: null,
@@ -42,6 +45,18 @@ describe("FilterSheet", () => {
     expect(first.onChange).toHaveBeenLastCalledWith({ ...DEFAULT_FILTERS, types: [] });
   });
 
+  test("offers the additional spot types as filters", async () => {
+    const { onChange, result } = renderSheet(DEFAULT_FILTERS);
+    await result;
+
+    for (const label of ["Skate park", "DIY", "Wallride", "Flatground"]) {
+      expect(screen.getByText(label)).toBeOnTheScreen();
+    }
+
+    await fireEvent.press(screen.getByText("Skate park"));
+    expect(onChange).toHaveBeenCalledWith({ ...DEFAULT_FILTERS, types: ["skate_park"] });
+  });
+
   test("distance presets are one-of and Any clears the radius", async () => {
     const { onChange, result } = renderSheet({ ...DEFAULT_FILTERS, maxDistanceKm: 5 });
     await result;
@@ -52,7 +67,12 @@ describe("FilterSheet", () => {
   });
 
   test("reset clears the chips but preserves the search query", async () => {
-    const active = { query: "bmo", maxDistanceKm: 5, types: ["ledge" as const], bustFactors: ["low" as const] };
+    const active = {
+      query: "bmo",
+      maxDistanceKm: 5,
+      types: ["ledge" as const],
+      bustFactors: ["low" as const],
+    };
     const { onChange, result } = renderSheet(active);
     await result;
     await fireEvent.press(screen.getByText("Reset"));

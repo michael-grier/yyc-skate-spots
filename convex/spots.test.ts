@@ -106,6 +106,19 @@ describe("spots authz", () => {
     );
   });
 
+  test("accepts skate parks, DIYs, wallrides, and flatground spots", async () => {
+    const t = convexTest(schema, modules);
+    const asAlice = t.withIdentity({ subject: "alice" });
+    const types = ["skate_park", "diy", "wallride", "flatground"] as const;
+
+    const id = await asAlice.mutation(api.spots.create, { ...SPOT, types: [...types] });
+    const spot = await t.query(api.spots.get, { id });
+
+    expect(spot?.status).toBe("active");
+    if (spot?.status !== "active") throw new Error("Expected an active spot.");
+    expect(spot.types).toEqual(types);
+  });
+
   test("photo storage ids are never exposed to non-owners", async () => {
     const t = convexTest(schema, modules);
     const asAlice = t.withIdentity({ subject: "alice" });

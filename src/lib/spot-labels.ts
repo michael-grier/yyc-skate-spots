@@ -18,6 +18,10 @@ export const SPOT_TYPE_LABELS: Record<SpotType, string> = {
   bump: "Bump",
   hubba: "Hubba",
   drop: "Drop",
+  skate_park: "Skate park",
+  diy: "DIY",
+  wallride: "Wallride",
+  flatground: "Flatground",
   other: "Other",
 };
 
