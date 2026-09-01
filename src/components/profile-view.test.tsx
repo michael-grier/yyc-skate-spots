@@ -67,6 +67,13 @@ describe("ProfileView", () => {
     });
   });
 
+  test("opens the spot standards from the profile shortcut", async () => {
+    await render(<ProfileView />);
+    await fireEvent.press(screen.getByRole("button", { name: "Spot standards" }));
+
+    expect(mockPush).toHaveBeenCalledWith("/standards");
+  });
+
   test("shows the right empty message for each segment", async () => {
     mockQueryResults["favorites:list"] = [];
     mockQueryResults["spots:mine"] = [];

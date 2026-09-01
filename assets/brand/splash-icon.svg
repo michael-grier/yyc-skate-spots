@@ -1,1 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><g transform="translate(12 12) rotate(-45) scale(1.0) translate(-12 -14)" fill="none" stroke="#D9DDE3" stroke-width="1.8" stroke-linecap="round"><path d="M1.5 11 Q3 13.6 6 13.6 L18 13.6 Q21 13.6 22.5 11"/><circle cx="7" cy="17" r="2" fill="#D9DDE3" stroke="none"/><circle cx="17" cy="17" r="2" fill="#D9DDE3" stroke="none"/></g></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
+  <g transform="translate(200 158) rotate(-45) scale(5) translate(-12 -14)" fill="none" stroke="#D9DDE3" stroke-width="1.8" stroke-linecap="round">
+    <path d="M1.5 11 Q3 13.6 6 13.6 L18 13.6 Q21 13.6 22.5 11"/>
+    <circle cx="7" cy="17" r="2" fill="#D9DDE3" stroke="none"/>
+    <circle cx="17" cy="17" r="2" fill="#D9DDE3" stroke="none"/>
+  </g>
+  <text x="200" y="263" fill="#F0F1F3" font-family="Inter, sans-serif" font-size="32" font-weight="600" text-anchor="middle">YYC Skate Spots</text>
+</svg>

@@ -7,7 +7,7 @@ import { useState } from "react";
 import { ActivityIndicator, FlatList, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { ChevronRightIcon } from "@/components/icons";
+import { ChevronRightIcon, ClipboardIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/cn";
@@ -92,9 +92,9 @@ export function ProfileView() {
       ListHeaderComponent={
         <>
           <Text className="font-sans-semibold text-[26px] tracking-tight text-ink">Profile</Text>
-          <Card className="mt-6 flex-row items-center gap-4 p-4">
-            <View className="h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-white/5">
-              <Text className="font-sans-semibold text-[15px] text-silver">
+          <Card className="mt-6 flex-row items-center gap-3 px-4 py-3">
+            <View className="h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5">
+              <Text className="font-sans-semibold text-[13px] text-silver">
                 {initialsOf(user?.fullName, email)}
               </Text>
             </View>
@@ -111,6 +111,19 @@ export function ProfileView() {
               ) : null}
             </View>
           </Card>
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Spot standards"
+            onPress={() => router.push("/standards")}
+            className="mt-2 active:opacity-90"
+          >
+            <Card className="flex-row items-center gap-3 px-4 py-3">
+              <ClipboardIcon size={18} color={colors.silver} />
+              <Text className="flex-1 font-sans-semibold text-[14px] text-ink">Spot standards</Text>
+              <ChevronRightIcon size={18} color={colors.mute} />
+            </Card>
+          </Pressable>
 
           {moderation?.isAdmin ? (
             <Pressable
