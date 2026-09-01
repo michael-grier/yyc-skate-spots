@@ -1,0 +1,190 @@
+import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { Alert, StyleSheet } from "react-native";
+
+import { EMPTY_SPOT_FORM, type FormPhoto, type SpotFormValues } from "@/lib/spot-form";
+
+import { SpotEditForm } from "./spot-edit-form";
+
+const mockDiscardUpload = jest.fn();
+const mockPickPhotos = jest.fn();
+const mockUploadPhoto = jest.fn();
+
+jest.mock("@clerk/expo", () => ({
+  useAuth: () => ({ getToken: jest.fn().mockResolvedValue("token") }),
+}));
+jest.mock("convex/react", () => ({ useMutation: () => mockDiscardUpload }));
+jest.mock("expo-router", () => ({ useRouter: () => ({ push: jest.fn() }) }));
+jest.mock("@/lib/spot-photos", () => ({
+  pickPhotos: (...args: unknown[]) => mockPickPhotos(...args),
+  uploadPhoto: (...args: unknown[]) => mockUploadPhoto(...args),
+}));
+jest.mock("expo-image", () => {
+  const { Image } = jest.requireActual<typeof import("react-native")>("react-native");
+  return { Image };
+});
+// The standards sheet is reachable from the footer but is not what these tests exercise.
+jest.mock("@gorhom/bottom-sheet", () => ({
+  BottomSheetModal: () => null,
+  BottomSheetView: () => null,
+  BottomSheetBackdrop: () => null,
+}));
+// The picker needs react-native-maps; this stub preserves the explicit
+// selection boundary without loading the native map in a form test.
+jest.mock("@/components/location-picker", () => {
+  const { Pressable, Text } = jest.requireActual<typeof import("react-native")>("react-native");
+  return {
+    LocationPicker: ({
+      onChange,
+    }: {
+      onChange: (v: { latitude: number; longitude: number }) => void;
+    }) => (
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => onChange({ latitude: 51.05, longitude: -114.07 })}
+      >
+        <Text>Set test location</Text>
+      </Pressable>
+    ),
+  };
+});
+
+const localPhoto = (key: string): FormPhoto => ({
+  key,
+  uri: `file:///${key}.jpg`,
+  width: 100,
+  height: 100,
+});
+
+const EXISTING: SpotFormValues = {
+  ...EMPTY_SPOT_FORM,
+  name: "Harmony Park",
+  types: ["ledge", "stairs"],
+  bustFactor: "medium",
+  latitude: 51.05,
+  longitude: -114.07,
+};
+
+beforeEach(() => {
+  jest.clearAllMocks();
+  mockPickPhotos.mockResolvedValue([]);
+});
+
+describe("SpotEditForm", () => {
+  test("notes are edited in their own overlay and land back on the form", async () => {
+    await render(<SpotEditForm initialValues={EXISTING} onCancel={jest.fn()} onSave={jest.fn()} />);
+
+    await fireEvent.press(screen.getByRole("button", { name: "Edit notes" }));
+    await fireEvent.changeText(screen.getByLabelText("Notes"), "Security does laps at 5.");
+    await fireEvent.press(screen.getByText("Done"));
+
+    expect(screen.queryByLabelText("Notes")).not.toBeOnTheScreen();
+    expect(screen.getByText("Security does laps at 5.")).toBeOnTheScreen();
+  });
+
+  test("saves the edited fields, including a surface cleared back to unanswered", async () => {
+    const onSave = jest.fn().mockResolvedValue(undefined);
+    await render(
+      <SpotEditForm
+        initialValues={{ ...EXISTING, surface: "smooth" }}
+        onCancel={jest.fn()}
+        onSave={onSave}
+      />,
+    );
+
+    await fireEvent.changeText(screen.getByLabelText("Spot name"), "Harmony Park Ledges");
+    // Tapping the chosen surface is what clears an optional field.
+    await fireEvent.press(screen.getByText("Smooth"));
+    await fireEvent.press(screen.getByText("Save changes"));
+
+    expect(onSave).toHaveBeenCalledWith(
+      {
+        name: "Harmony Park Ledges",
+        types: ["ledge", "stairs"],
+        bustFactor: "medium",
+        latitude: 51.05,
+        longitude: -114.07,
+      },
+      [],
+    );
+  });
+
+  test("picked photos and the add control use matching tile dimensions", async () => {
+    mockPickPhotos.mockResolvedValueOnce([localPhoto("thumbnail")]);
+
+    await render(<SpotEditForm initialValues={EXISTING} onCancel={jest.fn()} onSave={jest.fn()} />);
+
+    await fireEvent.press(screen.getByRole("button", { name: "Add photos" }));
+
+    // The picker result arrives asynchronously and the press handler discards
+    // its promise, so the press alone does not settle it.
+    const thumbnail = await screen.findByLabelText("Selected photo 1");
+    const addPhotos = screen.getByRole("button", { name: "Add photos" });
+    expect(thumbnail.props.accessible).toBe(true);
+    expect(StyleSheet.flatten(thumbnail.props.style)).toMatchObject({
+      width: 80,
+      height: 80,
+      borderRadius: 12,
+    });
+    expect(StyleSheet.flatten(addPhotos.props.style)).toMatchObject({ width: 80, height: 80 });
+  });
+
+  // Only same-session picks share a key with what is already attached: a saved
+  // photo is keyed by its Convex storage id, so re-picking that one cannot be
+  // detected and is not what this covers.
+  test("picking the same photo twice in one session attaches it once", async () => {
+    mockPickPhotos
+      .mockResolvedValueOnce([localPhoto("asset-1")])
+      .mockResolvedValueOnce([localPhoto("asset-1"), localPhoto("asset-2")]);
+
+    await render(<SpotEditForm initialValues={EXISTING} onCancel={jest.fn()} onSave={jest.fn()} />);
+
+    await fireEvent.press(screen.getByRole("button", { name: "Add photos" }));
+    await screen.findByLabelText("Selected photo 1");
+
+    // The second pick returns the photo already attached plus a new one. Waiting
+    // for the new tile proves the pick settled, so the missing third tile is
+    // de-duplication rather than an assertion that ran too early.
+    await fireEvent.press(screen.getByRole("button", { name: "Add photos" }));
+    await screen.findByLabelText("Selected photo 2");
+    expect(screen.queryByLabelText("Selected photo 3")).not.toBeOnTheScreen();
+  });
+
+  test("a save with required fields cleared shows errors and never calls onSave", async () => {
+    const onSave = jest.fn();
+    await render(
+      <SpotEditForm initialValues={EMPTY_SPOT_FORM} onCancel={jest.fn()} onSave={onSave} />,
+    );
+
+    await fireEvent.press(screen.getByText("Save changes"));
+
+    expect(await screen.findByText("Give the spot a name.")).toBeOnTheScreen();
+    expect(screen.getByText("Pick at least one type.")).toBeOnTheScreen();
+    expect(screen.getByText("Pick a bust factor.")).toBeOnTheScreen();
+    expect(screen.getByText("Set the spot location.")).toBeOnTheScreen();
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  test("a failed upload discards the photos uploaded before it and keeps the spot unsaved", async () => {
+    mockUploadPhoto.mockResolvedValueOnce("storage-1").mockRejectedValueOnce(new Error("network"));
+    const alertSpy = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+    const onSave = jest.fn();
+
+    await render(
+      <SpotEditForm
+        initialValues={{ ...EXISTING, photos: [localPhoto("a"), localPhoto("b")] }}
+        onCancel={jest.fn()}
+        onSave={onSave}
+      />,
+    );
+
+    await fireEvent.press(screen.getByText("Save changes"));
+
+    // The alert is the last step of the save chain, so waiting on it means the
+    // rollback before it has run. Asserting straight after the press only holds
+    // while the mocks happen to settle within microtasks.
+    await waitFor(() => expect(alertSpy).toHaveBeenCalledWith("Couldn't save the spot", "network"));
+    expect(mockUploadPhoto).toHaveBeenCalledTimes(2);
+    expect(mockDiscardUpload).toHaveBeenCalledWith({ storageId: "storage-1" });
+    expect(onSave).not.toHaveBeenCalled();
+  });
+});

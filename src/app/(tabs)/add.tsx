@@ -6,9 +6,8 @@ import { useState } from "react";
 import { ActivityIndicator, Text, View } from "react-native";
 
 import { BoardMark } from "@/components/board-mark";
-import { SpotForm } from "@/components/spot-form";
+import { SpotCreateForm } from "@/components/spot-create-form";
 import { Button } from "@/components/ui/button";
-import { EMPTY_SPOT_FORM } from "@/lib/spot-form";
 import { colors } from "@/theme/colors";
 
 /**
@@ -77,10 +76,8 @@ export default function AddSpotScreen() {
   }
 
   return (
-    <SpotForm
+    <SpotCreateForm
       key={formKey}
-      title="New spot"
-      initialValues={EMPTY_SPOT_FORM}
       onCancel={() => {
         setFormKey((k) => k + 1);
         router.navigate("/");

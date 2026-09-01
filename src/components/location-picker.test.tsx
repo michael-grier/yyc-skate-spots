@@ -96,10 +96,7 @@ describe("LocationPicker", () => {
     expect(screen.getByText("Use latitude first, like 51.0447, -114.0719.")).toBeOnTheScreen();
     expect(onChange).not.toHaveBeenCalled();
 
-    await fireEvent.changeText(
-      screen.getByLabelText("Latitude and longitude"),
-      "51.06, -114.09",
-    );
+    await fireEvent.changeText(screen.getByLabelText("Latitude and longitude"), "51.06, -114.09");
     await fireEvent.press(screen.getByText("Apply location"));
 
     expect(onChange).toHaveBeenCalledWith({ latitude: 51.06, longitude: -114.09 });
@@ -120,6 +117,20 @@ describe("LocationPicker", () => {
 
     await fireEvent.press(screen.getByText("Confirm location"));
     expect(onChange).toHaveBeenCalledWith({ latitude: 51.05, longitude: -114.08 });
+  });
+
+  test("the compact variant keeps every method behind one tap", async () => {
+    await render(<LocationPicker variant="compact" value={null} onChange={jest.fn()} />);
+
+    expect(screen.getByText("No location set")).toBeOnTheScreen();
+    expect(screen.queryByText("Choose on map")).not.toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByRole("button", { name: "Set spot location" }));
+    expect(screen.getByText("Choose on map")).toBeOnTheScreen();
+    expect(screen.getByText("Current location")).toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByRole("button", { name: "Set spot location" }));
+    expect(screen.queryByText("Choose on map")).not.toBeOnTheScreen();
   });
 
   test("closing the map discards its draft", async () => {

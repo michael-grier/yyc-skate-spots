@@ -2,9 +2,11 @@ import { describe, expect, test } from "vitest";
 
 import {
   EMPTY_SPOT_FORM,
+  firstInvalidStep,
   type SpotFormValues,
   spotToFormValues,
   validateSpotForm,
+  validateSpotStep,
 } from "./spot-form";
 
 const VALID: SpotFormValues = {
@@ -83,5 +85,35 @@ describe("spotToFormValues", () => {
       ["a", "https://x/a"],
       ["b", "https://x/b"],
     ]);
+  });
+});
+
+describe("validateSpotStep", () => {
+  test("reports only the fields the step owns, so Next never flags work not yet reached", () => {
+    expect(validateSpotStep(EMPTY_SPOT_FORM, "basics")).toEqual({
+      name: "Give the spot a name.",
+      types: "Pick at least one type.",
+    });
+    expect(validateSpotStep(EMPTY_SPOT_FORM, "place")).toEqual({
+      location: "Set the spot location.",
+    });
+    expect(validateSpotStep(EMPTY_SPOT_FORM, "details")).toEqual({
+      bustFactor: "Pick a bust factor.",
+    });
+  });
+
+  test("passes a step whose own fields are filled in even when later steps are empty", () => {
+    const basicsOnly = { ...EMPTY_SPOT_FORM, name: "Harmony Park", types: ["ledge" as const] };
+    expect(validateSpotStep(basicsOnly, "basics")).toEqual({});
+    expect(validateSpotStep(basicsOnly, "place")).toEqual({ location: "Set the spot location." });
+  });
+});
+
+describe("firstInvalidStep", () => {
+  test("points at the earliest step holding an error", () => {
+    expect(firstInvalidStep({ name: "x", bustFactor: "y" })).toBe("basics");
+    expect(firstInvalidStep({ location: "x", notes: "y" })).toBe("place");
+    expect(firstInvalidStep({ notes: "x" })).toBe("details");
+    expect(firstInvalidStep({})).toBeNull();
   });
 });

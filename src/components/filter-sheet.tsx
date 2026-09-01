@@ -1,15 +1,11 @@
-import {
-  BottomSheetBackdrop,
-  type BottomSheetBackdropProps,
-  BottomSheetModal,
-  BottomSheetView,
-} from "@gorhom/bottom-sheet";
+import { BottomSheetModal, BottomSheetView } from "@gorhom/bottom-sheet";
 import type { Ref } from "react";
 import { Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
+import { renderSheetBackdrop } from "@/components/ui/sheet-backdrop";
 import {
   DISTANCE_PRESETS_KM,
   type SpotFilters,
@@ -23,6 +19,7 @@ import {
   SPOT_TYPE_LABELS,
   SPOT_TYPES,
 } from "@/lib/spot-labels";
+import { toggle } from "@/lib/toggle";
 import { colors } from "@/theme/colors";
 
 type FilterSheetProps = {
@@ -36,16 +33,8 @@ type FilterSheetProps = {
   onDone: () => void;
 };
 
-function toggle<T>(list: T[], item: T) {
-  return list.includes(item) ? list.filter((x) => x !== item) : [...list, item];
-}
-
 function SectionLabel({ children }: { children: string }) {
   return <Text className="mt-6 font-sans-medium text-[11px] text-mute">{children}</Text>;
-}
-
-function renderBackdrop(props: BottomSheetBackdropProps) {
-  return <BottomSheetBackdrop {...props} appearsOnIndex={0} disappearsOnIndex={-1} opacity={0.5} />;
 }
 
 /** All three filters in one sheet; any chip on the map opens it. */
@@ -65,7 +54,7 @@ export function FilterSheet({
     <BottomSheetModal
       ref={ref}
       enableDynamicSizing
-      backdropComponent={renderBackdrop}
+      backdropComponent={renderSheetBackdrop}
       backgroundStyle={{
         backgroundColor: colors.base,
         borderRadius: 28,
