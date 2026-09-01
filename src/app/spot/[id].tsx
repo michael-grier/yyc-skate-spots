@@ -69,6 +69,7 @@ export default function SpotDetailScreen() {
   const [favoritePending, setFavoritePending] = useState(false);
   const { coords, granted } = useUserLocation();
   const activeSpot = spot?.status === "active" ? spot : null;
+  const detailHeaderHeight = insets.top + 56;
   // Android's geocoder needs location permission; iOS's does not.
   const address = useSpotAddress(
     activeSpot?.latitude,
@@ -213,8 +214,13 @@ export default function SpotDetailScreen() {
   return (
     <View className="flex-1 bg-base">
       <Stack.Screen options={{ headerShown: false }} />
-      <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 104 }}>
-        <PhotoCarousel urls={spot.photoUrls} spotName={spot.name} />
+      <ScrollView
+        contentContainerStyle={{
+          paddingTop: detailHeaderHeight,
+          paddingBottom: insets.bottom + 104,
+        }}
+      >
+        <PhotoCarousel urls={spot.photoUrls} spotName={spot.name} variant="gallery" />
 
         <View className="px-5">
           <Text className="font-sans-semibold text-[26px] tracking-tight text-ink">
@@ -274,6 +280,16 @@ export default function SpotDetailScreen() {
         </View>
       </ScrollView>
 
+      {/* The opaque toolbar keeps the initial photo clear of system status-bar content. */}
+      <View
+        pointerEvents="none"
+        className="absolute inset-x-0 top-0 items-center justify-end bg-base pb-5"
+        style={{ height: detailHeaderHeight }}
+      >
+        <Text className="font-sans-semibold text-[12px] uppercase tracking-widest text-mute">
+          Spot details
+        </Text>
+      </View>
       {backButton}
       <View className="absolute right-4 flex-row gap-2" style={{ top: insets.top + 8 }}>
         <FavoriteButton
