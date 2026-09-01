@@ -177,6 +177,23 @@ export function CloseIcon({ size = 24, color }: IconProps) {
   );
 }
 
+export function ExpandIcon({ size = 24, color }: IconProps) {
+  return (
+    <Svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <Path d="M8 3H3v5M16 3h5v5M21 16v5h-5M8 21H3v-5" />
+    </Svg>
+  );
+}
+
 export function BackIcon({ size = 24, color }: IconProps) {
   return (
     <Svg
