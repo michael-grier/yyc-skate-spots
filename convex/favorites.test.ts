@@ -8,6 +8,7 @@ import schema from "./schema";
 const modules = import.meta.glob("./**/*.ts");
 
 type Harness = ReturnType<typeof convexTest>;
+type Identity = ReturnType<Harness["withIdentity"]>;
 
 async function finishScheduled(t: Harness) {
   vi.useFakeTimers();
@@ -27,11 +28,31 @@ const SPOT = {
   photoIds: [] as Id<"_storage">[],
 };
 
+async function createPublishedSpot(t: Harness, as: Identity, spot: typeof SPOT) {
+  await as.mutation(api.moderation.acknowledgeStandards, {});
+  const spotId = await as.mutation(api.spots.create, spot);
+  const asAdmin = t.withIdentity({ subject: "admin", role: "admin" });
+  await asAdmin.mutation(api.moderation.markMeetsStandards, { spotId });
+  return spotId;
+}
+
 describe("favorites", () => {
+  test("pending spots cannot be saved or exposed through an existing favorite", async () => {
+    const t = convexTest(schema, modules);
+    const asAlice = t.withIdentity({ subject: "alice" });
+    const asBob = t.withIdentity({ subject: "bob", tokenIdentifier: "test|bob" });
+    await asAlice.mutation(api.moderation.acknowledgeStandards, {});
+    const spotId = await asAlice.mutation(api.spots.create, SPOT);
+
+    await expect(asBob.mutation(api.favorites.toggle, { spotId })).rejects.toThrow(/not found/);
+    await t.run((ctx) => ctx.db.insert("favorites", { userId: "test|bob", spotId }));
+    expect(await asBob.query(api.favorites.list, {})).toEqual([]);
+  });
+
   test("browsing the list is private and writing requires sign-in", async () => {
     const t = convexTest(schema, modules);
     const asAlice = t.withIdentity({ subject: "alice" });
-    const spotId = await asAlice.mutation(api.spots.create, SPOT);
+    const spotId = await createPublishedSpot(t, asAlice, SPOT);
 
     expect(await t.query(api.favorites.list, {})).toEqual([]);
     await expect(t.mutation(api.favorites.toggle, { spotId })).rejects.toThrow(/signed in/);
@@ -41,7 +62,7 @@ describe("favorites", () => {
     const t = convexTest(schema, modules);
     const asAlice = t.withIdentity({ subject: "alice" });
     const asBob = t.withIdentity({ subject: "bob" });
-    const spotId = await asAlice.mutation(api.spots.create, SPOT);
+    const spotId = await createPublishedSpot(t, asAlice, SPOT);
 
     expect(await asBob.mutation(api.favorites.toggle, { spotId })).toBe(true);
     expect((await asBob.query(api.favorites.list, {})).map((spot) => spot.name)).toEqual([
@@ -72,8 +93,8 @@ describe("favorites", () => {
   test("lists the most recently saved spot first and allows saving your own spot", async () => {
     const t = convexTest(schema, modules);
     const asAlice = t.withIdentity({ subject: "alice" });
-    const first = await asAlice.mutation(api.spots.create, { ...SPOT, name: "First" });
-    const second = await asAlice.mutation(api.spots.create, { ...SPOT, name: "Second" });
+    const first = await createPublishedSpot(t, asAlice, { ...SPOT, name: "First" });
+    const second = await createPublishedSpot(t, asAlice, { ...SPOT, name: "Second" });
 
     await asAlice.mutation(api.favorites.toggle, { spotId: first });
     await asAlice.mutation(api.favorites.toggle, { spotId: second });
@@ -87,7 +108,7 @@ describe("favorites", () => {
   test("a deleted spot cannot be saved", async () => {
     const t = convexTest(schema, modules);
     const asAlice = t.withIdentity({ subject: "alice" });
-    const spotId = await asAlice.mutation(api.spots.create, SPOT);
+    const spotId = await createPublishedSpot(t, asAlice, SPOT);
     await asAlice.mutation(api.spots.remove, { id: spotId });
 
     await expect(asAlice.mutation(api.favorites.toggle, { spotId })).rejects.toThrow(/not found/);
@@ -98,8 +119,8 @@ describe("favorites", () => {
     const asAlice = t.withIdentity({ subject: "alice" });
     const asBob = t.withIdentity({ subject: "bob" });
     const asCara = t.withIdentity({ subject: "cara" });
-    const removed = await asAlice.mutation(api.spots.create, { ...SPOT, name: "Removed" });
-    const kept = await asAlice.mutation(api.spots.create, { ...SPOT, name: "Kept" });
+    const removed = await createPublishedSpot(t, asAlice, { ...SPOT, name: "Removed" });
+    const kept = await createPublishedSpot(t, asAlice, { ...SPOT, name: "Kept" });
 
     await asAlice.mutation(api.favorites.toggle, { spotId: removed });
     await asBob.mutation(api.favorites.toggle, { spotId: removed });
@@ -120,7 +141,7 @@ describe("favorites", () => {
   test("spot deletion batches more favourite rows than one worker can remove", async () => {
     const t = convexTest({ schema, modules, transactionLimits: true });
     const asAlice = t.withIdentity({ subject: "alice" });
-    const spotId = await asAlice.mutation(api.spots.create, SPOT);
+    const spotId = await createPublishedSpot(t, asAlice, SPOT);
     await t.run(async (ctx) => {
       for (let i = 0; i < 101; i += 1) {
         await ctx.db.insert("favorites", { userId: `user-${i}`, spotId });

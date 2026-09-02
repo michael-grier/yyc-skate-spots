@@ -19,6 +19,7 @@ export default function EditSpotScreen() {
   // owner result guarantees this is.
   const spotId = id as Id<"spots">;
   const updateSpot = useMutation(api.spots.update);
+  const acknowledgeStandards = useMutation(api.moderation.acknowledgeStandards);
 
   if (spot === undefined || moderation === undefined) {
     return (
@@ -66,6 +67,13 @@ export default function EditSpotScreen() {
           await updateSpot({ id: spotId, ...payload, photoIds });
           router.back();
         }}
+        onAcknowledgeStandards={
+          moderation.hasAcknowledgedStandards
+            ? undefined
+            : async () => {
+                await acknowledgeStandards({});
+              }
+        }
       />
     </>
   );

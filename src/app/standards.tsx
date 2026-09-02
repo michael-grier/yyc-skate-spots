@@ -60,8 +60,13 @@ export default function SpotStandardsScreen() {
           ))}
         </View>
         <Text className="mt-5 px-1 font-sans text-[12px] leading-relaxed text-mute">
+          New spots and edits stay private until an administrator approves them. Reports are private
+          and return a spot to the review queue so an administrator can approve it or remove it.
+        </Text>
+        <Text className="mt-3 px-1 font-sans text-[12px] leading-relaxed text-mute">
           A confirmed removal counts toward the contributor’s moderation record. After three
-          confirmed removals, an administrator may block that account from adding or editing spots.
+          confirmed removals, an administrator may block that account from adding spots, editing,
+          uploading photos, or sending reports.
         </Text>
       </ScrollView>
     </View>

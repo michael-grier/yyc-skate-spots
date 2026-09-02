@@ -21,6 +21,7 @@ const mockSpot = {
   photoIds: null,
   isOwner: false,
   isFavorite: false,
+  isPendingReview: false,
 };
 
 jest.mock("@clerk/expo", () => ({ useAuth: () => mockAuthState }));
@@ -48,6 +49,8 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockAuthState.isLoaded = true;
   mockAuthState.isSignedIn = false;
+  mockSpot.isOwner = false;
+  mockSpot.isPendingReview = false;
   mockToggleFavorite.mockResolvedValue(true);
   process.env.EXPO_PUBLIC_SHARE_BASE_URL = "https://share.example.com";
 });
@@ -103,5 +106,20 @@ describe("SpotDetailScreen sharing", () => {
         "Check your connection and try again.",
       ),
     );
+  });
+});
+
+describe("SpotDetailScreen moderation status", () => {
+  test("tells the owner a pending version is private", async () => {
+    mockSpot.isOwner = true;
+    mockSpot.isPendingReview = true;
+    await render(<SpotDetailScreen />);
+
+    expect(screen.getByText("Waiting for review")).toBeOnTheScreen();
+    expect(
+      screen.getByText(/visible only to you and administrators until it meets the spot standards/),
+    ).toBeOnTheScreen();
+    expect(screen.queryByRole("button", { name: "Share spot" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Add to favourites" })).toBeNull();
   });
 });

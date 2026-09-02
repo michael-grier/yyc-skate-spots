@@ -3,7 +3,12 @@ import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { internalMutation, mutation, query, type MutationCtx } from "./_generated/server";
 import { requireCanContribute, requireIdentity } from "./auth";
-import { clearSpotModeration, queueEditedSpot, queueNewSpot } from "./moderationModel";
+import {
+  clearSpotModeration,
+  queueEditedSpot,
+  queueNewSpot,
+  spotIsPublished,
+} from "./moderationModel";
 import { bustFactor, spotType, surface } from "./schema";
 
 // Caps chosen so a spot document stays far under Convex's 1MB limit and
@@ -162,19 +167,34 @@ export const list = query({
     // identity-aware, so it re-runs on sign-in and sign-out.
     const identity = await ctx.auth.getUserIdentity();
     const spots = await ctx.db.query("spots").take(MAX_SPOTS_LISTED);
+    const publishedSpots = (
+      await Promise.all(
+        spots
+          .filter((spot) => !spot.deletionRequested)
+          .map(async (spot) => ({ spot, isPublished: await spotIsPublished(ctx, spot) })),
+      )
+    ).filter(({ isPublished }) => isPublished);
     return Promise.all(
-      spots
-        .filter((spot) => !spot.deletionRequested)
-        .map(async ({ photoIds, createdBy, deletionRequested: _deletionRequested, ...spot }) => ({
+      publishedSpots.map(
+        async ({
+          spot: {
+            photoIds,
+            createdBy,
+            publicationStatus: _status,
+            deletionRequested: _deletionRequested,
+            ...spot
+          },
+        }) => ({
           ...spot,
           isMine: identity !== null && createdBy === identity.tokenIdentifier,
           previewPhotoUrl: photoIds.length > 0 ? await ctx.storage.getUrl(photoIds[0]) : null,
-        })),
+        }),
+      ),
     );
   },
 });
 
-/** Live spots and admin-removal notices visible only to their creator. */
+/** Submitted spots and admin-removal notices visible only to their creator. */
 export const mine = query({
   args: {},
   handler: async (ctx) => {
@@ -194,17 +214,20 @@ export const mine = query({
       )
       .order("desc")
       .take(MAX_SPOTS_LISTED);
-    return [
-      ...spots
+    const ownedSpots = await Promise.all(
+      spots
         .filter((spot) => !spot.deletionRequested)
-        .map(({ _id, _creationTime, name, types, bustFactor }) => ({
-          status: "active" as const,
-          _id,
-          _creationTime,
-          name,
-          types,
-          bustFactor,
+        .map(async (spot) => ({
+          status: (await spotIsPublished(ctx, spot)) ? ("active" as const) : ("pending" as const),
+          _id: spot._id,
+          _creationTime: spot._creationTime,
+          name: spot.name,
+          types: spot.types,
+          bustFactor: spot.bustFactor,
         })),
+    );
+    return [
+      ...ownedSpots,
       ...removals.map(({ spotId, spotCreationTime, name, reason, strikeNumber }) => ({
         status: "removed" as const,
         _id: spotId,
@@ -258,6 +281,10 @@ export const get = query({
     }
     const identity = await ctx.auth.getUserIdentity();
     const isOwner = identity !== null && spot.createdBy === identity.tokenIdentifier;
+    const isPublished = await spotIsPublished(ctx, spot);
+    if (!isPublished && !isOwner) {
+      return null;
+    }
     const favorite = identity
       ? await ctx.db
           .query("favorites")
@@ -272,6 +299,7 @@ export const get = query({
     const {
       photoIds,
       createdBy: _createdBy,
+      publicationStatus: _publicationStatus,
       deletionRequested: _deletionRequested,
       ...publicFields
     } = spot;
@@ -281,6 +309,7 @@ export const get = query({
       photoUrls,
       isOwner,
       isFavorite: favorite !== null,
+      isPendingReview: !isPublished,
       photoIds: isOwner ? photoIds : null,
     };
   },
@@ -298,6 +327,7 @@ export const create = mutation({
       name: args.name.trim(),
       createdBy: identity.tokenIdentifier,
       createdByName: identity.name,
+      publicationStatus: "pending",
     });
     await claimPhotos(ctx, args.photoIds, id);
     const spot = await ctx.db.get("spots", id);
@@ -333,6 +363,7 @@ export const update = mutation({
       name: fields.name.trim(),
       createdBy: existing.createdBy,
       createdByName: existing.createdByName,
+      publicationStatus: "pending",
     });
     const updated = await ctx.db.get("spots", id);
     if (!updated) {
@@ -359,7 +390,7 @@ export const removeFavoriteBatch = internalMutation({
   args: { spotId: v.id("spots") },
   handler: async (ctx, args): Promise<null> => {
     const spot = await ctx.db.get("spots", args.spotId);
-    // A stray internal call must never remove favourites from a live spot.
+    // A stray internal call must never remove favourites from a non-deleted spot.
     if (spot && !spot.deletionRequested) {
       return null;
     }

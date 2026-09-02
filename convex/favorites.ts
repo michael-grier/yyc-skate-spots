@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
+import { spotIsPublished } from "./moderationModel";
 
 // A user cannot save more spots than the city-scale spot query exposes.
 const MAX_FAVORITES_LISTED = 500;
@@ -36,6 +37,9 @@ export const toggle = mutation({
       await ctx.db.delete("favorites", existing._id);
       return false;
     }
+    if (!(await spotIsPublished(ctx, spot))) {
+      throw new Error("Spot not found.");
+    }
 
     await ctx.db.insert("favorites", {
       userId: identity.tokenIdentifier,
@@ -60,11 +64,17 @@ export const list = query({
       .order("desc")
       .take(MAX_FAVORITES_LISTED);
     const spots = await Promise.all(
-      favorites.map((favorite) => ctx.db.get("spots", favorite.spotId)),
+      favorites.map(async (favorite) => {
+        const spot = await ctx.db.get("spots", favorite.spotId);
+        return {
+          spot,
+          isPublished: spot ? await spotIsPublished(ctx, spot) : false,
+        };
+      }),
     );
 
-    return spots.flatMap((spot) =>
-      spot && !spot.deletionRequested
+    return spots.flatMap(({ spot, isPublished }) =>
+      spot && !spot.deletionRequested && isPublished
         ? [
             {
               _id: spot._id,

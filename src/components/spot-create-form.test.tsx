@@ -106,6 +106,31 @@ describe("SpotCreateForm", () => {
     );
   });
 
+  test("accepts the standards before the first valid contribution", async () => {
+    const onAcknowledgeStandards = jest.fn().mockResolvedValue(undefined);
+    const onSave = jest.fn().mockResolvedValue(undefined);
+    await render(
+      <SpotCreateForm
+        onCancel={jest.fn()}
+        onSave={onSave}
+        onAcknowledgeStandards={onAcknowledgeStandards}
+      />,
+    );
+
+    await fillBasics();
+    await fireEvent.press(screen.getByText("Set test location"));
+    await fireEvent.press(screen.getByText("Next · Details"));
+    await fireEvent.press(screen.getByText("Low"));
+    await fireEvent.press(screen.getByText("Save spot"));
+
+    expect(screen.getByText("First contribution")).toBeOnTheScreen();
+    expect(onSave).not.toHaveBeenCalled();
+    await fireEvent.press(screen.getByText("Agree and submit"));
+
+    await waitFor(() => expect(onAcknowledgeStandards).toHaveBeenCalledTimes(1));
+    expect(onSave).toHaveBeenCalledTimes(1);
+  });
+
   test("leaving the details step restores its button even with the keyboard up", async () => {
     // The notes accessory bar replaces the step button while notes is being
     // typed into. Tying it to focus events instead of the keyboard used to leave

@@ -14,6 +14,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { LocationPicker } from "@/components/location-picker";
+import { StandardsAcceptanceSheet } from "@/components/standards-acceptance-sheet";
 import {
   BustFactorField,
   Field,
@@ -26,13 +27,14 @@ import { StandardsLine, StandardsSheet } from "@/components/standards-sheet";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { MAX_NOTES_LENGTH, MAX_PHOTOS, type SpotFormValues } from "@/lib/spot-form";
-import { type SpotFormSave, useSpotForm } from "@/lib/use-spot-form";
+import { type SpotFormSave, type StandardsAcknowledge, useSpotForm } from "@/lib/use-spot-form";
 import { colors } from "@/theme/colors";
 
 type SpotEditFormProps = {
   initialValues: SpotFormValues;
   onCancel: () => void;
   onSave: SpotFormSave;
+  onAcknowledgeStandards?: StandardsAcknowledge;
 };
 
 /**
@@ -118,13 +120,31 @@ function NotesFocusEditor({
  * a single change is a scroll-free tap, rather than a walk down six sections of
  * pills.
  */
-export function SpotEditForm({ initialValues, onCancel, onSave }: SpotEditFormProps) {
+export function SpotEditForm({
+  initialValues,
+  onCancel,
+  onSave,
+  onAcknowledgeStandards,
+}: SpotEditFormProps) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const standardsRef = useRef<BottomSheetModal>(null);
   const [notesOpen, setNotesOpen] = useState(false);
-  const { values, errors, saving, location, setField, setValues, addPhotos, removePhoto, save } =
-    useSpotForm(initialValues, onSave);
+  const {
+    values,
+    errors,
+    saving,
+    standardsOpen,
+    acknowledgingStandards,
+    location,
+    setField,
+    setValues,
+    addPhotos,
+    removePhoto,
+    save,
+    closeStandards,
+    acknowledgeStandardsAndSave,
+  } = useSpotForm(initialValues, onSave, onAcknowledgeStandards);
 
   return (
     <View className="flex-1 bg-base">
@@ -251,6 +271,16 @@ export function SpotEditForm({ initialValues, onCancel, onSave }: SpotEditFormPr
         ref={standardsRef}
         onReadFullStandards={() => {
           standardsRef.current?.dismiss();
+          router.push("/standards");
+        }}
+      />
+      <StandardsAcceptanceSheet
+        visible={standardsOpen}
+        submitting={acknowledgingStandards || saving}
+        onClose={closeStandards}
+        onAgree={() => void acknowledgeStandardsAndSave()}
+        onReadFullStandards={() => {
+          closeStandards();
           router.push("/standards");
         }}
       />

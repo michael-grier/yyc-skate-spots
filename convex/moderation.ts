@@ -1,8 +1,13 @@
 import { v } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
 import { mutation, query } from "./_generated/server";
-import { requireAdmin, userModerationFor } from "./auth";
-import { SEED_OWNER } from "./constants";
+import {
+  requireAdmin,
+  requireIdentity,
+  standardsAcknowledgementFor,
+  userModerationFor,
+} from "./auth";
+import { COMMUNITY_STANDARDS_VERSION, SEED_OWNER } from "./constants";
 import {
   clearSpotModeration,
   deleteOpenReports,
@@ -31,18 +36,53 @@ export const viewer = query({
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
-      return { isAdmin: false, isBanned: false, confirmedRemovalCount: 0 };
+      return {
+        isAdmin: false,
+        isBanned: false,
+        confirmedRemovalCount: 0,
+        hasAcknowledgedStandards: false,
+      };
     }
-    const moderation = await userModerationFor(ctx, identity.tokenIdentifier);
+    const [moderation, acknowledgement] = await Promise.all([
+      userModerationFor(ctx, identity.tokenIdentifier),
+      standardsAcknowledgementFor(ctx, identity.tokenIdentifier),
+    ]);
     return {
       isAdmin: identity.role === "admin",
       isBanned: moderation?.isBanned ?? false,
       confirmedRemovalCount: moderation?.confirmedRemovalCount ?? 0,
+      hasAcknowledgedStandards: acknowledgement?.standardsVersion === COMMUNITY_STANDARDS_VERSION,
     };
   },
 });
 
-/** All live spots, newest first, with private review metadata for the admin list. */
+/** Records the current policy version before the caller's first contribution. */
+export const acknowledgeStandards = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await requireIdentity(ctx);
+    const existing = await standardsAcknowledgementFor(ctx, identity.tokenIdentifier);
+    if (existing?.standardsVersion === COMMUNITY_STANDARDS_VERSION) {
+      return null;
+    }
+    const acceptedAt = Date.now();
+    if (existing) {
+      await ctx.db.patch("communityAcknowledgements", existing._id, {
+        standardsVersion: COMMUNITY_STANDARDS_VERSION,
+        acceptedAt,
+      });
+    } else {
+      await ctx.db.insert("communityAcknowledgements", {
+        userIdentifier: identity.tokenIdentifier,
+        standardsVersion: COMMUNITY_STANDARDS_VERSION,
+        acceptedAt,
+      });
+    }
+    return null;
+  },
+});
+
+/** All non-deleted spots, newest first, with private review metadata for the admin list. */
 export const listSpots = query({
   args: {},
   handler: async (ctx) => {
@@ -84,7 +124,7 @@ export const listSpots = query({
   },
 });
 
-/** One live spot, its open reports, and creator status for admin review. */
+/** One non-deleted spot, its open reports, and creator status for admin review. */
 export const getSpot = query({
   args: { id: v.string() },
   handler: async (ctx, args) => {
@@ -144,6 +184,7 @@ export const markMeetsStandards = mutation({
     if (!spot || spot.deletionRequested) {
       throw new Error("Spot not found.");
     }
+    await ctx.db.patch("spots", spot._id, { publicationStatus: "published" });
     await deleteOpenReports(ctx, args.spotId);
     const moderation = await spotModerationFor(ctx, args.spotId);
     const reviewedAt = Date.now();
@@ -170,7 +211,7 @@ export const markMeetsStandards = mutation({
   },
 });
 
-/** Removes a live spot and records one confirmed standards violation. */
+/** Removes a spot and records one confirmed standards violation. */
 export const removeSpot = mutation({
   args: {
     spotId: v.id("spots"),

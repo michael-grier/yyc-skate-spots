@@ -149,7 +149,8 @@ export function ProfileView() {
                 Contribution access removed
               </Text>
               <Text className="mt-1 font-sans text-[13px] leading-relaxed text-mute">
-                You can browse and delete your existing spots, but you cannot add or edit spots.
+                You can browse and delete your existing spots, but you cannot add, edit, upload, or
+                report.
               </Text>
               <Pressable
                 accessibilityRole="link"
@@ -202,13 +203,22 @@ export function ProfileView() {
               <Text numberOfLines={1} className="font-sans-semibold text-[15px] text-ink">
                 {item.name}
               </Text>
-              {"status" in item && item.status === "removed" ? (
+              {item.status === "removed" ? (
                 <View className="mt-1">
                   <Text className="font-sans text-[12px]" style={{ color: colors.bust.high }}>
                     Removed · {reportReasonLabel(item.reason)}
                   </Text>
                   <Text className="mt-0.5 font-sans text-[11px] text-mute">
                     Confirmed removal {item.strikeNumber} · ban threshold 3
+                  </Text>
+                </View>
+              ) : item.status === "pending" ? (
+                <View className="mt-1">
+                  <Text className="font-sans-medium text-[12px] text-bust-medium">
+                    Waiting for review
+                  </Text>
+                  <Text className="mt-0.5 font-sans text-[11px] text-mute">
+                    Visible only to you and administrators
                   </Text>
                 </View>
               ) : (

@@ -14,6 +14,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { LocationPicker } from "@/components/location-picker";
+import { StandardsAcceptanceSheet } from "@/components/standards-acceptance-sheet";
 import {
   BustFactorField,
   Field,
@@ -36,7 +37,7 @@ import {
   validateSpotStep,
 } from "@/lib/spot-form";
 import { useKeyboardVisible } from "@/lib/use-keyboard-visible";
-import { type SpotFormSave, useSpotForm } from "@/lib/use-spot-form";
+import { type SpotFormSave, type StandardsAcknowledge, useSpotForm } from "@/lib/use-spot-form";
 import { colors } from "@/theme/colors";
 
 const STEP_COPY: Record<SpotFormStep, { title: string; action: string }> = {
@@ -48,6 +49,7 @@ const STEP_COPY: Record<SpotFormStep, { title: string; action: string }> = {
 type SpotCreateFormProps = {
   onCancel: () => void;
   onSave: SpotFormSave;
+  onAcknowledgeStandards?: StandardsAcknowledge;
 };
 
 /**
@@ -56,7 +58,7 @@ type SpotCreateFormProps = {
  * the top of its own step instead of under the keyboard at the bottom of a
  * six-section scroll.
  */
-export function SpotCreateForm({ onCancel, onSave }: SpotCreateFormProps) {
+export function SpotCreateForm({ onCancel, onSave, onAcknowledgeStandards }: SpotCreateFormProps) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const keyboardVisible = useKeyboardVisible();
@@ -66,6 +68,8 @@ export function SpotCreateForm({ onCancel, onSave }: SpotCreateFormProps) {
     values,
     errors,
     saving,
+    standardsOpen,
+    acknowledgingStandards,
     location,
     setField,
     setValues,
@@ -73,7 +77,9 @@ export function SpotCreateForm({ onCancel, onSave }: SpotCreateFormProps) {
     addPhotos,
     removePhoto,
     save,
-  } = useSpotForm(EMPTY_SPOT_FORM, onSave);
+    closeStandards,
+    acknowledgeStandardsAndSave,
+  } = useSpotForm(EMPTY_SPOT_FORM, onSave, onAcknowledgeStandards);
 
   const stepIndex = SPOT_FORM_STEPS.indexOf(step);
   const isLastStep = stepIndex === SPOT_FORM_STEPS.length - 1;
@@ -271,6 +277,16 @@ export function SpotCreateForm({ onCancel, onSave }: SpotCreateFormProps) {
         ref={standardsRef}
         onReadFullStandards={() => {
           standardsRef.current?.dismiss();
+          router.push("/standards");
+        }}
+      />
+      <StandardsAcceptanceSheet
+        visible={standardsOpen}
+        submitting={acknowledgingStandards || saving}
+        onClose={closeStandards}
+        onAgree={() => void acknowledgeStandardsAndSave()}
+        onReadFullStandards={() => {
+          closeStandards();
           router.push("/standards");
         }}
       />

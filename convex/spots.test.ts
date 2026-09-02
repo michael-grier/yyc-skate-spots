@@ -10,6 +10,10 @@ const modules = import.meta.glob("./**/*.ts");
 type Harness = ReturnType<typeof convexTest>;
 type Identity = ReturnType<Harness["withIdentity"]>;
 
+async function acknowledgeStandards(as: Identity) {
+  await as.mutation(api.moderation.acknowledgeStandards, {});
+}
+
 /** Stores a file and records `as` as its uploader, as the /upload action does. */
 async function uploadAs(t: Harness, as: Identity, bytes: string) {
   const storageId = await t.run(async (ctx) => await ctx.storage.store(new Blob([bytes])));
@@ -33,13 +37,58 @@ describe("spots authz", () => {
     expect(await t.query(api.spots.list, {})).toEqual([]);
   });
 
+  test("requires the current standards and keeps submissions private until approval", async () => {
+    const t = convexTest(schema, modules);
+    const asAlice = t.withIdentity({ subject: "alice" });
+    const asAdmin = t.withIdentity({ subject: "admin", role: "admin" });
+
+    await expect(asAlice.mutation(api.spots.create, SPOT)).rejects.toThrow(/spot standards/);
+    await acknowledgeStandards(asAlice);
+    const id = await asAlice.mutation(api.spots.create, SPOT);
+
+    expect(await t.query(api.spots.list, {})).toEqual([]);
+    expect(await t.query(api.spots.get, { id })).toBeNull();
+    expect(await asAlice.query(api.spots.get, { id })).toMatchObject({
+      status: "active",
+      isOwner: true,
+      isPendingReview: true,
+    });
+    expect(await asAlice.query(api.spots.mine, {})).toMatchObject([{ status: "pending", _id: id }]);
+
+    await asAdmin.mutation(api.moderation.markMeetsStandards, { spotId: id });
+    expect(await t.query(api.spots.list, {})).toHaveLength(1);
+    expect(await t.query(api.spots.get, { id })).toMatchObject({ isPendingReview: false });
+  });
+
+  test("preserves trusted rollout spots but hides legacy rows already awaiting review", async () => {
+    const t = convexTest(schema, modules);
+    const [trustedId, queuedId] = await t.run(async (ctx) => {
+      const trusted = await ctx.db.insert("spots", { ...SPOT, name: "Trusted", createdBy: "seed" });
+      const queued = await ctx.db.insert("spots", { ...SPOT, name: "Queued", createdBy: "seed" });
+      await ctx.db.insert("spotModeration", {
+        spotId: queued,
+        spotCreationTime: Date.now(),
+        needsReview: true,
+        attentionReason: "reported",
+        lastSubmittedAt: Date.now(),
+        openReportCount: 1,
+      });
+      return [trusted, queued];
+    });
+
+    expect((await t.query(api.spots.list, {})).map((spot) => spot._id)).toEqual([trustedId]);
+    expect(await t.query(api.spots.get, { id: trustedId })).not.toBeNull();
+    expect(await t.query(api.spots.get, { id: queuedId })).toBeNull();
+  });
+
   test("creator can update and delete their spot", async () => {
     const t = convexTest(schema, modules);
     const asAlice = t.withIdentity({ subject: "alice", name: "Alice" });
+    await acknowledgeStandards(asAlice);
 
     const id = await asAlice.mutation(api.spots.create, SPOT);
     await asAlice.mutation(api.spots.update, { ...SPOT, id, bustFactor: "low" });
-    const updated = await t.query(api.spots.get, { id });
+    const updated = await asAlice.query(api.spots.get, { id });
     expect(updated?.status).toBe("active");
     if (updated?.status !== "active") throw new Error("Expected an active spot.");
     expect(updated.bustFactor).toBe("low");
@@ -52,13 +101,14 @@ describe("spots authz", () => {
   test("update clears optional fields that are omitted", async () => {
     const t = convexTest(schema, modules);
     const asAlice = t.withIdentity({ subject: "alice" });
+    await acknowledgeStandards(asAlice);
     const id = await asAlice.mutation(api.spots.create, {
       ...SPOT,
       notes: "Go early.",
       surface: "rough",
     });
     await asAlice.mutation(api.spots.update, { ...SPOT, id });
-    const spot = await t.query(api.spots.get, { id });
+    const spot = await asAlice.query(api.spots.get, { id });
     expect(spot?.status).toBe("active");
     if (spot?.status !== "active") throw new Error("Expected an active spot.");
     expect(spot.notes).toBeUndefined();
@@ -70,6 +120,8 @@ describe("spots authz", () => {
     const t = convexTest(schema, modules);
     const asAlice = t.withIdentity({ subject: "alice" });
     const asBob = t.withIdentity({ subject: "bob" });
+    await acknowledgeStandards(asAlice);
+    await acknowledgeStandards(asBob);
 
     const id = await asAlice.mutation(api.spots.create, SPOT);
     await expect(asBob.mutation(api.spots.update, { ...SPOT, id, name: "Stolen" })).rejects.toThrow(
@@ -78,13 +130,14 @@ describe("spots authz", () => {
     await expect(asBob.mutation(api.spots.remove, { id })).rejects.toThrow(/Only the person/);
 
     // Untouched after both rejected writes.
-    const spot = await t.query(api.spots.get, { id });
+    const spot = await asAlice.query(api.spots.get, { id });
     expect(spot?.name).toBe("Test Ledge");
   });
 
   test("field limits and coordinate bounds are enforced", async () => {
     const t = convexTest(schema, modules);
     const asAlice = t.withIdentity({ subject: "alice" });
+    await acknowledgeStandards(asAlice);
 
     await expect(asAlice.mutation(api.spots.create, { ...SPOT, name: "  " })).rejects.toThrow(
       /Name/,
@@ -109,10 +162,11 @@ describe("spots authz", () => {
   test("accepts skate parks, DIYs, wallrides, and flatground spots", async () => {
     const t = convexTest(schema, modules);
     const asAlice = t.withIdentity({ subject: "alice" });
+    await acknowledgeStandards(asAlice);
     const types = ["skate_park", "diy", "wallride", "flatground"] as const;
 
     const id = await asAlice.mutation(api.spots.create, { ...SPOT, types: [...types] });
-    const spot = await t.query(api.spots.get, { id });
+    const spot = await asAlice.query(api.spots.get, { id });
 
     expect(spot?.status).toBe("active");
     if (spot?.status !== "active") throw new Error("Expected an active spot.");
@@ -122,9 +176,12 @@ describe("spots authz", () => {
   test("photo storage ids are never exposed to non-owners", async () => {
     const t = convexTest(schema, modules);
     const asAlice = t.withIdentity({ subject: "alice" });
+    const asAdmin = t.withIdentity({ subject: "admin", role: "admin" });
+    await acknowledgeStandards(asAlice);
     const photoId = await uploadAs(t, asAlice, "jpeg bytes");
 
     const id = await asAlice.mutation(api.spots.create, { ...SPOT, photoIds: [photoId] });
+    await asAdmin.mutation(api.moderation.markMeetsStandards, { spotId: id });
 
     const anonymous = await t.query(api.spots.get, { id });
     expect(anonymous?.status).toBe("active");
@@ -145,6 +202,8 @@ describe("spots authz", () => {
     const t = convexTest(schema, modules);
     const asAlice = t.withIdentity({ subject: "alice" });
     const asBob = t.withIdentity({ subject: "bob" });
+    await acknowledgeStandards(asAlice);
+    await acknowledgeStandards(asBob);
     const photoId = await uploadAs(t, asAlice, "jpeg bytes");
 
     const alicesSpot = await asAlice.mutation(api.spots.create, { ...SPOT, photoIds: [photoId] });
@@ -161,7 +220,7 @@ describe("spots authz", () => {
     ).rejects.toThrow(/another spot/);
 
     // Alice's file is still there.
-    const spot = await t.query(api.spots.get, { id: alicesSpot });
+    const spot = await asAlice.query(api.spots.get, { id: alicesSpot });
     expect(spot?.status).toBe("active");
     if (spot?.status !== "active") throw new Error("Expected an active spot.");
     expect(spot.photoUrls).toHaveLength(1);
@@ -171,8 +230,13 @@ describe("spots authz", () => {
     const t = convexTest(schema, modules);
     const asAlice = t.withIdentity({ subject: "alice" });
     const asBob = t.withIdentity({ subject: "bob" });
-    await asAlice.mutation(api.spots.create, { ...SPOT, name: "Alice's" });
-    await asBob.mutation(api.spots.create, { ...SPOT, name: "Bob's" });
+    const asAdmin = t.withIdentity({ subject: "admin", role: "admin" });
+    await acknowledgeStandards(asAlice);
+    await acknowledgeStandards(asBob);
+    const alicesId = await asAlice.mutation(api.spots.create, { ...SPOT, name: "Alice's" });
+    const bobsId = await asBob.mutation(api.spots.create, { ...SPOT, name: "Bob's" });
+    await asAdmin.mutation(api.moderation.markMeetsStandards, { spotId: alicesId });
+    await asAdmin.mutation(api.moderation.markMeetsStandards, { spotId: bobsId });
 
     const seenByAlice = await asAlice.query(api.spots.list, {});
     expect(seenByAlice.map((s) => [s.name, s.isMine])).toEqual([
@@ -194,6 +258,8 @@ describe("spots authz", () => {
     const t = convexTest(schema, modules);
     const asAlice = t.withIdentity({ subject: "alice" });
     const asBob = t.withIdentity({ subject: "bob" });
+    await acknowledgeStandards(asAlice);
+    await acknowledgeStandards(asBob);
     const alicesUpload = await uploadAs(t, asAlice, "stray");
     const unregistered = await t.run(async (ctx) => await ctx.storage.store(new Blob(["raw"])));
 
@@ -221,6 +287,7 @@ describe("spots authz", () => {
   test("an attached photo is no longer a pending upload", async () => {
     const t = convexTest(schema, modules);
     const asAlice = t.withIdentity({ subject: "alice" });
+    await acknowledgeStandards(asAlice);
     const photoId = await uploadAs(t, asAlice, "attached");
     await asAlice.mutation(api.spots.create, { ...SPOT, photoIds: [photoId] });
 
@@ -241,6 +308,7 @@ describe("spots authz", () => {
         .status,
     ).toBe(415);
 
+    await acknowledgeStandards(asAlice);
     const response = await asAlice.fetch("/upload", image);
     expect(response.status).toBe(200);
     const { storageId } = (await response.json()) as { storageId: Id<"_storage"> };
@@ -249,7 +317,7 @@ describe("spots authz", () => {
 
     // And it is usable exactly like any other upload of Alice's.
     const id = await asAlice.mutation(api.spots.create, { ...SPOT, photoIds: [storageId] });
-    const spot = await t.query(api.spots.get, { id });
+    const spot = await asAlice.query(api.spots.get, { id });
     expect(spot?.status).toBe("active");
     if (spot?.status !== "active") throw new Error("Expected an active spot.");
     expect(spot.photoUrls).toHaveLength(1);
@@ -258,6 +326,7 @@ describe("spots authz", () => {
   test("dropping or deleting a spot's photos removes the files and their claims", async () => {
     const t = convexTest(schema, modules);
     const asAlice = t.withIdentity({ subject: "alice" });
+    await acknowledgeStandards(asAlice);
     const first = await uploadAs(t, asAlice, "one");
     const second = await uploadAs(t, asAlice, "two");
     const id = await asAlice.mutation(api.spots.create, { ...SPOT, photoIds: [first, second] });
