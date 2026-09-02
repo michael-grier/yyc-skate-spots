@@ -130,6 +130,9 @@ builds read the EAS env vars above, not `.env`. To check what Expo actually reso
 
 ### 5. Development build → device
 
+After updating Expo or React Native packages, create a new development build. Restarting Metro
+does not update the native modules inside an installed development client.
+
 Before making an EAS build that includes spot sharing, set the public origin that will host the
 fallback page and Universal Link association:
 
