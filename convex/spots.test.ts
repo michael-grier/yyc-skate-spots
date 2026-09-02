@@ -4,6 +4,7 @@ import { describe, expect, test } from "vitest";
 import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import schema from "./schema";
+import { MAX_SPOTS_LISTED } from "./spots";
 
 const modules = import.meta.glob("./**/*.ts");
 
@@ -79,6 +80,28 @@ describe("spots authz", () => {
     expect((await t.query(api.spots.list, {})).map((spot) => spot._id)).toEqual([trustedId]);
     expect(await t.query(api.spots.get, { id: trustedId })).not.toBeNull();
     expect(await t.query(api.spots.get, { id: queuedId })).toBeNull();
+  });
+
+  test("fills the public limit after skipping pending rows", async () => {
+    const t = convexTest(schema, modules);
+    const publishedId = await t.run(async (ctx) => {
+      for (let index = 0; index < MAX_SPOTS_LISTED; index += 1) {
+        await ctx.db.insert("spots", {
+          ...SPOT,
+          name: `Pending ${index}`,
+          createdBy: "seed",
+          publicationStatus: "pending",
+        });
+      }
+      return await ctx.db.insert("spots", {
+        ...SPOT,
+        name: "Published after pending rows",
+        createdBy: "seed",
+        publicationStatus: "published",
+      });
+    });
+
+    expect((await t.query(api.spots.list, {})).map((spot) => spot._id)).toEqual([publishedId]);
   });
 
   test("creator can update and delete their spot", async () => {

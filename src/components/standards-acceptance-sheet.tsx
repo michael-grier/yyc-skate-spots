@@ -82,7 +82,7 @@ export function StandardsAcceptanceSheet({
             </Text>
           </Pressable>
           <Text className="text-center font-sans text-[11px] text-mute">
-            This agreement is saved to your account and is not shown again.
+            Saved for this version. We’ll ask again if the standards change.
           </Text>
         </View>
       </View>

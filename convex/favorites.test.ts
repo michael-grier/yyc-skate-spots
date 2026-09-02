@@ -3,6 +3,7 @@ import { convexTest } from "convex-test";
 import { describe, expect, test, vi } from "vitest";
 import { api } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
+import { MAX_FAVORITES_LISTED } from "./favorites";
 import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
@@ -47,6 +48,34 @@ describe("favorites", () => {
     await expect(asBob.mutation(api.favorites.toggle, { spotId })).rejects.toThrow(/not found/);
     await t.run((ctx) => ctx.db.insert("favorites", { userId: "test|bob", spotId }));
     expect(await asBob.query(api.favorites.list, {})).toEqual([]);
+  });
+
+  test("fills the visible limit after skipping newer pending favorites", async () => {
+    const t = convexTest(schema, modules);
+    const userId = "test|bob";
+    const visibleId = await t.run(async (ctx) => {
+      const visibleSpotId = await ctx.db.insert("spots", {
+        ...SPOT,
+        createdBy: "seed",
+        publicationStatus: "published",
+      });
+      await ctx.db.insert("favorites", { userId, spotId: visibleSpotId });
+      for (let index = 0; index < MAX_FAVORITES_LISTED; index += 1) {
+        const pendingSpotId = await ctx.db.insert("spots", {
+          ...SPOT,
+          name: `Pending ${index}`,
+          createdBy: "seed",
+          publicationStatus: "pending",
+        });
+        await ctx.db.insert("favorites", { userId, spotId: pendingSpotId });
+      }
+      return visibleSpotId;
+    });
+
+    const asBob = t.withIdentity({ subject: "bob", tokenIdentifier: userId });
+    expect((await asBob.query(api.favorites.list, {})).map((spot) => spot._id)).toEqual([
+      visibleId,
+    ]);
   });
 
   test("browsing the list is private and writing requires sign-in", async () => {

@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
-import type { Id } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
 import { internalMutation, mutation, query, type MutationCtx } from "./_generated/server";
 import { requireCanContribute, requireIdentity } from "./auth";
 import {
@@ -166,24 +166,25 @@ export const list = query({
     // isMine lets the map style the caller's own pins; the query is
     // identity-aware, so it re-runs on sign-in and sign-out.
     const identity = await ctx.auth.getUserIdentity();
-    const spots = await ctx.db.query("spots").take(MAX_SPOTS_LISTED);
-    const publishedSpots = (
-      await Promise.all(
-        spots
-          .filter((spot) => !spot.deletionRequested)
-          .map(async (spot) => ({ spot, isPublished: await spotIsPublished(ctx, spot) })),
-      )
-    ).filter(({ isPublished }) => isPublished);
+    const publishedSpots: Doc<"spots">[] = [];
+    // Iteration lets pending rows be skipped before the public result cap.
+    for await (const spot of ctx.db.query("spots")) {
+      if (spot.deletionRequested || !(await spotIsPublished(ctx, spot))) {
+        continue;
+      }
+      publishedSpots.push(spot);
+      if (publishedSpots.length === MAX_SPOTS_LISTED) {
+        break;
+      }
+    }
     return Promise.all(
       publishedSpots.map(
         async ({
-          spot: {
-            photoIds,
-            createdBy,
-            publicationStatus: _status,
-            deletionRequested: _deletionRequested,
-            ...spot
-          },
+          photoIds,
+          createdBy,
+          publicationStatus: _status,
+          deletionRequested: _deletionRequested,
+          ...spot
         }) => ({
           ...spot,
           isMine: identity !== null && createdBy === identity.tokenIdentifier,
