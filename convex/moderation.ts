@@ -111,7 +111,7 @@ export const listSpots = query({
           const contributor = contributorByIdentifier.get(createdBy);
           return {
             ...spot,
-            creatorName: spot.createdByName,
+            creatorName: spot.createdByName ?? contributor?.name,
             creatorRemovalCount: contributor?.confirmedRemovalCount ?? 0,
             creatorIsBanned: contributor?.isBanned ?? false,
             creatorModerationId: contributor?._id ?? null,
@@ -160,7 +160,7 @@ export const getSpot = query({
       photoUrls,
       review: reviewState(spot, moderation ?? undefined),
       creator: {
-        name: spot.createdByName,
+        name: spot.createdByName ?? contributor?.name,
         confirmedRemovalCount: contributor?.confirmedRemovalCount ?? 0,
         isBanned: contributor?.isBanned ?? false,
         moderationId: contributor?._id ?? null,

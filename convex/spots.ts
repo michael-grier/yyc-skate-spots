@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { internalMutation, mutation, query, type MutationCtx } from "./_generated/server";
-import { requireCanContribute, requireIdentity } from "./auth";
+import { requireCanContribute, requireIdentity, userModerationFor } from "./auth";
 import {
   clearSpotModeration,
   queueEditedSpot,
@@ -132,6 +132,27 @@ async function claimPhotos(ctx: MutationCtx, photoIds: Id<"_storage">[], spotId:
   for (const photoId of photoIds) {
     await ctx.db.insert("spotPhotos", { storageId: photoId, spotId });
   }
+}
+
+/** Keeps a private admin label without exposing an email in the public spot byline. */
+async function rememberContributor(ctx: MutationCtx, userIdentifier: string, label?: string) {
+  const normalizedLabel = label?.trim();
+  if (!normalizedLabel) {
+    return;
+  }
+  const existing = await userModerationFor(ctx, userIdentifier);
+  if (existing) {
+    if (existing.name !== normalizedLabel) {
+      await ctx.db.patch("userModeration", existing._id, { name: normalizedLabel });
+    }
+    return;
+  }
+  await ctx.db.insert("userModeration", {
+    userIdentifier,
+    name: normalizedLabel,
+    confirmedRemovalCount: 0,
+    isBanned: false,
+  });
 }
 
 /**
@@ -323,6 +344,11 @@ export const create = mutation({
     validateSpotFields(args);
     await assertPhotosUnclaimed(ctx, args.photoIds, null);
     await consumeUploads(ctx, identity.tokenIdentifier, args.photoIds);
+    await rememberContributor(
+      ctx,
+      identity.tokenIdentifier,
+      identity.name?.trim() || identity.email,
+    );
     const id = await ctx.db.insert("spots", {
       ...args,
       name: args.name.trim(),
@@ -351,6 +377,11 @@ export const update = mutation({
     const after = new Set(fields.photoIds);
     const added = fields.photoIds.filter((photoId) => !before.has(photoId));
     await consumeUploads(ctx, identity.tokenIdentifier, added);
+    await rememberContributor(
+      ctx,
+      identity.tokenIdentifier,
+      identity.name?.trim() || identity.email,
+    );
     await claimPhotos(ctx, added, id);
     // Photos dropped from the spot would otherwise be orphaned in storage.
     await releasePhotos(

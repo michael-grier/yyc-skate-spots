@@ -59,6 +59,28 @@ describe("spot moderation", () => {
     expect(await t.query(api.spots.list, {})).toEqual([]);
   });
 
+  test("uses the account email as a private admin label when no name is available", async () => {
+    const t = convexTest(schema, modules);
+    const asContributor = t.withIdentity({
+      subject: "email-only",
+      email: "skater@example.com",
+    });
+    const asAdmin = t.withIdentity({ subject: "admin", role: "admin" });
+    await acknowledgeStandards(asContributor);
+    const id = await asContributor.mutation(api.spots.create, SPOT);
+
+    const ownerView = await asContributor.query(api.spots.get, { id });
+    expect(ownerView?.status).toBe("active");
+    if (ownerView?.status !== "active") throw new Error("Expected an active spot.");
+    expect(ownerView.createdByName).toBeUndefined();
+    expect(await asAdmin.query(api.moderation.listSpots, {})).toMatchObject([
+      { _id: id, creatorName: "skater@example.com" },
+    ]);
+    expect(await asAdmin.query(api.moderation.getSpot, { id })).toMatchObject({
+      creator: { name: "skater@example.com" },
+    });
+  });
+
   test("legacy spots without review rows appear as unreviewed, newest first", async () => {
     const t = convexTest(schema, modules);
     const asAdmin = t.withIdentity({ subject: "admin", role: "admin" });
