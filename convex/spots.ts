@@ -189,7 +189,7 @@ export const list = query({
     const identity = await ctx.auth.getUserIdentity();
     const publishedSpots: Doc<"spots">[] = [];
     // Iteration lets pending rows be skipped before the public result cap.
-    for await (const spot of ctx.db.query("spots")) {
+    for await (const spot of ctx.db.query("spots").order("desc")) {
       if (spot.deletionRequested || !(await spotIsPublished(ctx, spot))) {
         continue;
       }

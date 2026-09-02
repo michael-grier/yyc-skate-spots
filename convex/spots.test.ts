@@ -104,6 +104,28 @@ describe("spots authz", () => {
     expect((await t.query(api.spots.list, {})).map((spot) => spot._id)).toEqual([publishedId]);
   });
 
+  test("keeps the newest published spots when the public limit is reached", async () => {
+    const t = convexTest(schema, modules);
+    const ids = await t.run(async (ctx) => {
+      const created: Id<"spots">[] = [];
+      for (let index = 0; index <= MAX_SPOTS_LISTED; index += 1) {
+        created.push(
+          await ctx.db.insert("spots", {
+            ...SPOT,
+            name: `Published ${index}`,
+            createdBy: "seed",
+            publicationStatus: "published",
+          }),
+        );
+      }
+      return created;
+    });
+
+    expect((await t.query(api.spots.list, {})).map((spot) => spot._id)).toEqual(
+      ids.slice(-MAX_SPOTS_LISTED).reverse(),
+    );
+  });
+
   test("creator can update and delete their spot", async () => {
     const t = convexTest(schema, modules);
     const asAlice = t.withIdentity({ subject: "alice", name: "Alice" });
@@ -263,8 +285,8 @@ describe("spots authz", () => {
 
     const seenByAlice = await asAlice.query(api.spots.list, {});
     expect(seenByAlice.map((s) => [s.name, s.isMine])).toEqual([
-      ["Alice's", true],
       ["Bob's", false],
+      ["Alice's", true],
     ]);
     expect((await t.query(api.spots.list, {})).every((s) => !s.isMine)).toBe(true);
 
