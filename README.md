@@ -146,8 +146,8 @@ Build the static fallback after the App Store record exists:
 
 ```sh
 EXPO_PUBLIC_SHARE_BASE_URL=https://<share-domain> \
-APPLE_TEAM_ID=<10-character-team-id> \
-APP_STORE_ID=<numeric-app-store-id> \
+APPLE_TEAM_ID=4A8Q8XX972 \
+APP_STORE_ID=6807476193 \
 bun run build:share-site
 ```
 
