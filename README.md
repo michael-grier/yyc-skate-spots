@@ -18,7 +18,7 @@ bun run typecheck
 bun run lint
 bun run test
 bun run test:ui -- --runInBand
-bun x expo-doctor
+bun x --no-install expo-doctor
 bun x expo export --platform ios
 ```
 
