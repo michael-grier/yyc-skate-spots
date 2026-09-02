@@ -10,7 +10,16 @@ export async function spotModerationFor(ctx: QueryCtx | MutationCtx, spotId: Id<
     .unique();
 }
 
-/** Adds a new spot to the proactive queue in the same transaction as publish. */
+/** Resolves rollout-era rows through their existing moderation state. */
+export async function spotIsPublished(ctx: QueryCtx | MutationCtx, spot: Doc<"spots">) {
+  if (spot.publicationStatus) {
+    return spot.publicationStatus === "published";
+  }
+  const moderation = await spotModerationFor(ctx, spot._id);
+  return moderation?.needsReview !== true;
+}
+
+/** Adds a new spot to the proactive queue in the same transaction as creation. */
 export async function queueNewSpot(ctx: MutationCtx, spot: Doc<"spots">) {
   await ctx.db.insert("spotModeration", {
     spotId: spot._id,

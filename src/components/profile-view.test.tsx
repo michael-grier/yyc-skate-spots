@@ -39,7 +39,7 @@ beforeEach(() => {
     spot("favorite-1", "Harmony Park"),
     spot("favorite-2", "Bowness Curbs"),
   ];
-  mockQueryResults["spots:mine"] = [spot("mine-1", "Olympic Plaza Banks")];
+  mockQueryResults["spots:mine"] = [{ status: "active", ...spot("mine-1", "Olympic Plaza Banks") }];
 });
 
 describe("ProfileView", () => {
@@ -72,6 +72,18 @@ describe("ProfileView", () => {
     await fireEvent.press(screen.getByRole("button", { name: "Spot standards" }));
 
     expect(mockPush).toHaveBeenCalledWith("/standards");
+  });
+
+  test("marks a pending submission as private while it awaits review", async () => {
+    mockQueryResults["spots:mine"] = [
+      { status: "pending", ...spot("mine-1", "Olympic Plaza Banks") },
+    ];
+    await render(<ProfileView />);
+
+    await fireEvent.press(screen.getByRole("tab", { name: "Your spots, 1 spot" }));
+
+    expect(screen.getByText("Waiting for review")).toBeOnTheScreen();
+    expect(screen.getByText("Visible only to you and administrators")).toBeOnTheScreen();
   });
 
   test("shows the right empty message for each segment", async () => {

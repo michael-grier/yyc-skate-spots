@@ -1,9 +1,10 @@
 import { v } from "convex/values";
-import type { Id } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
 import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
+import { spotIsPublished } from "./moderationModel";
 
 // A user cannot save more spots than the city-scale spot query exposes.
-const MAX_FAVORITES_LISTED = 500;
+export const MAX_FAVORITES_LISTED = 500;
 
 async function requireIdentity(ctx: MutationCtx) {
   const identity = await ctx.auth.getUserIdentity();
@@ -36,6 +37,9 @@ export const toggle = mutation({
       await ctx.db.delete("favorites", existing._id);
       return false;
     }
+    if (!(await spotIsPublished(ctx, spot))) {
+      throw new Error("Spot not found.");
+    }
 
     await ctx.db.insert("favorites", {
       userId: identity.tokenIdentifier,
@@ -54,27 +58,29 @@ export const list = query({
       return [];
     }
 
-    const favorites = await ctx.db
+    const favorites = ctx.db
       .query("favorites")
       .withIndex("by_userId", (q) => q.eq("userId", identity.tokenIdentifier))
-      .order("desc")
-      .take(MAX_FAVORITES_LISTED);
-    const spots = await Promise.all(
-      favorites.map((favorite) => ctx.db.get("spots", favorite.spotId)),
-    );
+      .order("desc");
+    const visibleSpots: Doc<"spots">[] = [];
+    // Keep walking older favorites until the visible result cap is full.
+    for await (const favorite of favorites) {
+      const spot = await ctx.db.get("spots", favorite.spotId);
+      if (!spot || spot.deletionRequested || !(await spotIsPublished(ctx, spot))) {
+        continue;
+      }
+      visibleSpots.push(spot);
+      if (visibleSpots.length === MAX_FAVORITES_LISTED) {
+        break;
+      }
+    }
 
-    return spots.flatMap((spot) =>
-      spot && !spot.deletionRequested
-        ? [
-            {
-              _id: spot._id,
-              _creationTime: spot._creationTime,
-              name: spot.name,
-              types: spot.types,
-              bustFactor: spot.bustFactor,
-            },
-          ]
-        : [],
-    );
+    return visibleSpots.map((spot) => ({
+      _id: spot._id,
+      _creationTime: spot._creationTime,
+      name: spot.name,
+      types: spot.types,
+      bustFactor: spot.bustFactor,
+    }));
   },
 });

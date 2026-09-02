@@ -56,6 +56,9 @@ export default defineSchema({
     // Denormalized at creation for the "Added by …" byline, so reads never
     // need a Clerk lookup. Not updated if the user later renames themselves.
     createdByName: v.optional(v.string()),
+    // Optional during rollout so existing rows remain valid. Public reads use
+    // their moderation row as the fallback until the next review or edit.
+    publicationStatus: v.optional(v.union(v.literal("pending"), v.literal("published"))),
     // Hides a deleted spot while its unbounded favorite rows are removed in
     // scheduled batches. The final batch physically deletes this document.
     deletionRequested: v.optional(v.boolean()),
@@ -141,4 +144,12 @@ export default defineSchema({
   })
     .index("by_userIdentifier", ["userIdentifier"])
     .index("by_isBanned_and_confirmedRemovalCount", ["isBanned", "confirmedRemovalCount"]),
+
+  // One row per contributor records the policy version accepted before their
+  // first public-content action. The server checks it independently of the UI.
+  communityAcknowledgements: defineTable({
+    userIdentifier: v.string(),
+    standardsVersion: v.number(),
+    acceptedAt: v.number(),
+  }).index("by_userIdentifier", ["userIdentifier"]),
 });

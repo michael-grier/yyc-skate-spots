@@ -246,6 +246,16 @@ export default function SpotDetailScreen() {
           </Text>
           {address ? <Text className="mt-1 font-sans text-[14px] text-mute">{address}</Text> : null}
 
+          {spot.isPendingReview ? (
+            <Card className="mt-4 border-bust-medium/30 p-4">
+              <Text className="font-sans-semibold text-[15px] text-ink">Waiting for review</Text>
+              <Text className="mt-1 font-sans text-[13px] leading-relaxed text-mute">
+                This version is visible only to you and administrators until it meets the spot
+                standards.
+              </Text>
+            </Card>
+          ) : null}
+
           <View className="mt-4 flex-row flex-wrap">
             <Fact label="Type" value={formatSpotTypes(spot.types)} column={0} />
             <Fact
@@ -310,21 +320,25 @@ export default function SpotDetailScreen() {
       </View>
       {backButton}
       <View className="absolute right-4 flex-row gap-2" style={{ top: insets.top + 8 }}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Share spot"
-          onPress={() => void handleShare()}
-          className="h-9 w-9 items-center justify-center rounded-full border border-white/10 active:opacity-80"
-          style={{ backgroundColor: "rgba(30,32,36,0.72)" }}
-        >
-          <ShareIcon size={18} color={colors.ink} />
-        </Pressable>
-        <FavoriteButton
-          isFavorite={spot.isFavorite}
-          busy={favoritePending}
-          disabled={!authLoaded}
-          onPress={() => void handleToggleFavorite()}
-        />
+        {spot.isPendingReview ? null : (
+          <>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Share spot"
+              onPress={() => void handleShare()}
+              className="h-9 w-9 items-center justify-center rounded-full border border-white/10 active:opacity-80"
+              style={{ backgroundColor: "rgba(30,32,36,0.72)" }}
+            >
+              <ShareIcon size={18} color={colors.ink} />
+            </Pressable>
+            <FavoriteButton
+              isFavorite={spot.isFavorite}
+              busy={favoritePending}
+              disabled={!authLoaded}
+              onPress={() => void handleToggleFavorite()}
+            />
+          </>
+        )}
         {/* Only the owner gets the menu; the server rejects anyone else anyway. */}
         {spot.isOwner ? (
           <Pressable

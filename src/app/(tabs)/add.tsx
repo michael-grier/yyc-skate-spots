@@ -18,6 +18,7 @@ export default function AddSpotScreen() {
   const { isLoaded, isSignedIn } = useAuth();
   const router = useRouter();
   const createSpot = useMutation(api.spots.create);
+  const acknowledgeStandards = useMutation(api.moderation.acknowledgeStandards);
   const moderation = useQuery(api.moderation.viewer, isSignedIn ? {} : "skip");
   // Bumped to remount a blank form after save or cancel.
   const [formKey, setFormKey] = useState(0);
@@ -87,6 +88,13 @@ export default function AddSpotScreen() {
         setFormKey((k) => k + 1);
         router.push({ pathname: "/spot/[id]", params: { id } });
       }}
+      onAcknowledgeStandards={
+        moderation.hasAcknowledgedStandards
+          ? undefined
+          : async () => {
+              await acknowledgeStandards({});
+            }
+      }
     />
   );
 }

@@ -68,7 +68,7 @@ export default function AdminRemoveSpotScreen() {
     }
     Alert.alert(
       `Remove ${spot.name}?`,
-      "The live spot and its photos will be deleted. The contributor will receive a private removal notice.",
+      "The spot and its photos will be deleted. The contributor will receive a private removal notice.",
       [
         { text: "Cancel", style: "cancel" },
         {

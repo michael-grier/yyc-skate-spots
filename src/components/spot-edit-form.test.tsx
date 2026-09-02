@@ -108,6 +108,27 @@ describe("SpotEditForm", () => {
     );
   });
 
+  test("accepts the standards before the first edit", async () => {
+    const onAcknowledgeStandards = jest.fn().mockResolvedValue(undefined);
+    const onSave = jest.fn().mockResolvedValue(undefined);
+    await render(
+      <SpotEditForm
+        initialValues={EXISTING}
+        onCancel={jest.fn()}
+        onSave={onSave}
+        onAcknowledgeStandards={onAcknowledgeStandards}
+      />,
+    );
+
+    await fireEvent.press(screen.getByText("Save changes"));
+    expect(screen.getByText("First contribution")).toBeOnTheScreen();
+    expect(onSave).not.toHaveBeenCalled();
+
+    await fireEvent.press(screen.getByText("Agree and submit"));
+    await waitFor(() => expect(onAcknowledgeStandards).toHaveBeenCalledTimes(1));
+    expect(onSave).toHaveBeenCalledTimes(1);
+  });
+
   test("picked photos and the add control use matching tile dimensions", async () => {
     mockPickPhotos.mockResolvedValueOnce([localPhoto("thumbnail")]);
 

@@ -18,7 +18,7 @@ export function StandardsLine({ onPress }: { onPress: () => void }) {
       className="active:opacity-80"
     >
       <Text className="font-sans text-[12px] leading-[18px] text-mute">
-        Saving confirms this is a real, accurate, shareable spot.{" "}
+        Every submission must be a real, accurate, shareable spot.{" "}
         <Text className="font-sans-semibold text-silver">Spot standards</Text>
       </Text>
     </Pressable>

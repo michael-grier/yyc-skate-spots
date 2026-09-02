@@ -207,6 +207,7 @@ describe("seed ownership", () => {
       }),
     );
     const legacyId = await t.run((ctx) => ctx.db.insert("spots", LEGACY_SEEDED_SPOT));
+    await asBob.mutation(api.moderation.acknowledgeStandards, {});
     const bobsId = await asBob.mutation(api.spots.create, {
       ...SPOT,
       name: "Bob's Ledge",

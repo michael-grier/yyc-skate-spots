@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation } from "./_generated/server";
-import { requireIdentity } from "./auth";
+import { requireUnblockedIdentity } from "./auth";
 import { MAX_OPEN_REPORTS_PER_SPOT, spotModerationFor } from "./moderationModel";
 import { reportReason } from "./schema";
 
@@ -14,7 +14,7 @@ export const create = mutation({
     details: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const identity = await requireIdentity(ctx);
+    const identity = await requireUnblockedIdentity(ctx);
     const spot = await ctx.db.get("spots", args.spotId);
     if (!spot || spot.deletionRequested) {
       throw new Error("Spot not found.");

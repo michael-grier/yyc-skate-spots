@@ -232,6 +232,20 @@ exactly what to fix.
 
 ### Moderation workflow fixture
 
+To test the first-contribution and proactive review flow with a regular development account:
+
+1. Fill out the Add form and save. The community standards sheet must appear before any upload or
+   submission starts.
+2. Agree and submit. The new spot appears under **Profile → Your spots** as **Waiting for review**,
+   but does not appear on the public map or list.
+3. As an administrator, open **Profile → Review spots → New** and approve the spot. It should then
+   appear publicly.
+4. Edit the approved spot. The edited version becomes private again until an administrator
+   approves it.
+
+The acknowledgement is stored per development user. Use a fresh Clerk test user when repeating
+the first step.
+
 Enable test fixtures on the development Convex deployment, then create a reported spot:
 
 ```sh
@@ -260,8 +274,9 @@ bun x convex run seed:createBannedUserScenario --identity '{"subject":"<Clerk us
 ```
 
 Sign into the app as that user. The profile shows three private removal notices and a contribution
-ban. The Add tab is blocked, editing **Banned User Test Spot** is blocked, and deleting that spot
-remains available. Other signed-in users cannot open the removal notices.
+ban. The Add tab is blocked; editing **Banned User Test Spot**, uploading photos, and submitting
+reports are rejected by the backend. Deleting the contributor's spot remains available. Other
+signed-in users cannot open the removal notices.
 
 Clear the fixture with the same identity after testing:
 

@@ -253,8 +253,8 @@ export default function AdminSpotReviewScreen() {
           <Card className="p-4">
             <Text className="font-sans-semibold text-[15px] text-ink">Finish this review</Text>
             <Text className="mt-1 font-sans text-[12px] leading-relaxed text-mute">
-              Approving keeps the spot live and clears its reports. Removal deletes the live spot
-              and records one confirmed violation.
+              Approving publishes the current version and clears its reports. Removal deletes the
+              spot and records one confirmed violation.
             </Text>
             <Button
               label={working ? "Working…" : "Meets standards"}

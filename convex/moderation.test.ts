@@ -8,6 +8,13 @@ import { MAX_SPOTS_LISTED } from "./spots";
 
 const modules = import.meta.glob("./**/*.ts");
 
+type Harness = ReturnType<typeof convexTest>;
+type Identity = ReturnType<Harness["withIdentity"]>;
+
+async function acknowledgeStandards(as: Identity) {
+  await as.mutation(api.moderation.acknowledgeStandards, {});
+}
+
 const SPOT = {
   name: "Test Ledge",
   types: ["ledge" as const],
@@ -22,7 +29,11 @@ describe("spot moderation", () => {
     const t = convexTest(schema, modules);
     const asAlice = t.withIdentity({ subject: "alice", name: "Alice" });
     const asAdmin = t.withIdentity({ subject: "admin", role: "admin" });
+    await acknowledgeStandards(asAlice);
     const id = await asAlice.mutation(api.spots.create, SPOT);
+
+    expect(await t.query(api.spots.list, {})).toEqual([]);
+    expect(await t.query(api.spots.get, { id })).toBeNull();
 
     await expect(asAlice.query(api.moderation.listSpots, {})).rejects.toThrow(/Administrator/);
     await expect(
@@ -37,12 +48,36 @@ describe("spot moderation", () => {
 
     await asAdmin.mutation(api.moderation.markMeetsStandards, { spotId: id });
     expect((await asAdmin.query(api.moderation.listSpots, {}))[0].review.needsReview).toBe(false);
+    expect(await t.query(api.spots.list, {})).toHaveLength(1);
 
     await asAlice.mutation(api.spots.update, { ...SPOT, id, notes: "Fresh details" });
     expect((await asAdmin.query(api.moderation.listSpots, {}))[0].review).toMatchObject({
       needsReview: true,
       attentionReason: "edited",
       openReportCount: 0,
+    });
+    expect(await t.query(api.spots.list, {})).toEqual([]);
+  });
+
+  test("uses the account email as a private admin label when no name is available", async () => {
+    const t = convexTest(schema, modules);
+    const asContributor = t.withIdentity({
+      subject: "email-only",
+      email: "skater@example.com",
+    });
+    const asAdmin = t.withIdentity({ subject: "admin", role: "admin" });
+    await acknowledgeStandards(asContributor);
+    const id = await asContributor.mutation(api.spots.create, SPOT);
+
+    const ownerView = await asContributor.query(api.spots.get, { id });
+    expect(ownerView?.status).toBe("active");
+    if (ownerView?.status !== "active") throw new Error("Expected an active spot.");
+    expect(ownerView.createdByName).toBeUndefined();
+    expect(await asAdmin.query(api.moderation.listSpots, {})).toMatchObject([
+      { _id: id, creatorName: "skater@example.com" },
+    ]);
+    expect(await asAdmin.query(api.moderation.getSpot, { id })).toMatchObject({
+      creator: { name: "skater@example.com" },
     });
   });
 
@@ -125,6 +160,7 @@ describe("spot moderation", () => {
     const asAlice = t.withIdentity({ subject: "alice" });
     const asBob = t.withIdentity({ subject: "bob" });
     const asAdmin = t.withIdentity({ subject: "admin", role: "admin" });
+    await acknowledgeStandards(asAlice);
     const id = await asAlice.mutation(api.spots.create, SPOT);
 
     await expect(
@@ -164,9 +200,11 @@ describe("spot moderation", () => {
     const asAlice = t.withIdentity({ subject: "alice", name: "Alice" });
     const asBob = t.withIdentity({ subject: "bob" });
     const asAdmin = t.withIdentity({ subject: "admin", role: "admin" });
+    await acknowledgeStandards(asAlice);
     const photoId = await t.run((ctx) => ctx.storage.store(new Blob(["photo"])));
     await asAlice.mutation(internal.spots.recordUpload, { storageId: photoId });
     const id = await asAlice.mutation(api.spots.create, { ...SPOT, photoIds: [photoId] });
+    await asAdmin.mutation(api.moderation.markMeetsStandards, { spotId: id });
     await asBob.mutation(api.favorites.toggle, { spotId: id });
     await asBob.mutation(api.reports.create, { spotId: id, reason: "not_a_spot" });
 
@@ -200,6 +238,7 @@ describe("spot moderation", () => {
     const t = convexTest(schema, modules);
     const asAlice = t.withIdentity({ subject: "alice", name: "Alice" });
     const asAdmin = t.withIdentity({ subject: "admin", role: "admin" });
+    await acknowledgeStandards(asAlice);
     const ids = await Promise.all(
       ["One", "Two", "Three", "Kept"].map((name) =>
         asAlice.mutation(api.spots.create, { ...SPOT, name }),
@@ -245,6 +284,9 @@ describe("spot moderation", () => {
     await expect(
       asAlice.mutation(api.spots.update, { ...SPOT, id: ids[3], name: "Changed" }),
     ).rejects.toThrow(/access/);
+    await expect(
+      asAlice.mutation(api.reports.create, { spotId: ids[3], reason: "other" }),
+    ).rejects.toThrow(/access/);
     const blockedUpload = await t.run((ctx) => ctx.storage.store(new Blob(["blocked"])));
     await expect(
       asAlice.mutation(internal.spots.recordUpload, { storageId: blockedUpload }),
@@ -264,6 +306,7 @@ describe("spot moderation", () => {
     const t = convexTest(schema, modules);
     const asAlice = t.withIdentity({ subject: "alice" });
     const asBob = t.withIdentity({ subject: "bob" });
+    await acknowledgeStandards(asAlice);
     const id = await asAlice.mutation(api.spots.create, SPOT);
     await asBob.mutation(api.reports.create, { spotId: id, reason: "other" });
 
