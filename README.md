@@ -8,6 +8,23 @@ source of truth).
 > does not ship. You run it in a custom **EAS development build** — a one-time build you install
 > on your device, after which JS changes hot-reload exactly like Expo Go.
 
+## Pull request checks
+
+Run the same checks as CI before opening a pull request:
+
+```sh
+bun install --frozen-lockfile
+bun run typecheck
+bun run lint
+bun run test
+bun run test:ui -- --runInBand
+bun x expo-doctor
+bun x expo export --platform ios
+```
+
+These checks do not require production credentials or access to EAS, Clerk, Convex, Google, or
+Apple accounts.
+
 ## Setup checklist (in order)
 
 ### 1. Google Maps API keys (GCP)
