@@ -277,7 +277,7 @@ instance and leave its public metadata without an admin role. Copy that user's C
 the Frontend API URL from the Clerk Convex integration to run the fixture as that identity:
 
 ```sh
-bun x convex run seed:createBannedUserScenario --identity '{"subject":"<Clerk user ID>","issuer":"<Clerk JWT issuer>","name":"Banned Workflow Test User"}'
+bun x convex run seed:createBannedUserScenario --identity '{"subject":"<Clerk user ID>","issuer":"<Frontend API URL>","name":"Banned Workflow Test User"}'
 ```
 
 Sign into the app as that user. The profile shows three private removal notices and a contribution
@@ -288,7 +288,7 @@ signed-in users cannot open the removal notices.
 Clear the fixture with the same identity after testing:
 
 ```sh
-bun x convex run seed:clearBannedUserScenario --identity '{"subject":"<Clerk user ID>","issuer":"<Clerk JWT issuer>","name":"Banned Workflow Test User"}'
+bun x convex run seed:clearBannedUserScenario --identity '{"subject":"<Clerk user ID>","issuer":"<Frontend API URL>","name":"Banned Workflow Test User"}'
 ```
 
 Keep `TEST_FIXTURES_ENABLED` unset on production deployments.
