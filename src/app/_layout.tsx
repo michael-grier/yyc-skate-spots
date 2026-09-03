@@ -1,4 +1,5 @@
 import { ClerkProvider, useAuth } from "@clerk/expo";
+import { tokenCache } from "@clerk/expo/token-cache";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { ConvexReactClient } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
@@ -69,8 +70,10 @@ export default function RootLayout() {
     return null;
   }
 
+  // Clerk's default cache is memory-only. SecureStore keeps the session
+  // available after the app process exits without exposing its token.
   return (
-    <ClerkProvider publishableKey={publishableKey}>
+    <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
       <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
         {/* Bottom sheets need the gesture root and modal host above every screen. */}
         <GestureHandlerRootView style={{ flex: 1 }}>
