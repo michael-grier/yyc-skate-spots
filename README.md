@@ -61,9 +61,10 @@ with no error in Metro. Confirm with `adb logcat | grep -i "Google Maps Android 
 1. Create an application at dashboard.clerk.com.
 2. **Configure → Native applications**: make sure the **Native API** is enabled (required for
    any Expo integration).
-3. **Configure → JWT templates → New template → Convex.** Leave the name as `convex`. Add
-   `"role": "{{user.public_metadata.role}}"` to the template's existing claims, then note the
-   **Issuer** domain (`https://<something>.clerk.accounts.dev`).
+3. **Configure → Developers → Integrations → Convex**: activate the integration, then copy its
+   **Frontend API URL**. Under **Configure → Sessions → Customize session token**, keep the
+   integration's `aud` claim and add `"role": "{{user.public_metadata.role}}"` as a top-level
+   claim.
 4. Copy the **Publishable key** into `.env` as `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY`.
 5. In **Users**, open the account that should have moderation access and set its public metadata
    to `{ "role": "admin" }`. Sign out and back in after changing this so Clerk issues a new token.
@@ -75,13 +76,13 @@ with no error in Metro. Confirm with `adb logcat | grep -i "Google Maps Android 
    HTTP-actions host, derived automatically for `*.convex.cloud` URLs; if you ever put Convex
    behind a custom domain, set that host as `EXPO_PUBLIC_CONVEX_SITE_URL` too.
 2. In the Convex dashboard (or `bun x convex env set`), set
-   `CLERK_JWT_ISSUER_DOMAIN` to the Issuer domain from step 2.3.
+   `CLERK_JWT_ISSUER_DOMAIN` to the Frontend API URL from step 2.3.
 3. Leave `bun x convex dev` running while developing — it pushes functions/schema on save.
 
 #### Seed ownership
 
 Seed commands require a Clerk identity so the resulting spots belong to a real account. Copy the
-account's Clerk user ID and the exact Issuer domain from step 2.3, then target the deployment by
+account's Clerk user ID and the exact Frontend API URL from step 2.3, then target the deployment by
 name. The CLI derives the same `tokenIdentifier` that Convex receives from Clerk. Authorize that
 identity on each deployment before running either command:
 
@@ -108,9 +109,9 @@ bun x convex run seed:claimSeededSpots '{}' \
 ```
 
 Run the applicable command again with `--deployment prod` after creating the production
-deployment. If development and production use different Clerk applications, use the user ID and
-Issuer from the matching application in both the environment variable and command. The claim
-command is safe to repeat and never changes spots created by another account.
+deployment. If development and production use different Clerk instances, use the user ID and
+Frontend API URL from the matching instance in both the environment variable and command. The
+claim command is safe to repeat and never changes spots created by another account.
 
 ### 4. EAS project
 
@@ -133,12 +134,18 @@ command is safe to repeat and never changes spots created by another account.
 3. Mirror the two map keys into EAS env vars so cloud builds see them
    (`.env` is gitignored and never uploaded):
    ```sh
-   bun x eas-cli env:create --environment development --name GOOGLE_MAPS_API_KEY_ANDROID --value <key>
-   bun x eas-cli env:create --environment development --name GOOGLE_MAPS_API_KEY_IOS --value <key>
+   bun x eas-cli env:set --environment development --name GOOGLE_MAPS_API_KEY_ANDROID \
+     --value <key> --visibility sensitive
+   bun x eas-cli env:set --environment development --name GOOGLE_MAPS_API_KEY_IOS \
+     --value <key> --visibility sensitive
    ```
    Repeat for `preview`/`production` when you get there. The build **fails on purpose** if a key
    is missing (see `app.config.ts`). Verify with
    `bun x eas-cli env:list --environment development`.
+
+The production variable inventory and rotation procedures live in
+[`docs/production-environments.md`](docs/production-environments.md). Keep values in their owning
+services, never in that file.
 
 Note: `eas` commands evaluate `app.config.ts` without loading `.env`, so they print
 "GOOGLE_MAPS_API_KEY_… is not set" warnings even when your `.env` is correct. Harmless — cloud
@@ -267,7 +274,7 @@ bun x convex env remove TEST_FIXTURES_ENABLED
 
 To test the banned contributor's experience, create a second user in the Clerk development
 instance and leave its public metadata without an admin role. Copy that user's Clerk ID and use
-the Issuer from the `convex` JWT template to run the fixture as that identity:
+the Frontend API URL from the Clerk Convex integration to run the fixture as that identity:
 
 ```sh
 bun x convex run seed:createBannedUserScenario --identity '{"subject":"<Clerk user ID>","issuer":"<Clerk JWT issuer>","name":"Banned Workflow Test User"}'
