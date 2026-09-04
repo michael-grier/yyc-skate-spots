@@ -53,6 +53,16 @@ export function SignInView() {
         await setActive({ session: createdSessionId });
       }
     } catch (err) {
+      // Clerk versions differ on whether a dismissed Apple prompt resolves
+      // without a session or rejects with Apple's cancellation code.
+      if (
+        typeof err === "object" &&
+        err !== null &&
+        "code" in err &&
+        err.code === "ERR_REQUEST_CANCELED"
+      ) {
+        return;
+      }
       setSsoError(describeAuthError(err instanceof Error ? err : { message: String(err) }));
     } finally {
       setSocialBusy(null);
@@ -65,7 +75,13 @@ export function SignInView() {
     try {
       // Keep this explicit so Clerk's production allowlist and the app cannot
       // silently disagree about the browser callback URL.
-      await startSSOFlow({ strategy: "oauth_google", redirectUrl: GOOGLE_SSO_REDIRECT_URL });
+      const { createdSessionId, setActive } = await startSSOFlow({
+        strategy: "oauth_google",
+        redirectUrl: GOOGLE_SSO_REDIRECT_URL,
+      });
+      if (createdSessionId && setActive) {
+        await setActive({ session: createdSessionId });
+      }
     } catch (err) {
       setSsoError(describeAuthError(err instanceof Error ? err : { message: String(err) }));
     } finally {

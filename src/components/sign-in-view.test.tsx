@@ -61,7 +61,10 @@ beforeEach(() => {
     createdSessionId: "session_apple",
     setActive: mockSetActive,
   });
-  mockStartSSOFlow.mockResolvedValue({ createdSessionId: "session_google" });
+  mockStartSSOFlow.mockResolvedValue({
+    createdSessionId: "session_google",
+    setActive: mockSetActive,
+  });
 });
 
 describe("SignInView", () => {
@@ -79,9 +82,9 @@ describe("SignInView", () => {
   });
 
   test("treats a cancelled Apple prompt as a quiet no-op", async () => {
-    mockStartAppleAuthenticationFlow.mockResolvedValue({
-      createdSessionId: null,
-      setActive: mockSetActive,
+    mockStartAppleAuthenticationFlow.mockRejectedValue({
+      code: "ERR_REQUEST_CANCELED",
+      message: "The user canceled the authorization attempt.",
     });
     await render(<SignInView />);
 
@@ -106,6 +109,7 @@ describe("SignInView", () => {
         strategy: "oauth_google",
         redirectUrl: "yycskatespots://sso-callback",
       });
+      expect(mockSetActive).toHaveBeenCalledWith({ session: "session_google" });
     });
   });
 });
