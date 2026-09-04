@@ -1,6 +1,8 @@
-import { useSSO } from "@clerk/expo/experimental";
+import { useSSO } from "@clerk/expo";
+import { useSignInWithApple } from "@clerk/expo/apple";
+import * as AppleAuthentication from "expo-apple-authentication";
 import * as WebBrowser from "expo-web-browser";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -14,25 +16,76 @@ import { colors } from "@/theme/colors";
 // Lets the OAuth browser session hand control back to the app (no-op on native).
 WebBrowser.maybeCompleteAuthSession();
 
-type SsoStrategy = "oauth_apple" | "oauth_google";
+const GOOGLE_SSO_REDIRECT_URL = "yycskatespots://sso-callback";
 
 /** Signed-out state of the Account tab: Apple, Google, or an email code. */
 export function SignInView() {
   const insets = useSafeAreaInsets();
   const { startSSOFlow } = useSSO();
+  const { startAppleAuthenticationFlow } = useSignInWithApple();
   const { step, error, busy, sendCode, verifyCode, resendCode, reset } = useEmailCodeAuth();
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [ssoError, setSsoError] = useState<string | null>(null);
+  const [socialBusy, setSocialBusy] = useState<"apple" | "google" | null>(null);
+  const [appleAvailable, setAppleAvailable] = useState(false);
 
-  async function handleSso(strategy: SsoStrategy) {
+  useEffect(() => {
+    let mounted = true;
+    void AppleAuthentication.isAvailableAsync()
+      .then((available) => {
+        if (mounted) {
+          setAppleAvailable(available);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  async function handleAppleSignIn() {
     setSsoError(null);
+    setSocialBusy("apple");
     try {
-      // A completed flow activates the session itself; a cancelled browser
-      // session resolves without a session and needs no message.
-      await startSSOFlow({ strategy });
+      const { createdSessionId, setActive } = await startAppleAuthenticationFlow();
+      if (createdSessionId && setActive) {
+        await setActive({ session: createdSessionId });
+      }
+    } catch (err) {
+      // Clerk versions differ on whether a dismissed Apple prompt resolves
+      // without a session or rejects with Apple's cancellation code.
+      if (
+        typeof err === "object" &&
+        err !== null &&
+        "code" in err &&
+        err.code === "ERR_REQUEST_CANCELED"
+      ) {
+        return;
+      }
+      setSsoError(describeAuthError(err instanceof Error ? err : { message: String(err) }));
+    } finally {
+      setSocialBusy(null);
+    }
+  }
+
+  async function handleGoogleSignIn() {
+    setSsoError(null);
+    setSocialBusy("google");
+    try {
+      // Keep this explicit so Clerk's production allowlist and the app cannot
+      // silently disagree about the browser callback URL.
+      const { createdSessionId, setActive } = await startSSOFlow({
+        strategy: "oauth_google",
+        redirectUrl: GOOGLE_SSO_REDIRECT_URL,
+      });
+      if (createdSessionId && setActive) {
+        await setActive({ session: createdSessionId });
+      }
     } catch (err) {
       setSsoError(describeAuthError(err instanceof Error ? err : { message: String(err) }));
+    } finally {
+      setSocialBusy(null);
     }
   }
 
@@ -62,12 +115,26 @@ export function SignInView() {
 
       {step.kind === "email" ? (
         <View className="mt-9 gap-2.5">
+          {appleAvailable ? (
+            <View
+              pointerEvents={busy || socialBusy ? "none" : "auto"}
+              style={{ opacity: busy || socialBusy ? 0.4 : 1 }}
+            >
+              <AppleAuthentication.AppleAuthenticationButton
+                accessibilityLabel="Continue with Apple"
+                buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
+                buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
+                cornerRadius={16}
+                onPress={() => void handleAppleSignIn()}
+                style={{ width: "100%", height: 54 }}
+              />
+            </View>
+          ) : null}
           <Button
-            variant="light"
-            label="Continue with Apple"
-            onPress={() => void handleSso("oauth_apple")}
+            label={socialBusy === "google" ? "Opening Google…" : "Continue with Google"}
+            disabled={busy || socialBusy !== null}
+            onPress={() => void handleGoogleSignIn()}
           />
-          <Button label="Continue with Google" onPress={() => void handleSso("oauth_google")} />
 
           <View className="flex-row items-center gap-3 py-2">
             <View className="h-px flex-1 bg-white/10" />
@@ -96,7 +163,7 @@ export function SignInView() {
           </Card>
           <Button
             label={busy ? "Sending code…" : "Continue"}
-            disabled={busy || email.trim().length === 0}
+            disabled={busy || socialBusy !== null || email.trim().length === 0}
             onPress={() => void sendCode(email)}
           />
         </View>

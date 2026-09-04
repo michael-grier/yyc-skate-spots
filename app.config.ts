@@ -71,6 +71,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   userInterfaceStyle: "dark",
   ios: {
     bundleIdentifier: "com.yycskatespots.app",
+    usesAppleSignIn: true,
     associatedDomains: SHARE_HOST ? [`applinks:${SHARE_HOST}`] : [],
     infoPlist: {
       NSLocationWhenInUseUsageDescription:
@@ -112,6 +113,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       },
     ],
     "expo-secure-store",
+    "expo-apple-authentication",
     "@clerk/expo",
     [
       "expo-splash-screen",
