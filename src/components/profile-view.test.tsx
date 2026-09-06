@@ -1,6 +1,6 @@
 import type { Id } from "@convex/_generated/dataModel";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
-import { Alert } from "react-native";
+import { Alert, Linking } from "react-native";
 
 import { ProfileView } from "./profile-view";
 
@@ -9,6 +9,7 @@ const mockSignOut = jest.fn();
 const mockSetActive = jest.fn();
 const mockDeleteAccount = jest.fn();
 const mockAppleRefresh = jest.fn();
+const mockOpenUrl = jest.spyOn(Linking, "openURL").mockResolvedValue(true);
 const mockQueryResults: Record<string, unknown> = {};
 const mockAlert = jest.spyOn(Alert, "alert").mockImplementation(() => undefined);
 
@@ -33,6 +34,9 @@ jest.mock("convex/react", () => {
       mockQueryResults[getFunctionName(reference)],
   };
 });
+jest.mock("@/lib/public-site", () => ({
+  publicSiteUrl: (page: string) => `https://yycskatespots.com/${page}`,
+}));
 
 const spot = (id: string, name: string) => ({
   _id: id as Id<"spots">,
@@ -90,10 +94,15 @@ describe("ProfileView", () => {
     });
   });
 
-  test("opens the spot standards from the profile shortcut", async () => {
+  test("opens privacy, support, and spot standards from the compact footer", async () => {
     await render(<ProfileView />);
-    await fireEvent.press(screen.getByRole("button", { name: "Spot standards" }));
 
+    await fireEvent.press(screen.getByRole("link", { name: "Privacy" }));
+    await fireEvent.press(screen.getByRole("link", { name: "Support" }));
+    await fireEvent.press(screen.getByRole("link", { name: "Spot standards" }));
+
+    expect(mockOpenUrl).toHaveBeenNthCalledWith(1, "https://yycskatespots.com/privacy");
+    expect(mockOpenUrl).toHaveBeenNthCalledWith(2, "https://yycskatespots.com/support");
     expect(mockPush).toHaveBeenCalledWith("/standards");
   });
 

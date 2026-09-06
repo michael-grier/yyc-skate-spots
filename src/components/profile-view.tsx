@@ -8,7 +8,8 @@ import { useState } from "react";
 import { ActivityIndicator, Alert, FlatList, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { ChevronRightIcon, ClipboardIcon } from "@/components/icons";
+import { ChevronRightIcon } from "@/components/icons";
+import { PublicSiteLinks } from "@/components/public-site-links";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/cn";
@@ -180,19 +181,6 @@ export function ProfileView() {
             </View>
           </Card>
 
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Spot standards"
-            onPress={() => router.push("/standards")}
-            className="mt-2 active:opacity-90"
-          >
-            <Card className="flex-row items-center gap-3 px-4 py-3">
-              <ClipboardIcon size={18} color={colors.silver} />
-              <Text className="flex-1 font-sans-semibold text-[14px] text-ink">Spot standards</Text>
-              <ChevronRightIcon size={18} color={colors.mute} />
-            </Card>
-          </Pressable>
-
           {moderation?.isAdmin ? (
             <Pressable
               accessibilityRole="button"
@@ -320,6 +308,7 @@ export function ProfileView() {
               {isDeleting ? "Deleting account…" : "Delete account"}
             </Text>
           </Pressable>
+          <PublicSiteLinks className="mt-5" onOpenStandards={() => router.push("/standards")} />
         </View>
       }
     />

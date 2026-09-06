@@ -178,11 +178,22 @@ APP_STORE_ID=6807476193 \
 bun run build:share-site
 ```
 
-Deploy the contents of `dist-share/` at that exact origin. The host must serve
+Deploy the contents of `dist-share/` at that exact origin. It includes the public privacy policy,
+support page, spot standards, and share fallback. The host must serve
 `/.well-known/apple-app-site-association` over HTTPS with `Content-Type: application/json`, without
 authentication or a redirect. The generated `/share` page has the App Store prompt for recipients
 who do not have the app. The build also generates Cloudflare Pages' `_headers` file so the
 extensionless association file gets the required content type.
+
+The published URLs are:
+
+- `https://yycskatespots.com/privacy`
+- `https://yycskatespots.com/support`
+- `https://yycskatespots.com/standards`
+- `https://yycskatespots.com/share?id=<spot-id>`
+
+The audited iOS data flows and App Store Connect answer set are recorded in
+[`docs/ios-data-inventory.md`](docs/ios-data-inventory.md).
 
 For automatic Cloudflare Pages deployments, connect the GitHub repository and use:
 

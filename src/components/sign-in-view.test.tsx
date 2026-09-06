@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { Linking } from "react-native";
 
 import { SignInView } from "./sign-in-view";
 
@@ -6,6 +7,8 @@ const mockSetActive = jest.fn();
 const mockStartAppleAuthenticationFlow = jest.fn();
 const mockStartSSOFlow = jest.fn();
 const mockIsAppleAuthenticationAvailable = jest.fn();
+const mockPush = jest.fn();
+const mockOpenUrl = jest.spyOn(Linking, "openURL").mockResolvedValue(true);
 
 jest.mock("@clerk/expo", () => ({
   useSSO: () => ({ startSSOFlow: mockStartSSOFlow }),
@@ -39,6 +42,7 @@ jest.mock("expo-apple-authentication", () => {
   };
 });
 jest.mock("expo-web-browser", () => ({ maybeCompleteAuthSession: jest.fn() }));
+jest.mock("expo-router", () => ({ useRouter: () => ({ push: mockPush }) }));
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }),
 }));
@@ -52,6 +56,9 @@ jest.mock("@/lib/use-email-code-auth", () => ({
     resendCode: jest.fn(),
     reset: jest.fn(),
   }),
+}));
+jest.mock("@/lib/public-site", () => ({
+  publicSiteUrl: (page: string) => `https://yycskatespots.com/${page}`,
 }));
 
 beforeEach(() => {
@@ -68,6 +75,18 @@ beforeEach(() => {
 });
 
 describe("SignInView", () => {
+  test("keeps privacy, support, and spot standards available without signing in", async () => {
+    await render(<SignInView />);
+
+    await fireEvent.press(screen.getByRole("link", { name: "Privacy" }));
+    await fireEvent.press(screen.getByRole("link", { name: "Support" }));
+    await fireEvent.press(screen.getByRole("link", { name: "Spot standards" }));
+
+    expect(mockOpenUrl).toHaveBeenNthCalledWith(1, "https://yycskatespots.com/privacy");
+    expect(mockOpenUrl).toHaveBeenNthCalledWith(2, "https://yycskatespots.com/support");
+    expect(mockPush).toHaveBeenCalledWith("/standards");
+  });
+
   test("activates the session returned by native Apple authentication", async () => {
     await render(<SignInView />);
 

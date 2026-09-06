@@ -2,11 +2,13 @@ import { useSSO } from "@clerk/expo";
 import { useSignInWithApple } from "@clerk/expo/apple";
 import * as AppleAuthentication from "expo-apple-authentication";
 import * as WebBrowser from "expo-web-browser";
+import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { BoardMark } from "@/components/board-mark";
+import { PublicSiteLinks } from "@/components/public-site-links";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { describeAuthError } from "@/lib/auth-errors";
@@ -21,6 +23,7 @@ const GOOGLE_SSO_REDIRECT_URL = "yycskatespots://sso-callback";
 /** Signed-out state of the Account tab: Apple, Google, or an email code. */
 export function SignInView() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { startSSOFlow } = useSSO();
   const { startAppleAuthenticationFlow } = useSignInWithApple();
   const { step, error, busy, sendCode, verifyCode, resendCode, reset } = useEmailCodeAuth();
@@ -217,6 +220,7 @@ export function SignInView() {
 
       {/* Clerk renders its bot-protection widget here on web; skipped on native. */}
       <View nativeID="clerk-captcha" />
+      <PublicSiteLinks className="mt-auto pt-8" onOpenStandards={() => router.push("/standards")} />
     </ScrollView>
   );
 }
