@@ -6,13 +6,30 @@ submit the app for App Review or release it publicly.
 ## 1. Prepare `main`
 
 Release only a reviewed commit that has reached `origin/main`. Start in a checkout whose current
-branch is `main`, then confirm that the checkout is clean and current:
+branch is `main`. Open a fresh Bash shell with `bash` and keep that shell for the whole release. The
+first command below makes any failed command stop the release shell. If it exits, restart at step 1
+instead of resuming partway through the runbook.
+
+Confirm that the checkout is clean and current:
 
 ```sh
-git fetch origin
-test "$(git branch --show-current)" = main
-test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)"
-test -z "$(git status --porcelain)"
+set -euo pipefail
+git fetch origin || {
+  printf 'Release stopped: git fetch failed.\n' >&2
+  exit 1
+}
+test "$(git branch --show-current)" = main || {
+  printf 'Release stopped: current branch is not main.\n' >&2
+  exit 1
+}
+test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" || {
+  printf 'Release stopped: main is not current with origin/main.\n' >&2
+  exit 1
+}
+test -z "$(git status --porcelain)" || {
+  printf 'Release stopped: the working tree is not clean.\n' >&2
+  exit 1
+}
 ```
 
 Record the commit and read the user-facing version from the app config. Keep this shell variable for
@@ -21,7 +38,10 @@ the remaining commands:
 ```sh
 git rev-parse HEAD
 RELEASE_VERSION="$(bun -e 'import appConfig from "./app.config.ts"; console.log(appConfig({ config: {} }).version)')"
-test -n "$RELEASE_VERSION"
+test -n "$RELEASE_VERSION" || {
+  printf 'Release stopped: app.config.ts has no version.\n' >&2
+  exit 1
+}
 printf 'Release version: %s\n' "$RELEASE_VERSION"
 ```
 
@@ -36,7 +56,10 @@ bun run test:ui -- --runInBand
 bun x --no-install expo-doctor
 bun run verify:ios-release
 bun x expo export --platform ios
-test -z "$(git status --porcelain)"
+test -z "$(git status --porcelain)" || {
+  printf 'Release stopped: the checks changed the working tree.\n' >&2
+  exit 1
+}
 ```
 
 ## 2. Check production configuration
@@ -75,8 +98,14 @@ The required names are `APPLE_SIGN_IN_KEY_ID`, `APPLE_SIGN_IN_PRIVATE_KEY`, `APP
 Preview the production deployment first:
 
 ```sh
-bun x convex deploy --dry-run
-test -z "$(git status --porcelain)"
+bun x convex deploy --dry-run || {
+  printf 'Release stopped: the Convex dry run failed.\n' >&2
+  exit 1
+}
+test -z "$(git status --porcelain)" || {
+  printf 'Release stopped: the Convex dry run changed tracked files.\n' >&2
+  exit 1
+}
 ```
 
 The dry run regenerates the tracked Convex bindings. The clean-tree check stops the release if that
@@ -97,9 +126,18 @@ Re-check the release boundary after the Convex command. Stop if `main` advanced 
 changed the working tree:
 
 ```sh
-git fetch origin
-test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)"
-test -z "$(git status --porcelain)"
+git fetch origin || {
+  printf 'Release stopped: git fetch failed.\n' >&2
+  exit 1
+}
+test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" || {
+  printf 'Release stopped: main advanced after the release checks.\n' >&2
+  exit 1
+}
+test -z "$(git status --porcelain)" || {
+  printf 'Release stopped: the working tree changed after the release checks.\n' >&2
+  exit 1
+}
 ```
 
 The public version comes from `version` in `app.config.ts`. EAS owns the iOS build number because
