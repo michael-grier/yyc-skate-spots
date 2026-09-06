@@ -18,5 +18,6 @@ administrator can block the account from creating spots, editing, uploading phot
 The backend enforces the block even if someone calls the Convex functions directly.
 
 Use the contributor and administrator demo accounts prepared in issue #56 to verify submission,
-approval, reporting, removal, and blocking. Add the public support URL from issue #28 here before
-submitting version 1.0 to App Review.
+approval, reporting, removal, and blocking. The privacy policy, support page, and community
+standards are available without an account at https://yycskatespots.com/privacy,
+https://yycskatespots.com/support, and https://yycskatespots.com/standards.

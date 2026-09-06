@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#141517" />
+    <meta name="description" content="{{META_DESCRIPTION}}" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="{{OG_TITLE}}" />
+    <meta property="og:description" content="{{META_DESCRIPTION}}" />
+    <meta property="og:image" content="{{SHARE_ORIGIN}}/icon.png" />
+    <meta property="og:url" content="{{CANONICAL_URL}}" />
+    <link rel="canonical" href="{{CANONICAL_URL}}" />
+    <link rel="icon" href="/favicon.png" />
+    <link rel="stylesheet" href="/styles.css" />
+    {{EXTRA_HEAD}}
+    <title>{{PAGE_TITLE}}</title>
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">Skip to content</a>
+    <header class="site-header">
+      <div class="site-header__inner">
+        <a class="brand" href="/" aria-label="YYC Skate Spots home">
+          <img src="/icon.png" alt="" width="34" height="34" />
+          <span>YYC Skate Spots</span>
+        </a>
+        <nav class="site-nav" aria-label="Public information">
+          <a href="/privacy">Privacy</a>
+          <a href="/support">Support</a>
+          <a href="/standards">Spot standards</a>
+        </nav>
+      </div>
+    </header>
+    <main id="main-content">{{PAGE_CONTENT}}</main>
+    <footer class="site-footer">
+      <div class="site-footer__inner">
+        <p>Calgary street spots, mapped by skaters.</p>
+        <nav aria-label="Footer">
+          <a href="/privacy">Privacy</a>
+          <a href="/support">Support</a>
+          <a href="/standards">Spot standards</a>
+        </nav>
+      </div>
+    </footer>
+  </body>
+</html>
