@@ -1,15 +1,20 @@
 import type { Id } from "@convex/_generated/dataModel";
-import { fireEvent, render, screen } from "@testing-library/react-native";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { Alert } from "react-native";
 
 import { ProfileView } from "./profile-view";
 
 const mockPush = jest.fn();
 const mockSignOut = jest.fn();
+const mockSetActive = jest.fn();
+const mockDeleteAccount = jest.fn();
+const mockAppleRefresh = jest.fn();
 const mockQueryResults: Record<string, unknown> = {};
+const mockAlert = jest.spyOn(Alert, "alert").mockImplementation(() => undefined);
 
 jest.mock("expo-router", () => ({ useRouter: () => ({ push: mockPush }) }));
 jest.mock("@clerk/expo", () => ({
-  useClerk: () => ({ signOut: mockSignOut }),
+  useClerk: () => ({ setActive: mockSetActive, signOut: mockSignOut }),
   useUser: () => ({
     user: {
       fullName: "Michael Grier",
@@ -17,9 +22,13 @@ jest.mock("@clerk/expo", () => ({
     },
   }),
 }));
+jest.mock("expo-apple-authentication", () => ({
+  refreshAsync: (options: { user: string }) => mockAppleRefresh(options),
+}));
 jest.mock("convex/react", () => {
   const { getFunctionName } = jest.requireActual<typeof import("convex/server")>("convex/server");
   return {
+    useAction: () => mockDeleteAccount,
     useQuery: (reference: Parameters<typeof getFunctionName>[0]) =>
       mockQueryResults[getFunctionName(reference)],
   };
@@ -35,12 +44,26 @@ const spot = (id: string, name: string) => ({
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockDeleteAccount.mockResolvedValue({ status: "complete" });
+  mockSetActive.mockResolvedValue(undefined);
+  mockSignOut.mockResolvedValue(undefined);
   mockQueryResults["favorites:list"] = [
     spot("favorite-1", "Harmony Park"),
     spot("favorite-2", "Bowness Curbs"),
   ];
   mockQueryResults["spots:mine"] = [{ status: "active", ...spot("mine-1", "Olympic Plaza Banks") }];
 });
+
+async function acceptDeletionConfirmation() {
+  const buttons = mockAlert.mock.calls[0]?.[2];
+  const destructiveButton = buttons?.find((button) => button.style === "destructive");
+  if (!destructiveButton?.onPress) {
+    throw new Error("Expected a destructive account-deletion confirmation.");
+  }
+  await act(async () => {
+    await destructiveButton.onPress?.();
+  });
+}
 
 describe("ProfileView", () => {
   test("starts on favourites and switches to the user's submitted spots", async () => {
@@ -94,5 +117,101 @@ describe("ProfileView", () => {
     expect(screen.getByText(/No favourites yet/)).toBeOnTheScreen();
     await fireEvent.press(screen.getByRole("tab", { name: "Your spots, 0 spots" }));
     expect(screen.getByText(/Spots you add from the Add tab/)).toBeOnTheScreen();
+  });
+
+  test("keeps account deletion at the bottom and explains its consequences", async () => {
+    await render(<ProfileView />);
+
+    expect(screen.getByRole("button", { name: "Sign out" })).toBeOnTheScreen();
+    await fireEvent.press(screen.getByRole("button", { name: "Delete account" }));
+
+    expect(mockAlert).toHaveBeenCalledWith(
+      "Delete account?",
+      expect.stringMatching(/submitted spots, photos, favourites, reports, and moderation history/),
+      expect.arrayContaining([
+        expect.objectContaining({ text: "Cancel", style: "cancel" }),
+        expect.objectContaining({ text: "Delete account", style: "destructive" }),
+      ]),
+    );
+    expect(mockDeleteAccount).not.toHaveBeenCalled();
+  });
+
+  test("deletes a non-Apple account, clears the session, and confirms completion", async () => {
+    await render(<ProfileView />);
+    await fireEvent.press(screen.getByRole("button", { name: "Delete account" }));
+    await acceptDeletionConfirmation();
+
+    await waitFor(() => expect(mockDeleteAccount).toHaveBeenCalledWith({}));
+    await waitFor(() => expect(mockSignOut).toHaveBeenCalledTimes(1));
+    expect(mockSetActive).not.toHaveBeenCalled();
+    expect(mockAlert).toHaveBeenLastCalledWith(
+      "Account deleted",
+      "Your account and all associated data have been permanently deleted.",
+    );
+  });
+
+  test("clears the local session if Clerk no longer recognizes the deleted session", async () => {
+    mockSignOut.mockRejectedValue(new Error("Session not found"));
+    await render(<ProfileView />);
+    await fireEvent.press(screen.getByRole("button", { name: "Delete account" }));
+    await acceptDeletionConfirmation();
+
+    await waitFor(() => expect(mockSetActive).toHaveBeenCalledWith({ session: null }));
+    expect(mockAlert).toHaveBeenLastCalledWith(
+      "Account deleted",
+      "Your account and all associated data have been permanently deleted.",
+    );
+  });
+
+  test("reauthorizes and passes a fresh code when the server finds an Apple account", async () => {
+    mockDeleteAccount
+      .mockResolvedValueOnce({ status: "appleAuthorizationRequired", appleUserId: "apple-user" })
+      .mockResolvedValueOnce({ status: "complete" });
+    mockAppleRefresh.mockResolvedValue({ authorizationCode: "fresh-code" });
+    await render(<ProfileView />);
+    await fireEvent.press(screen.getByRole("button", { name: "Delete account" }));
+    await acceptDeletionConfirmation();
+
+    await waitFor(() => expect(mockAppleRefresh).toHaveBeenCalledWith({ user: "apple-user" }));
+    expect(mockDeleteAccount).toHaveBeenNthCalledWith(1, {});
+    expect(mockDeleteAccount).toHaveBeenNthCalledWith(2, {
+      appleAuthorizationCode: "fresh-code",
+    });
+    await waitFor(() => expect(mockSignOut).toHaveBeenCalledTimes(1));
+  });
+
+  test("leaves the account alone when Apple reauthorization is cancelled", async () => {
+    mockDeleteAccount.mockResolvedValueOnce({
+      status: "appleAuthorizationRequired",
+      appleUserId: "apple-user",
+    });
+    mockAppleRefresh.mockRejectedValue(
+      Object.assign(new Error("Cancelled"), { code: "ERR_REQUEST_CANCELED" }),
+    );
+    await render(<ProfileView />);
+    await fireEvent.press(screen.getByRole("button", { name: "Delete account" }));
+    await acceptDeletionConfirmation();
+
+    await waitFor(() => expect(mockAppleRefresh).toHaveBeenCalledTimes(1));
+    expect(mockDeleteAccount).toHaveBeenCalledTimes(1);
+    expect(mockSignOut).not.toHaveBeenCalled();
+    expect(mockAlert).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(screen.getByText("Delete account")).toBeOnTheScreen());
+  });
+
+  test("keeps retry available when deletion cannot be confirmed", async () => {
+    mockDeleteAccount.mockRejectedValue(new Error("Clerk unavailable"));
+    await render(<ProfileView />);
+    await fireEvent.press(screen.getByRole("button", { name: "Delete account" }));
+    await acceptDeletionConfirmation();
+
+    await waitFor(() =>
+      expect(mockAlert).toHaveBeenLastCalledWith(
+        "Couldn’t delete account",
+        expect.stringMatching(/safely resume/),
+      ),
+    );
+    expect(mockSignOut).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Delete account" })).not.toBeDisabled();
   });
 });
