@@ -148,6 +148,10 @@ The production variable inventory and rotation procedures live in
 [`docs/production-environments.md`](docs/production-environments.md). Keep values in their owning
 services, never in that file.
 
+Production iOS builds and TestFlight uploads follow
+[`docs/ios-release-runbook.md`](docs/ios-release-runbook.md). The runbook keeps the build and upload
+as separate steps so the exact archive can be checked before it reaches App Store Connect.
+
 Note: `eas` commands evaluate `app.config.ts` without loading `.env`, so they print
 "GOOGLE_MAPS_API_KEY_… is not set" warnings even when your `.env` is correct. Harmless — cloud
 builds read the EAS env vars above, not `.env`. To check what Expo actually resolves locally:
