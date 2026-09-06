@@ -24,6 +24,7 @@ const DELETE_BATCH_SIZE = 100;
 const UPLOAD_DELETE_BATCH_SIZE = 20;
 const MAX_CLEANUP_BATCHES_PER_REQUEST = 1_000;
 const REQUEST_EXPIRY_MS = 7 * 24 * 60 * 60 * 1_000;
+const EXTERNAL_REQUEST_TIMEOUT_MS = 10_000;
 
 type AppleTokenType = "access_token" | "refresh_token";
 type ClerkExternalAccount = { provider: string; providerUserId: string };
@@ -71,9 +72,15 @@ function clerkHeaders() {
   };
 }
 
+/** Keeps a stalled provider from consuming the account-deletion action's full runtime. */
+function externalRequestSignal() {
+  return AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT_MS);
+}
+
 async function fetchClerkUser(clerkUserId: string): Promise<ClerkUser | null> {
   const response = await fetch(`${CLERK_API_ORIGIN}/v1/users/${encodeURIComponent(clerkUserId)}`, {
     headers: clerkHeaders(),
+    signal: externalRequestSignal(),
   });
   if (response.status === 404) {
     return null;
@@ -88,6 +95,7 @@ async function deleteClerkUser(clerkUserId: string) {
   const response = await fetch(`${CLERK_API_ORIGIN}/v1/users/${encodeURIComponent(clerkUserId)}`, {
     method: "DELETE",
     headers: clerkHeaders(),
+    signal: externalRequestSignal(),
   });
   // A retry can arrive after Clerk completed an earlier request whose response
   // never reached the app. Treating 404 as success makes that case idempotent.
@@ -125,6 +133,7 @@ async function exchangeAppleAuthorizationCode(code: string, expectedAppleUserId:
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body,
+    signal: externalRequestSignal(),
   });
   if (!response.ok) {
     throw new Error("Apple could not verify this account. Please try again.");
@@ -162,6 +171,7 @@ async function revokeAppleToken(token: string, tokenType: AppleTokenType) {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body,
+    signal: externalRequestSignal(),
   });
   if (!response.ok) {
     throw new Error("Apple could not revoke this account. Please try again.");

@@ -242,6 +242,9 @@ describe("account deletion", () => {
     expect((revokeCall?.[1]?.body as URLSearchParams).get("token")).toBe("apple-refresh-token");
     expect((revokeCall?.[1]?.body as URLSearchParams).get("token_type_hint")).toBe("refresh_token");
     expect(fetchMock.mock.calls[4]?.[1]).toMatchObject({ method: "DELETE" });
+    for (const [, options] of fetchMock.mock.calls) {
+      expect(options?.signal).toBeInstanceOf(AbortSignal);
+    }
   });
 
   test("resumes after Clerk fails without asking Apple to revoke twice", async () => {

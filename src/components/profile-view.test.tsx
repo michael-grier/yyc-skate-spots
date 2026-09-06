@@ -163,6 +163,20 @@ describe("ProfileView", () => {
     );
   });
 
+  test("still confirms deletion if both local session cleanup methods fail", async () => {
+    mockSignOut.mockRejectedValue(new Error("Session not found"));
+    mockSetActive.mockRejectedValue(new Error("Session cache unavailable"));
+    await render(<ProfileView />);
+    await fireEvent.press(screen.getByRole("button", { name: "Delete account" }));
+    await acceptDeletionConfirmation();
+
+    await waitFor(() => expect(mockSetActive).toHaveBeenCalledWith({ session: null }));
+    expect(mockAlert).toHaveBeenLastCalledWith(
+      "Account deleted",
+      "Your account and all associated data have been permanently deleted.",
+    );
+  });
+
   test("reauthorizes and passes a fresh code when the server finds an Apple account", async () => {
     mockDeleteAccount
       .mockResolvedValueOnce({ status: "appleAuthorizationRequired", appleUserId: "apple-user" })

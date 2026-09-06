@@ -108,8 +108,13 @@ export function ProfileView() {
       }
 
       // Clerk may report the now-deleted remote session as missing. Explicitly
-      // clear the active local session in that case so no cached token remains.
-      await signOut().catch(() => setActive({ session: null }));
+      // clear the active local session in that case. Session cleanup cannot
+      // change the result after the server has permanently deleted the account.
+      try {
+        await signOut();
+      } catch {
+        await setActive({ session: null }).catch(() => undefined);
+      }
       Alert.alert(
         "Account deleted",
         "Your account and all associated data have been permanently deleted.",
