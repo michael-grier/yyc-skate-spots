@@ -26,6 +26,10 @@ Use `bun x convex env list --names-only --prod` to inspect names without printin
 | Variable | Owner | Visibility | Requirement | Source and consumer | Rotation procedure |
 | --- | --- | --- | --- | --- | --- |
 | `CLERK_JWT_ISSUER_DOMAIN` | Convex project owner | Public configuration | Required | Frontend API URL from the matching Clerk production Convex integration, consumed by `convex/auth.config.ts` | Finish the replacement Clerk domain or instance first. Set the new URL on Convex, deploy the auth configuration, and verify an authenticated request before retiring the old Clerk configuration. |
+| `CLERK_SECRET_KEY` | Convex project owner | Secret | Required | Secret key from the matching Clerk production instance, consumed only by the account-deletion action | Create or reveal the replacement in Clerk, update Convex through the setup wizard, test account deletion with a disposable account, then revoke the old key in Clerk. |
+| `APPLE_TEAM_ID` | Convex project owner | Plain text | Required | Apple Developer membership Team ID, used to sign short-lived client secrets for Apple account revocation | Update only when app ownership moves to another Apple team, alongside the replacement key and App ID configuration. |
+| `APPLE_SIGN_IN_KEY_ID` | Convex project owner | Sensitive identifier | Required | Identifier of a Sign in with Apple private key associated with the app's primary App ID | Create a replacement Sign in with Apple key, update the key ID and private key together, verify deletion with a disposable Apple account, then revoke the old key. |
+| `APPLE_SIGN_IN_PRIVATE_KEY` | Convex project owner | Secret | Required | Contents of the `.p8` Sign in with Apple private key, consumed only to sign short-lived Apple client secrets | Follow the same paired rotation as `APPLE_SIGN_IN_KEY_ID`; Apple permits downloading a private key only once, so retain the replacement securely outside Git. |
 | `SEED_OWNER_TOKEN_IDENTIFIER` | Convex project owner | Non-secret account identifier | Optional | Canonical Clerk identity for deliberate seed and ownership operations, consumed only by guarded seed functions | Set it to the intended account's Frontend API URL and user ID pair before an approved seed or claim operation. Change or remove it when that owner changes or seeding is no longer allowed. |
 | `TEST_FIXTURES_ENABLED` | Convex project owner | Internal feature flag | Development only | Manual moderation fixture gate, consumed by fixture functions | Keep it absent from production. If it appears there, remove it immediately. Enable it only on development for a specific fixture run and remove it afterward. |
 
@@ -61,7 +65,8 @@ transformation, empty-target or conflict check, import, and ownership verificati
 
 - Confirm the Expo dashboard lists all five expected production names. Do not copy their values
   into logs.
-- Confirm Convex lists the two expected names and does not list `TEST_FIXTURES_ENABLED`.
+- Confirm Convex lists every required name in the inventory and does not list
+  `TEST_FIXTURES_ENABLED`.
 - Confirm the production share domain serves `/share` and the Apple association file over HTTPS.
 - Confirm map-key application and API restrictions in Google Cloud before each release build.
 - After any suspected disclosure, create a replacement at the provider, update its consumers,

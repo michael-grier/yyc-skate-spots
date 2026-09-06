@@ -1,10 +1,11 @@
 import { useClerk, useUser } from "@clerk/expo";
 import { api } from "@convex/_generated/api";
 import type { FunctionReturnType } from "convex/server";
-import { useQuery } from "convex/react";
+import { useAction, useQuery } from "convex/react";
+import * as AppleAuthentication from "expo-apple-authentication";
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { ActivityIndicator, FlatList, Pressable, Text, View } from "react-native";
+import { ActivityIndicator, Alert, FlatList, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ChevronRightIcon, ClipboardIcon } from "@/components/icons";
@@ -26,6 +27,15 @@ function initialsOf(name: string | null | undefined, email: string | undefined) 
 
 type ProfileList = "favorites" | "mine";
 type ProfileSpot = FunctionReturnType<typeof api.spots.mine>[number];
+
+function isAppleCancellation(error: unknown) {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    error.code === "ERR_REQUEST_CANCELED"
+  );
+}
 
 type ProfileSegmentProps = {
   label: string;
@@ -63,10 +73,12 @@ export function ProfileView() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user } = useUser();
-  const { signOut } = useClerk();
+  const { setActive, signOut } = useClerk();
+  const deleteAccount = useAction(api.accountDeletion.deleteAccount);
   const favorites = useQuery(api.favorites.list);
   const mySpots = useQuery(api.spots.mine);
   const [activeList, setActiveList] = useState<ProfileList>("favorites");
+  const [isDeleting, setIsDeleting] = useState(false);
   const moderation = useQuery(api.moderation.viewer);
   const email = user?.primaryEmailAddress?.emailAddress;
   const activeSpots: ProfileSpot[] | undefined =
@@ -77,6 +89,62 @@ export function ProfileView() {
     activeList === "favorites"
       ? "No favourites yet. Tap the heart on a spot to save it here."
       : "Nothing yet. Spots you add from the Add tab show up here.";
+
+  const performAccountDeletion = async () => {
+    setIsDeleting(true);
+    try {
+      let result = await deleteAccount({});
+      if (result.status === "appleAuthorizationRequired") {
+        const credential = await AppleAuthentication.refreshAsync({
+          user: result.appleUserId,
+        });
+        if (!credential.authorizationCode) {
+          throw new Error("Apple did not return an authorization code.");
+        }
+        result = await deleteAccount({ appleAuthorizationCode: credential.authorizationCode });
+      }
+      if (result.status !== "complete") {
+        throw new Error("Account deletion did not complete.");
+      }
+
+      // Clerk may report the now-deleted remote session as missing. Explicitly
+      // clear the active local session in that case. Session cleanup cannot
+      // change the result after the server has permanently deleted the account.
+      try {
+        await signOut();
+      } catch {
+        await setActive({ session: null }).catch(() => undefined);
+      }
+      Alert.alert(
+        "Account deleted",
+        "Your account and all associated data have been permanently deleted.",
+      );
+    } catch (error) {
+      if (!isAppleCancellation(error)) {
+        Alert.alert(
+          "Couldn’t delete account",
+          "We couldn’t confirm completion. Please try again—the process will safely resume where it stopped.",
+        );
+      }
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const confirmAccountDeletion = () => {
+    Alert.alert(
+      "Delete account?",
+      "This permanently deletes your account, submitted spots, photos, favourites, reports, and moderation history. This can’t be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete account",
+          style: "destructive",
+          onPress: performAccountDeletion,
+        },
+      ],
+    );
+  };
 
   return (
     <FlatList
@@ -238,7 +306,21 @@ export function ProfileView() {
         </Pressable>
       )}
       ListFooterComponent={
-        <Button label="Sign out" onPress={() => void signOut()} className="mt-6" />
+        <View className="mt-6">
+          <Button label="Sign out" onPress={() => void signOut()} disabled={isDeleting} />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Delete account"
+            disabled={isDeleting}
+            onPress={confirmAccountDeletion}
+            className="mt-3 min-h-11 flex-row items-center justify-center gap-2 self-center px-4 active:opacity-70 disabled:opacity-40"
+          >
+            {isDeleting ? <ActivityIndicator size="small" color={colors.bust.high} /> : null}
+            <Text className="font-sans-semibold text-[14px]" style={{ color: colors.bust.high }}>
+              {isDeleting ? "Deleting account…" : "Delete account"}
+            </Text>
+          </Pressable>
+        </View>
       }
     />
   );

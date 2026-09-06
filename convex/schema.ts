@@ -62,7 +62,9 @@ export default defineSchema({
     // Hides a deleted spot while its unbounded favorite rows are removed in
     // scheduled batches. The final batch physically deletes this document.
     deletionRequested: v.optional(v.boolean()),
-  }).index("by_createdBy", ["createdBy"]),
+  })
+    .index("by_createdBy", ["createdBy"])
+    .index("by_createdBy_and_deletionRequested", ["createdBy", "deletionRequested"]),
 
   // One row per saved spot. The Clerk tokenIdentifier stays server-derived,
   // while the indexes cover profile ordering, membership, and spot deletion.
@@ -88,7 +90,9 @@ export default defineSchema({
   uploads: defineTable({
     storageId: v.id("_storage"),
     uploadedBy: v.string(),
-  }).index("by_storageId", ["storageId"]),
+  })
+    .index("by_storageId", ["storageId"])
+    .index("by_uploadedBy", ["uploadedBy"]),
 
   // Reports stay private and exist only while a spot awaits a decision.
   // Removing them on resolution lets the same person report a later edit.
@@ -99,7 +103,8 @@ export default defineSchema({
     details: v.optional(v.string()),
   })
     .index("by_spotId", ["spotId"])
-    .index("by_spotId_and_reportedBy", ["spotId", "reportedBy"]),
+    .index("by_spotId_and_reportedBy", ["spotId", "reportedBy"])
+    .index("by_reportedBy", ["reportedBy"]),
 
   // Operational review state is separate from the public spot document so
   // owner edits cannot overwrite moderation fields through spots.update.
@@ -112,7 +117,9 @@ export default defineSchema({
     openReportCount: v.number(),
     reviewedAt: v.optional(v.number()),
     reviewedBy: v.optional(v.string()),
-  }).index("by_spotId", ["spotId"]),
+  })
+    .index("by_spotId", ["spotId"])
+    .index("by_reviewedBy", ["reviewedBy"]),
 
   // Admin removal deletes the public spot but keeps this small owner-visible
   // record. Photos, coordinates, notes, and report identities are not retained.
@@ -125,12 +132,14 @@ export default defineSchema({
     reason: reportReason,
     details: v.optional(v.string()),
     removedAt: v.number(),
-    removedBy: v.string(),
+    // Cleared if the reviewing administrator later deletes their account.
+    removedBy: v.optional(v.string()),
     reportCount: v.number(),
     strikeNumber: v.number(),
   })
     .index("by_spotId", ["spotId"])
-    .index("by_createdBy_and_spotCreationTime", ["createdBy", "spotCreationTime"]),
+    .index("by_createdBy_and_spotCreationTime", ["createdBy", "spotCreationTime"])
+    .index("by_removedBy", ["removedBy"]),
 
   // A contribution ban leaves sign-in intact so the user can still browse,
   // delete their remaining spots, and read removal notices.
@@ -143,7 +152,8 @@ export default defineSchema({
     bannedBy: v.optional(v.string()),
   })
     .index("by_userIdentifier", ["userIdentifier"])
-    .index("by_isBanned_and_confirmedRemovalCount", ["isBanned", "confirmedRemovalCount"]),
+    .index("by_isBanned_and_confirmedRemovalCount", ["isBanned", "confirmedRemovalCount"])
+    .index("by_bannedBy", ["bannedBy"]),
 
   // One row per contributor records the policy version accepted before their
   // first public-content action. The server checks it independently of the UI.
@@ -151,5 +161,16 @@ export default defineSchema({
     userIdentifier: v.string(),
     standardsVersion: v.number(),
     acceptedAt: v.number(),
+  }).index("by_userIdentifier", ["userIdentifier"]),
+
+  // Private, short-lived recovery state keeps Apple revocation and Clerk
+  // deletion safe to retry without exposing tokens through a public query.
+  accountDeletionRequests: defineTable({
+    userIdentifier: v.string(),
+    clerkUserId: v.string(),
+    requestedAt: v.number(),
+    appleToken: v.optional(v.string()),
+    appleTokenType: v.optional(v.union(v.literal("access_token"), v.literal("refresh_token"))),
+    appleRevoked: v.boolean(),
   }).index("by_userIdentifier", ["userIdentifier"]),
 });
