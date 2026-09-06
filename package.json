@@ -78,7 +78,8 @@
     "test": "vitest run",
     "format": "biome format --write .",
     "test:ui": "jest",
-    "build:share-site": "node scripts/build-share-site.mjs"
+    "build:share-site": "node scripts/build-share-site.mjs",
+    "verify:ios-release": "node scripts/verify-ios-release-config.mjs"
   },
   "private": true
 }

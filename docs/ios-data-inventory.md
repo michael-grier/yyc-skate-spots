@@ -3,8 +3,9 @@
 Last verified: September 6, 2026
 
 This is the source of truth for the version 1.0 privacy policy and the App Store Connect answers in
-issue #56. It covers the production iOS app and the public site; Android is deferred. Re-check the final
-release archive in #55 because a native SDK update can change its bundled privacy manifest.
+issue #56. It covers the production iOS app and the public site; Android is deferred. The native
+configuration was checked in #55; re-check the final release archive in #29 because a native SDK
+update can change its bundled privacy manifest.
 
 ## App data flows
 
@@ -45,7 +46,7 @@ SDK. Google Maps' own SDK collection still needs to be disclosed.
 ## App Store Connect answer set
 
 These are the intended answers for #56. Verify them against the archived app's merged privacy
-manifest in #55 before publishing.
+manifest in #29 before publishing.
 
 | Apple data type | Collected | Linked | Tracking | Purposes |
 | --- | --- | --- | --- | --- |

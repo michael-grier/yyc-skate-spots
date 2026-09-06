@@ -49,5 +49,8 @@ jobs:
       - name: Check Expo project
         run: bun x --no-install expo-doctor
 
+      - name: Verify iOS release configuration
+        run: bun run verify:ios-release
+
       - name: Export iOS bundle
         run: bun x expo export --platform ios

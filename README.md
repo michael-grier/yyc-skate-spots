@@ -19,6 +19,7 @@ bun run lint
 bun run test
 bun run test:ui -- --runInBand
 bun x --no-install expo-doctor
+bun run verify:ios-release
 bun x expo export --platform ios
 ```
 
@@ -195,6 +196,30 @@ The published URLs are:
 The audited iOS data flows and App Store Connect answer set are recorded in
 [`docs/ios-data-inventory.md`](docs/ios-data-inventory.md).
 
+### iOS release compliance
+
+Run the release configuration check after changing the app config or a native dependency:
+
+```sh
+bun run verify:ios-release
+```
+
+It verifies the resolved privacy manifest, export-compliance flag, permission descriptions, bundle
+identifier, Sign in with Apple entitlement, and Universal Link entitlement without printing
+build-time credentials.
+
+To inspect the generated native files after a native dependency update:
+
+```sh
+bun x expo prebuild --platform ios --no-install
+```
+
+Confirm `ios/YYCSkateSpots/PrivacyInfo.xcprivacy`, `Info.plist`, the app entitlements, and the Xcode
+project's bundle identifier. The generated `ios/` directory is ignored and must not be committed.
+EAS runs CocoaPods during the release build, when React Native aggregates the required-reason APIs
+from linked SDK manifests. Check the final archive privacy report and App Store upload warnings as
+part of the TestFlight task.
+
 For automatic Cloudflare Pages deployments, connect the GitHub repository and use:
 
 - Production branch: `main`
@@ -365,6 +390,7 @@ branch-local `node_modules` with the worktree.
 | `bun run typecheck`        | `tsc --noEmit`                                    |
 | `bun run lint`             | ESLint (`eslint-config-expo`)                     |
 | `bun run build:share-site` | Build the share fallback and AASA file            |
+| `bun run verify:ios-release` | Verify the resolved iOS compliance configuration |
 | `bun run format`           | Biome (formatter only; ESLint owns lint)          |
 
 ## Architecture notes

@@ -73,6 +73,11 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     bundleIdentifier: "com.yycskatespots.app",
     usesAppleSignIn: true,
     associatedDomains: SHARE_HOST ? [`applinks:${SHARE_HOST}`] : [],
+    config: {
+      // The shipped app uses Apple-provided cryptography and standard HTTPS,
+      // not proprietary or non-standard encryption.
+      usesNonExemptEncryption: false,
+    },
     infoPlist: {
       NSLocationWhenInUseUsageDescription:
         "YYC Skate Spots shows your position on the map and sorts spots by distance from you.",
@@ -80,6 +85,75 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       // directions helper — without this entry iOS always reports the
       // Google Maps app as not installed.
       LSApplicationQueriesSchemes: ["comgooglemaps"],
+    },
+    // React Native aggregates linked CocoaPods manifests during pod install.
+    // Keeping the same required reasons at the app level also covers static
+    // dependency manifests that are not parsed reliably during the build.
+    privacyManifests: {
+      NSPrivacyTracking: false,
+      NSPrivacyTrackingDomains: [],
+      NSPrivacyAccessedAPITypes: [
+        {
+          NSPrivacyAccessedAPIType: "NSPrivacyAccessedAPICategoryFileTimestamp",
+          NSPrivacyAccessedAPITypeReasons: ["0A2A.1", "3B52.1", "C617.1"],
+        },
+        {
+          NSPrivacyAccessedAPIType: "NSPrivacyAccessedAPICategoryDiskSpace",
+          NSPrivacyAccessedAPITypeReasons: ["85F4.1", "E174.1"],
+        },
+        {
+          NSPrivacyAccessedAPIType: "NSPrivacyAccessedAPICategorySystemBootTime",
+          NSPrivacyAccessedAPITypeReasons: ["35F9.1"],
+        },
+        {
+          NSPrivacyAccessedAPIType: "NSPrivacyAccessedAPICategoryUserDefaults",
+          NSPrivacyAccessedAPITypeReasons: ["1C8F.1", "CA92.1"],
+        },
+      ],
+      NSPrivacyCollectedDataTypes: [
+        {
+          NSPrivacyCollectedDataType: "NSPrivacyCollectedDataTypeName",
+          NSPrivacyCollectedDataTypeLinked: true,
+          NSPrivacyCollectedDataTypeTracking: false,
+          NSPrivacyCollectedDataTypePurposes: ["NSPrivacyCollectedDataTypePurposeAppFunctionality"],
+        },
+        {
+          NSPrivacyCollectedDataType: "NSPrivacyCollectedDataTypeEmailAddress",
+          NSPrivacyCollectedDataTypeLinked: true,
+          NSPrivacyCollectedDataTypeTracking: false,
+          NSPrivacyCollectedDataTypePurposes: ["NSPrivacyCollectedDataTypePurposeAppFunctionality"],
+        },
+        {
+          NSPrivacyCollectedDataType: "NSPrivacyCollectedDataTypePreciseLocation",
+          NSPrivacyCollectedDataTypeLinked: true,
+          NSPrivacyCollectedDataTypeTracking: false,
+          NSPrivacyCollectedDataTypePurposes: ["NSPrivacyCollectedDataTypePurposeAppFunctionality"],
+        },
+        {
+          NSPrivacyCollectedDataType: "NSPrivacyCollectedDataTypePhotosorVideos",
+          NSPrivacyCollectedDataTypeLinked: true,
+          NSPrivacyCollectedDataTypeTracking: false,
+          NSPrivacyCollectedDataTypePurposes: ["NSPrivacyCollectedDataTypePurposeAppFunctionality"],
+        },
+        {
+          NSPrivacyCollectedDataType: "NSPrivacyCollectedDataTypeOtherUserContent",
+          NSPrivacyCollectedDataTypeLinked: true,
+          NSPrivacyCollectedDataTypeTracking: false,
+          NSPrivacyCollectedDataTypePurposes: ["NSPrivacyCollectedDataTypePurposeAppFunctionality"],
+        },
+        {
+          NSPrivacyCollectedDataType: "NSPrivacyCollectedDataTypeUserID",
+          NSPrivacyCollectedDataTypeLinked: true,
+          NSPrivacyCollectedDataTypeTracking: false,
+          NSPrivacyCollectedDataTypePurposes: ["NSPrivacyCollectedDataTypePurposeAppFunctionality"],
+        },
+        {
+          NSPrivacyCollectedDataType: "NSPrivacyCollectedDataTypeProductInteraction",
+          NSPrivacyCollectedDataTypeLinked: true,
+          NSPrivacyCollectedDataTypeTracking: false,
+          NSPrivacyCollectedDataTypePurposes: ["NSPrivacyCollectedDataTypePurposeAppFunctionality"],
+        },
+      ],
     },
   },
   android: {
@@ -112,7 +186,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         androidGoogleMapsApiKey: GOOGLE_MAPS_API_KEY_ANDROID,
       },
     ],
-    "expo-secure-store",
+    ["expo-secure-store", { faceIDPermission: false }],
     "expo-apple-authentication",
     "@clerk/expo",
     [
@@ -128,13 +202,17 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       {
         locationWhenInUsePermission:
           "YYC Skate Spots shows your position on the map and sorts spots by distance from you.",
+        locationAlwaysAndWhenInUsePermission: false,
+        locationAlwaysPermission: false,
+        motionUsagePermission: false,
       },
     ],
     [
       "expo-image-picker",
       {
         photosPermission: "YYC Skate Spots lets you attach photos of a spot when you submit it.",
-        cameraPermission: "YYC Skate Spots lets you photograph a spot when you submit it.",
+        cameraPermission: false,
+        microphonePermission: false,
       },
     ],
   ],
