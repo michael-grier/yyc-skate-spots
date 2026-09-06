@@ -55,13 +55,18 @@ manifest in #55 before publishing.
 | User Content → Photos or Videos | Yes | Yes | No | App Functionality |
 | User Content → Other User Content | Yes | Yes | No | App Functionality |
 | Identifiers → User ID | Yes | Yes | No | App Functionality; Analytics for the Google Maps service identifier |
-| Identifiers → Device ID | Yes, by Google Maps SDK | No | No | App Functionality; Analytics |
+| Identifiers → Device ID | Yes, by Google Maps SDK, including its device identifier and logged device IP address | No | No | App Functionality; Analytics |
 | Usage Data → Product Interaction | Yes: linked favourites/standards activity and unlinked Google Maps interaction data | Yes | No | App Functionality; Analytics |
 | Diagnostics → Crash Data | Yes, by Google Maps SDK | No | No | Analytics |
 | Diagnostics → Performance Data | Yes, by Google Maps SDK | No | No | Analytics |
 
 Overall tracking answer: **No**. Data is not used for third-party advertising, the developer's
 advertising or marketing, or tracking across other companies' apps and websites.
+
+App Store Connect has no standalone IP-address data type. Following Apple's guidance for stored IP
+addresses, Google's logged device IP is conservatively included under **Identifiers → Device ID**.
+The purposes reflect Google's stated use of Maps Platform logs and the SDK manifest: Analytics for
+product improvement, and App Functionality for support, operations, security, and capacity.
 
 ## Evidence
 
