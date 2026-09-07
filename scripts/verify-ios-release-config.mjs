@@ -130,6 +130,10 @@ const expectedPermissionDescriptions = new Map([
     "NSPhotoLibraryUsageDescription",
     "YYC Skate Spots lets you attach photos of a spot when you submit it.",
   ],
+  [
+    "NSMotionUsageDescription",
+    "YYC Skate Spots uses device motion to improve your position and orientation on the map.",
+  ],
 ]);
 for (const [key, expected] of expectedPermissionDescriptions) {
   assert(infoPlist?.[key] === expected, `${key} is missing or inaccurate`);
@@ -141,7 +145,6 @@ const unusedPermissionDescriptions = [
   "NSLocationAlwaysUsageDescription",
   "NSLocationAlwaysAndWhenInUseUsageDescription",
   "NSMicrophoneUsageDescription",
-  "NSMotionUsageDescription",
 ];
 for (const key of unusedPermissionDescriptions) {
   assert(!(key in infoPlist), `${key} is present even though the app does not use it`);
