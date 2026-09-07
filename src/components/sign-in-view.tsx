@@ -104,12 +104,21 @@ export function SignInView() {
   }
 
   const message = error ?? ssoError;
+  const passwordSignInDisabled =
+    busy || socialBusy !== null || email.trim().length === 0 || password.length === 0;
 
   function chooseEmailMethod(method: "code" | "password") {
     reset();
     setSsoError(null);
     setEmailMethod(method);
     setPassword("");
+  }
+
+  function submitPassword() {
+    if (passwordSignInDisabled) {
+      return;
+    }
+    void signInWithPassword(email, password);
   }
 
   return (
@@ -228,7 +237,7 @@ export function SignInView() {
               textContentType="password"
               secureTextEntry
               returnKeyType="go"
-              onSubmitEditing={() => void signInWithPassword(email, password)}
+              onSubmitEditing={submitPassword}
               accessibilityLabel="Password"
               className="mt-0.5 font-sans text-[15px] text-ink"
               style={{ paddingVertical: 0 }}
@@ -236,10 +245,8 @@ export function SignInView() {
           </Card>
           <Button
             label={busy ? "Signing in…" : "Sign in"}
-            disabled={
-              busy || socialBusy !== null || email.trim().length === 0 || password.length === 0
-            }
-            onPress={() => void signInWithPassword(email, password)}
+            disabled={passwordSignInDisabled}
+            onPress={submitPassword}
           />
           <Pressable
             accessibilityRole="button"

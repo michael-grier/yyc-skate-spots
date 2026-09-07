@@ -141,9 +141,12 @@ describe("SignInView", () => {
     expect(screen.getByRole("button", { name: "Continue" })).toBeOnTheScreen();
     await fireEvent.press(screen.getByRole("button", { name: "Sign in with a password" }));
 
+    await fireEvent(screen.getByLabelText("Password"), "submitEditing");
+    expect(mockSignInWithPassword).not.toHaveBeenCalled();
+
     await fireEvent.changeText(screen.getByLabelText("Email address"), "reviewer@example.com");
     await fireEvent.changeText(screen.getByLabelText("Password"), "review password");
-    await fireEvent.press(screen.getByRole("button", { name: "Sign in" }));
+    await fireEvent(screen.getByLabelText("Password"), "submitEditing");
 
     await waitFor(() =>
       expect(mockSignInWithPassword).toHaveBeenCalledWith(

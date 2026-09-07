@@ -87,6 +87,12 @@ export function useEmailCodeAuth() {
         setError(describeAuthError(signInError));
         return;
       }
+      // Reviewer accounts have no MFA and Device Trust is disabled. Any other
+      // account can restart with the app's existing email-code flow.
+      if (signIn.status !== "complete") {
+        setError("This account needs another verification step. Use an email code instead.");
+        return;
+      }
       const { error: finalizeError } = await signIn.finalize();
       if (finalizeError) {
         setError(describeAuthError(finalizeError));

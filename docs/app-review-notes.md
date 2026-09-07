@@ -24,6 +24,9 @@ Keep Clerk Device Trust disabled while the reviewer accounts are active so a sig
 device does not require access to either account's email inbox. Leave Clerk's lockout and user
 enumeration protections enabled.
 
+After Apple approves the version, delete both reviewer accounts and re-enable Clerk Device Trust.
+Create fresh accounts with new passwords if a future submission needs review access.
+
 ## Notes field
 
 Paste the following text into App Store Connect after replacing both bracketed account placeholders

@@ -3,6 +3,7 @@ import { act, renderHook } from "@testing-library/react-native";
 import { useEmailCodeAuth } from "./use-email-code-auth";
 
 const mockSignIn = {
+  status: "complete",
   emailCode: { sendCode: jest.fn(), verifyCode: jest.fn() },
   password: jest.fn(),
   finalize: jest.fn(),
@@ -41,6 +42,7 @@ const ALL_MOCKS = [
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockSignIn.status = "complete";
   for (const fn of ALL_MOCKS) {
     fn.mockResolvedValue(ok);
   }
@@ -123,6 +125,21 @@ describe("useEmailCodeAuth", () => {
     expect(result.current.error).toBe("That email or password isn't right.");
     expect(mockSignIn.finalize).not.toHaveBeenCalled();
   });
+
+  test.each(["needs_client_trust", "needs_second_factor"])(
+    "does not finalize a password attempt with status %s",
+    async (status) => {
+      mockSignIn.status = status;
+      const { result } = await renderHook(() => useEmailCodeAuth());
+
+      await act(() => result.current.signInWithPassword("reviewer@example.com", "password"));
+
+      expect(result.current.error).toBe(
+        "This account needs another verification step. Use an email code instead.",
+      );
+      expect(mockSignIn.finalize).not.toHaveBeenCalled();
+    },
+  );
 
   test("reset returns to the email step and clears the error", async () => {
     mockSignIn.emailCode.sendCode.mockResolvedValue(err("too_many_requests"));
