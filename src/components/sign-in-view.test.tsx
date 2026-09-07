@@ -9,6 +9,7 @@ const mockStartSSOFlow = jest.fn();
 const mockIsAppleAuthenticationAvailable = jest.fn();
 const mockPush = jest.fn();
 const mockOpenUrl = jest.spyOn(Linking, "openURL").mockResolvedValue(true);
+const mockSignInWithPassword = jest.fn();
 
 jest.mock("@clerk/expo", () => ({
   useSSO: () => ({ startSSOFlow: mockStartSSOFlow }),
@@ -53,6 +54,7 @@ jest.mock("@/lib/use-email-code-auth", () => ({
     busy: false,
     sendCode: jest.fn(),
     verifyCode: jest.fn(),
+    signInWithPassword: mockSignInWithPassword,
     resendCode: jest.fn(),
     reset: jest.fn(),
   }),
@@ -130,5 +132,28 @@ describe("SignInView", () => {
       });
       expect(mockSetActive).toHaveBeenCalledWith({ session: "session_google" });
     });
+  });
+
+  test("offers password sign-in without changing the default email-code flow", async () => {
+    await render(<SignInView />);
+    await screen.findByRole("button", { name: "Continue with Apple" });
+
+    expect(screen.getByRole("button", { name: "Continue" })).toBeOnTheScreen();
+    await fireEvent.press(screen.getByRole("button", { name: "Sign in with a password" }));
+
+    await fireEvent.changeText(screen.getByLabelText("Email address"), "reviewer@example.com");
+    await fireEvent.changeText(screen.getByLabelText("Password"), "review password");
+    await fireEvent.press(screen.getByRole("button", { name: "Sign in" }));
+
+    await waitFor(() =>
+      expect(mockSignInWithPassword).toHaveBeenCalledWith(
+        "reviewer@example.com",
+        "review password",
+      ),
+    );
+
+    await fireEvent.press(screen.getByRole("button", { name: "Use an email code instead" }));
+    expect(screen.getByRole("button", { name: "Continue" })).toBeOnTheScreen();
+    expect(screen.queryByLabelText("Password")).toBeNull();
   });
 });

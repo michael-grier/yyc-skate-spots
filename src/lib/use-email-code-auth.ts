@@ -8,10 +8,10 @@ export type EmailCodeStep =
   | { kind: "code"; emailAddress: string; mode: "signIn" | "signUp" };
 
 /**
- * Passwordless email-code auth that signs existing users in and signs new
- * ones up from the same two fields. Completing either path activates the
- * Clerk session, which flips useAuth().isSignedIn for the rest of the app —
- * authorization still happens server-side in Convex on every write.
+ * Email auth that signs existing users in by code or password and signs new
+ * ones up by code. Completing any path activates the Clerk session, which
+ * flips useAuth().isSignedIn for the rest of the app — authorization still
+ * happens server-side in Convex on every write.
  */
 export function useEmailCodeAuth() {
   const { signIn } = useSignIn();
@@ -78,6 +78,22 @@ export function useEmailCodeAuth() {
     });
   }
 
+  /** Password sign-in is limited to existing accounts; regular sign-up stays passwordless. */
+  async function signInWithPassword(input: string, password: string) {
+    const emailAddress = input.trim();
+    await run(async () => {
+      const { error: signInError } = await signIn.password({ emailAddress, password });
+      if (signInError) {
+        setError(describeAuthError(signInError));
+        return;
+      }
+      const { error: finalizeError } = await signIn.finalize();
+      if (finalizeError) {
+        setError(describeAuthError(finalizeError));
+      }
+    });
+  }
+
   async function resendCode() {
     if (step.kind !== "code") {
       return;
@@ -99,5 +115,5 @@ export function useEmailCodeAuth() {
     setError(null);
   }
 
-  return { step, error, busy, sendCode, verifyCode, resendCode, reset };
+  return { step, error, busy, sendCode, verifyCode, signInWithPassword, resendCode, reset };
 }

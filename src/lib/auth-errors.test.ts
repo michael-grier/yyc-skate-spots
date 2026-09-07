@@ -27,7 +27,22 @@ describe("describeAuthError", () => {
     };
 
     expect(hasAuthErrorCode(error, "form_identifier_not_found")).toBe(true);
-    expect(describeAuthError(error)).toBe("Couldn't find your account.");
+    expect(describeAuthError(error)).toBe("That email or password isn't right.");
+  });
+
+  test("does not reveal whether the email or password was wrong", () => {
+    expect(describeAuthError({ code: "form_password_incorrect", message: "Password is wrong" })).toBe(
+      "That email or password isn't right.",
+    );
+    expect(
+      describeAuthError({
+        code: "form_password_or_identifier_incorrect",
+        message: "Identifier is wrong",
+      }),
+    ).toBe("That email or password isn't right.");
+    expect(
+      describeAuthError({ code: "form_password_validation_failed", message: "Password is wrong" }),
+    ).toBe("That email or password isn't right.");
   });
 
   test("falls back to Clerk's long message, then message", () => {

@@ -4,6 +4,7 @@ import { useEmailCodeAuth } from "./use-email-code-auth";
 
 const mockSignIn = {
   emailCode: { sendCode: jest.fn(), verifyCode: jest.fn() },
+  password: jest.fn(),
   finalize: jest.fn(),
 };
 const mockSignUp = {
@@ -30,6 +31,7 @@ const apiErr = (code: string, message = code) => ({
 const ALL_MOCKS = [
   mockSignIn.emailCode.sendCode,
   mockSignIn.emailCode.verifyCode,
+  mockSignIn.password,
   mockSignIn.finalize,
   mockSignUp.create,
   mockSignUp.verifications.sendEmailCode,
@@ -96,6 +98,29 @@ describe("useEmailCodeAuth", () => {
     await act(() => result.current.sendCode("skater@example.com"));
     await act(() => result.current.verifyCode("000000"));
     expect(result.current.error).toBe("That code isn't right. Check it and try again.");
+    expect(mockSignIn.finalize).not.toHaveBeenCalled();
+  });
+
+  test("signs an existing account in with its password", async () => {
+    const { result } = await renderHook(() => useEmailCodeAuth());
+
+    await act(() => result.current.signInWithPassword("  reviewer@example.com ", "not-trimmed "));
+
+    expect(mockSignIn.password).toHaveBeenCalledWith({
+      emailAddress: "reviewer@example.com",
+      password: "not-trimmed ",
+    });
+    expect(mockSignIn.finalize).toHaveBeenCalledTimes(1);
+    expect(mockSignUp.create).not.toHaveBeenCalled();
+  });
+
+  test("a wrong password surfaces a neutral message and does not finalize", async () => {
+    mockSignIn.password.mockResolvedValue(err("form_password_incorrect"));
+    const { result } = await renderHook(() => useEmailCodeAuth());
+
+    await act(() => result.current.signInWithPassword("reviewer@example.com", "wrong"));
+
+    expect(result.current.error).toBe("That email or password isn't right.");
     expect(mockSignIn.finalize).not.toHaveBeenCalled();
   });
 
