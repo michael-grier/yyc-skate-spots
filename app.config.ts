@@ -204,7 +204,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
           "YYC Skate Spots shows your position on the map and sorts spots by distance from you.",
         locationAlwaysAndWhenInUsePermission: false,
         locationAlwaysPermission: false,
-        motionUsagePermission: false,
+        // A linked iOS SDK references Core Motion, so Apple requires this
+        // purpose string even though the app does not request it directly.
+        motionUsagePermission:
+          "YYC Skate Spots uses device motion to improve your position and orientation on the map.",
       },
     ],
     [
