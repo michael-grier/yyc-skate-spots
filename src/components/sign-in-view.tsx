@@ -26,9 +26,20 @@ export function SignInView() {
   const router = useRouter();
   const { startSSOFlow } = useSSO();
   const { startAppleAuthenticationFlow } = useSignInWithApple();
-  const { step, error, busy, sendCode, verifyCode, resendCode, reset } = useEmailCodeAuth();
+  const {
+    step,
+    error,
+    busy,
+    sendCode,
+    verifyCode,
+    signInWithPassword,
+    resendCode,
+    reset,
+  } = useEmailCodeAuth();
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
+  const [password, setPassword] = useState("");
+  const [emailMethod, setEmailMethod] = useState<"code" | "password">("code");
   const [ssoError, setSsoError] = useState<string | null>(null);
   const [socialBusy, setSocialBusy] = useState<"apple" | "google" | null>(null);
   const [appleAvailable, setAppleAvailable] = useState(false);
@@ -93,6 +104,22 @@ export function SignInView() {
   }
 
   const message = error ?? ssoError;
+  const passwordSignInDisabled =
+    busy || socialBusy !== null || email.trim().length === 0 || password.length === 0;
+
+  function chooseEmailMethod(method: "code" | "password") {
+    reset();
+    setSsoError(null);
+    setEmailMethod(method);
+    setPassword("");
+  }
+
+  function submitPassword() {
+    if (passwordSignInDisabled) {
+      return;
+    }
+    void signInWithPassword(email, password);
+  }
 
   return (
     <ScrollView
@@ -116,7 +143,7 @@ export function SignInView() {
         Browsing never needs an account.
       </Text>
 
-      {step.kind === "email" ? (
+      {step.kind === "email" && emailMethod === "code" ? (
         <View className="mt-9 gap-2.5">
           {appleAvailable ? (
             <View
@@ -169,6 +196,66 @@ export function SignInView() {
             disabled={busy || socialBusy !== null || email.trim().length === 0}
             onPress={() => void sendCode(email)}
           />
+          <Pressable
+            accessibilityRole="button"
+            disabled={busy || socialBusy !== null}
+            onPress={() => chooseEmailMethod("password")}
+            className="items-center py-2"
+          >
+            <Text className="font-sans text-[13px] text-silver">Sign in with a password</Text>
+          </Pressable>
+        </View>
+      ) : step.kind === "email" ? (
+        <View className="mt-9 gap-2.5">
+          <Card className="px-4 py-3">
+            <Text className="font-sans-medium text-[11px] text-mute">EMAIL</Text>
+            <TextInput
+              value={email}
+              onChangeText={setEmail}
+              placeholder="you@example.com"
+              placeholderTextColor={colors.mute}
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="email"
+              keyboardType="email-address"
+              textContentType="emailAddress"
+              accessibilityLabel="Email address"
+              className="mt-0.5 font-sans text-[15px] text-ink"
+              style={{ paddingVertical: 0 }}
+            />
+          </Card>
+          <Card className="px-4 py-3">
+            <Text className="font-sans-medium text-[11px] text-mute">PASSWORD</Text>
+            <TextInput
+              value={password}
+              onChangeText={setPassword}
+              placeholder="Password"
+              placeholderTextColor={colors.mute}
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="current-password"
+              textContentType="password"
+              secureTextEntry
+              returnKeyType="go"
+              onSubmitEditing={submitPassword}
+              accessibilityLabel="Password"
+              className="mt-0.5 font-sans text-[15px] text-ink"
+              style={{ paddingVertical: 0 }}
+            />
+          </Card>
+          <Button
+            label={busy ? "Signing in…" : "Sign in"}
+            disabled={passwordSignInDisabled}
+            onPress={submitPassword}
+          />
+          <Pressable
+            accessibilityRole="button"
+            disabled={busy}
+            onPress={() => chooseEmailMethod("code")}
+            className="items-center py-2"
+          >
+            <Text className="font-sans text-[13px] text-mute">Use an email code instead</Text>
+          </Pressable>
         </View>
       ) : (
         <View className="mt-9 gap-2.5">
