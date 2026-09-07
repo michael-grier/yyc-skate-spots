@@ -1,20 +1,23 @@
 # App Store screenshot plan
 
-Status: Approved for capture
+Status: Captured and approved
 
 Target: iOS 1.0, English (Canada)
 
-Last verified: September 6, 2026
+Last verified: September 7, 2026
 
 ## Deliverables
 
-Create five portrait screenshots from the production TestFlight build. Capture on a supported
-6.9-inch iPhone at one of Apple's accepted native sizes, preferably 1320 by 2868 pixels from an
-iPhone 16 Pro Max. Export the final images as opaque PNGs with no alpha channel.
+The five portrait screenshots were captured from production TestFlight build 1.0.0 (5) on an
+iPhone 17. Final exports in `app-store/screenshots/en-CA/` use Apple's accepted 1320 by 2868 pixel
+size and are opaque PNGs without alpha channels.
 
-Store the files in `app-store/screenshots/en-CA/` once the copy and captures are approved. Keep the
-raw, undecorated device captures beside the final exports so later versions can update the frames
-without recreating the app state.
+The 1206 by 2622 pixel device captures are preserved in the adjacent `raw/` directory so later
+versions can update the presentation without recreating the app state. The profile source has its
+account and moderation header masked so the repository does not retain personal information.
+Each capture is placed at its native pixel size, centred horizontally and anchored to the bottom
+of the final canvas. The branded headline uses the additional canvas area without enlarging the app
+interface.
 
 ## Sequence and copy
 
@@ -104,7 +107,7 @@ to production.
 
 ## Capture rules
 
-- Use build 1.0.0 (4) or its reviewed replacement against production services.
+- Use production TestFlight build 1.0.0 (5).
 - Use real approved Calgary spots. Do not expose pending reports, moderation details, email
   addresses, credentials, notifications, or personal account information.
 - Keep the status bar clean and consistent. Use full cellular or Wi-Fi signal and a sensible time.
@@ -116,7 +119,8 @@ to production.
   app data before upload.
 
 Apple permits one to ten screenshots and scales the highest-resolution set down when the interface
-is the same across device sizes. If the chosen phone does not produce an accepted 6.9-inch size,
-capture again on a listed device rather than stretching the image.
+is the same across device sizes. If a source capture does not match the final canvas, keep the app
+interface at its native pixel size and use the remaining canvas for framing or copy rather than
+stretching it.
 
 Reference: [Apple screenshot specifications](https://developer.apple.com/help/app-store-connect/reference/app-information/screenshot-specifications/)
