@@ -102,7 +102,10 @@ Store Connect calculate the regional ratings. Do not override the result or sele
 | Messaging and chat | No |
 | Health or wellness topics | No |
 | Advertising | No |
-| Contests, loot boxes, simulated gambling, or gambling | None |
+| Contests | None |
+| Simulated gambling | None |
+| Gambling | No |
+| Loot boxes | No |
 | Age-rating override | None |
 
 The public map contains moderated user-submitted photos and text, so `User-generated content` is
