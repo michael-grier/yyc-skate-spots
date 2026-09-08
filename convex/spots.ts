@@ -6,7 +6,7 @@ import { requireCanContribute, requireIdentity, userModerationFor } from "./auth
 import {
   clearSpotModeration,
   queueEditedSpot,
-  queueNewSpot,
+  recordNewSpotModeration,
   spotIsPublished,
 } from "./moderationModel";
 import { bustFactor, spotType, surface } from "./schema";
@@ -354,14 +354,15 @@ export const create = mutation({
       name: args.name.trim(),
       createdBy: identity.tokenIdentifier,
       createdByName: identity.name,
-      publicationStatus: "pending",
+      // Only the verified Clerk role can skip review; client arguments cannot set this status.
+      publicationStatus: identity.role === "admin" ? "published" : "pending",
     });
     await claimPhotos(ctx, args.photoIds, id);
     const spot = await ctx.db.get("spots", id);
     if (!spot) {
       throw new Error("Spot not found after creation.");
     }
-    await queueNewSpot(ctx, spot);
+    await recordNewSpotModeration(ctx, spot);
     return id;
   },
 });

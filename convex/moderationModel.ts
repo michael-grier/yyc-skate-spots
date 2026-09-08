@@ -19,15 +19,17 @@ export async function spotIsPublished(ctx: QueryCtx | MutationCtx, spot: Doc<"sp
   return moderation?.needsReview !== true;
 }
 
-/** Adds a new spot to the proactive queue in the same transaction as creation. */
-export async function queueNewSpot(ctx: MutationCtx, spot: Doc<"spots">) {
+/** Records review state atomically with creation, including admin self-approval. */
+export async function recordNewSpotModeration(ctx: MutationCtx, spot: Doc<"spots">) {
+  const published = spot.publicationStatus === "published";
   await ctx.db.insert("spotModeration", {
     spotId: spot._id,
     spotCreationTime: spot._creationTime,
-    needsReview: true,
+    needsReview: !published,
     attentionReason: "new",
     lastSubmittedAt: spot._creationTime,
     openReportCount: 0,
+    ...(published ? { reviewedAt: spot._creationTime, reviewedBy: spot.createdBy } : {}),
   });
 }
 
