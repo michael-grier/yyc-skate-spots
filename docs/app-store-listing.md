@@ -1,10 +1,10 @@
 # App Store listing
 
-Status: Approved for App Store Connect entry
+Status: Entered in App Store Connect and added to a draft submission
 
 Target: iOS 1.0, English (Canada)
 
-Last verified: September 6, 2026
+Last verified: September 7, 2026
 
 This file preserves the exact product-page copy and the non-secret App Store Connect selections for
 version 1.0. Text inside fenced blocks is ready to paste as written. Character and byte counts do
@@ -81,6 +81,8 @@ skateboard,skateboarding,calgary,spotbook,street,skatepark,nearby,directions,dir
 | Pre-order | No |
 | Release option | Manually release this version |
 | Education and business distribution | Available publicly through Apple Business Manager and Apple School Manager |
+| Apple silicon Mac availability | Not available; the iPhone app has not been verified on macOS |
+| Apple Vision Pro availability | Not available; the iPhone app has not been verified on visionOS |
 
 YYC Skate Spots is permanently a Calgary app. Keep it in the Canadian App Store and do not describe
 it as the start of a multi-city service. The app is not distributed in the European Union, so the
@@ -114,20 +116,32 @@ in-app sharing between users. Spot sharing opens the iOS share sheet.
 
 ## App privacy
 
-Use the answer set in [`ios-data-inventory.md`](ios-data-inventory.md). Enter
-`https://yycskatespots.com/privacy` as the required privacy policy URL and publish the answers only
-after checking each selected data type against that inventory.
+The answer set in [`ios-data-inventory.md`](ios-data-inventory.md) was entered and published on
+September 7, 2026. The privacy policy URL is `https://yycskatespots.com/privacy`; the optional user
+privacy choices URL is blank because account deletion is available inside the app.
+
+## App accessibility
+
+Leave the App Accessibility product-page declaration unset for version 1.0. The release has not
+been audited against Apple's complete support criteria, so it would be misleading to claim support
+based on individual smoke tests.
 
 ## App Review
 
-Use the reviewer instructions in [`app-review-notes.md`](app-review-notes.md). Enter review contact
-details and both demo accounts directly in App Store Connect. Never add passwords, one-time codes,
-private email aliases, or recovery details to this repository.
+The reviewer fields and notes in [`app-review-notes.md`](app-review-notes.md) were entered on
+September 7, 2026. The contributor and administrator demo accounts were verified against production
+TestFlight build 1.0.0 (5). Their credentials remain outside this repository.
 
 ## Screenshots
 
-Follow [`app-store-screenshot-plan.md`](app-store-screenshot-plan.md). Final source captures and
-exported PNGs will be added after capture is complete.
+The five approved 6.9-inch iPhone exports are in `app-store/screenshots/en-CA/` and were uploaded in
+the order documented by [`app-store-screenshot-plan.md`](app-store-screenshot-plan.md).
+
+## Submission status
+
+Production build 1.0.0 (5) is attached to iOS version 1.0. App Store Connect accepted the version's
+metadata and added it to a draft submission on September 7, 2026. The draft has not been submitted
+to App Review.
 
 ## References
 

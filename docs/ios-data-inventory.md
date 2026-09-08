@@ -1,6 +1,6 @@
 # iOS data inventory
 
-Last verified: September 6, 2026
+Last verified: September 7, 2026
 
 This is the source of truth for the version 1.0 privacy policy and the App Store Connect answers in
 issue #56. It covers the production iOS app and the public site; Android is deferred. The native
@@ -45,8 +45,8 @@ SDK. Google Maps' own SDK collection still needs to be disclosed.
 
 ## App Store Connect answer set
 
-These are the intended answers for #56. Verify them against the archived app's merged privacy
-manifest in #29 before publishing.
+These are the version 1.0 answers entered and published in App Store Connect on September 7, 2026.
+They were checked against the archived app's merged privacy manifest in #29 before publishing.
 
 | Apple data type | Collected | Linked | Tracking | Purposes |
 | --- | --- | --- | --- | --- |

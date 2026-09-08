@@ -1,6 +1,6 @@
 # App Review notes
 
-Status: Draft pending production-build reviewer-account verification and App Store Connect entry
+Status: Entered in App Store Connect; production reviewer accounts verified
 
 Target: iOS 1.0
 
@@ -39,8 +39,8 @@ LOCATION
 Location access is optional. If allowed, it shows the device's position, calculates distance to spots, and enables nearby filtering. The app remains usable if access is denied.
 
 SIGN-IN AND CONTRIBUTOR FLOW
-Open Account, enter the contributor demo email from the App Review Information fields, tap "Sign in with a password," enter the supplied password, and tap "Sign in."
-The contributor account can save favourites, submit a spot, manage its own spots, report a public listing, and delete itself from Account > Delete account.
+Open Sign in, enter the contributor demo email from the App Review Information fields, tap "Sign in with a password," enter the supplied password, and tap "Sign in."
+The contributor account can save favourites, submit a spot, manage its own spots, report a public listing, and delete itself from Profile > Delete account.
 
 USER-GENERATED CONTENT
 New spots and changes to existing listings remain private to their contributor and administrators until an administrator approves them. Contributors must accept the public spot standards before their first submission. Every public spot has a private "Report this spot" action.
@@ -49,10 +49,10 @@ ADMIN MODERATION
 Admin demo email: [ADMIN DEMO EMAIL]
 Admin demo password: [ADMIN DEMO PASSWORD]
 
-Sign out of the contributor account, then use the same password flow with the admin credentials above. Open Account > Review spots and select the test submission. The review screen can approve it, remove it, inspect private reports, and manage contribution bans. Please leave the seeded public listings in place.
+Sign out of the contributor account, then use the same password flow with the admin credentials above. Open Profile > Review spots and select the test submission. The review screen can approve it, remove it, inspect private reports, and manage contribution bans. Please leave the seeded public listings in place.
 
 ACCOUNT DELETION
-Account > Delete account permanently removes the account and its submitted spots, photos, favourites, reports, and moderation history. An Apple-authenticated account may receive Apple's confirmation prompt before deletion completes.
+Profile > Delete account permanently removes the account and its submitted spots, photos, favourites, reports, and moderation history. An Apple-authenticated account may receive Apple's confirmation prompt before deletion completes.
 
 PUBLIC POLICIES AND SUPPORT
 Privacy: https://yycskatespots.com/privacy
