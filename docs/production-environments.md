@@ -13,6 +13,7 @@ display, not whether an app user can extract a value.
 | Variable | Owner | Visibility | Source and consumer | Rotation procedure |
 | --- | --- | --- | --- | --- |
 | `EXPO_PUBLIC_CONVEX_URL` | Expo project owner | Plain text | Convex production deployment URL, consumed by the Expo client | Create or select the replacement production deployment, update EAS, build and test against it, then retire the old deployment only after its data has moved. |
+| `EXPO_PUBLIC_CONVEX_SITE_URL` | Expo project owner | Plain text | Conditional: HTTP-actions origin for custom Convex domains, consumed by photo uploads; omitted for default `*.convex.cloud` URLs | Configure the replacement HTTP-actions host with the deployment URL, update EAS, build, and verify authenticated photo uploads. |
 | `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY` | Expo project owner | Plain text | Clerk production API Keys page, consumed by `ClerkProvider` | When Clerk issues a replacement, update EAS, then make a new build and verify sign-in before retiring the old configuration. A Clerk domain change creates a new key. |
 | `EXPO_PUBLIC_SHARE_BASE_URL` | Expo project owner | Plain text | Cloudflare Pages production custom domain, consumed by Expo configuration and share links | Configure the replacement domain and association file first. Update Cloudflare Pages and EAS, make a new build, verify Universal Links, then redirect or retire the old domain. |
 | `GOOGLE_MAPS_API_KEY_IOS` | Expo project owner | Sensitive | Google Cloud credential restricted to the iOS bundle ID and Maps SDK for iOS, embedded by Expo at build time | Create and restrict a replacement key, update EAS, build and test the map on an iPhone, then revoke the old key. |
@@ -26,7 +27,7 @@ Use `bun x convex env list --names-only --prod` to inspect names without printin
 | Variable | Owner | Visibility | Requirement | Source and consumer | Rotation procedure |
 | --- | --- | --- | --- | --- | --- |
 | `CLERK_JWT_ISSUER_DOMAIN` | Convex project owner | Public configuration | Required | Frontend API URL from the matching Clerk production Convex integration, consumed by `convex/auth.config.ts` | Finish the replacement Clerk domain or instance first. Set the new URL on Convex, deploy the auth configuration, and verify an authenticated request before retiring the old Clerk configuration. |
-| `CLERK_SECRET_KEY` | Convex project owner | Secret | Required | Secret key from the matching Clerk production instance, consumed only by the account-deletion action | Create or reveal the replacement in Clerk, update Convex through the setup wizard, test account deletion with a disposable account, then revoke the old key in Clerk. |
+| `CLERK_SECRET_KEY` | Convex project owner | Secret | Required | Secret key from the matching Clerk production instance, consumed only by the account-deletion action | Create or reveal the replacement in Clerk, update the variable in the production deployment's Convex dashboard, test account deletion with a disposable account, then revoke the old key in Clerk. |
 | `APPLE_TEAM_ID` | Convex project owner | Plain text | Required | Apple Developer membership Team ID, used to sign short-lived client secrets for Apple account revocation | Update only when app ownership moves to another Apple team, alongside the replacement key and App ID configuration. |
 | `APPLE_SIGN_IN_KEY_ID` | Convex project owner | Sensitive identifier | Required | Identifier of a Sign in with Apple private key associated with the app's primary App ID | Create a replacement Sign in with Apple key, update the key ID and private key together, verify deletion with a disposable Apple account, then revoke the old key. |
 | `APPLE_SIGN_IN_PRIVATE_KEY` | Convex project owner | Secret | Required | Contents of the `.p8` Sign in with Apple private key, consumed only to sign short-lived Apple client secrets | Follow the same paired rotation as `APPLE_SIGN_IN_KEY_ID`; Apple permits downloading a private key only once, so retain the replacement securely outside Git. |
@@ -50,21 +51,25 @@ Production and Preview. Their values are public identifiers or build settings.
 The production Clerk instance, domain, Convex integration, publishable key, users, and role
 metadata belong to the Clerk application owner. Development and production users are separate.
 The administrator's public metadata contains the `admin` role, and the session token maps only
-that role into the top-level `role` claim. Apple and Google credentials are configured and tested
-under issue #16 rather than stored in this repository.
+that role into the top-level `role` claim. Configure Apple and Google sign-in in the matching
+Clerk instance using provider credentials held in Clerk. Verify both flows in the selected release
+build. Apple account deletion additionally needs the revocation credentials listed under Convex.
+Verify deletion with disposable provider accounts before release.
 
-## Launch data
+Enable email-code sign-in and the password flow used by reviewer accounts. Follow
+[the reviewer account lifecycle](app-review-notes.md#reviewer-account-lifecycle) for submission
+access and cleanup. Never store provider or reviewer credentials in this repository.
 
-The initial production dataset contains the public development spot set copied at provisioning
-time. The import discarded development IDs, photos, favorites, reports, deletion state, and
-moderation history. Every imported spot is published and assigned to the production
-administrator's Clerk identity. Future data migrations need their own reviewed export,
-transformation, empty-target or conflict check, import, and ownership verification.
+## Data migrations
+
+Each migration needs a reviewed export, transformation, empty-target or conflict check, import,
+and ownership verification. Match identities to the target Clerk instance. The initial import is
+recorded separately in [the version 1.0 release record](releases/1.0.md#launch-data-provenance).
 
 ## Verification and incident response
 
-- Confirm the Expo dashboard lists all five expected production names. Do not copy their values
-  into logs.
+- Confirm the Expo dashboard lists the five required production names and, for custom Convex domains,
+  `EXPO_PUBLIC_CONVEX_SITE_URL`. Do not copy their values into logs.
 - Confirm Convex lists every required name in the inventory and does not list
   `TEST_FIXTURES_ENABLED`.
 - Confirm the production share domain serves `/share` and the Apple association file over HTTPS.

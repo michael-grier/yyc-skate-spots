@@ -1,15 +1,12 @@
-# App Store screenshot plan
-
-Status: Captured and approved
+# App Store screenshots
 
 Target: iOS 1.0, English (Canada)
 
-Last verified: September 7, 2026
+Capture provenance: [version 1.0 release record](releases/1.0.md)
 
 ## Deliverables
 
-The five portrait screenshots were captured from production TestFlight build 1.0.0 (5) on an
-iPhone 17. Final exports in `app-store/screenshots/en-CA/` use Apple's accepted 1320 by 2868 pixel
+The five portrait screenshots document the version 1.0 release. Final exports in `app-store/screenshots/en-CA/` use Apple's accepted 1320 by 2868 pixel
 size and are opaque PNGs without alpha channels.
 
 The 1206 by 2622 pixel device captures are preserved in the adjacent `raw/` directory so later
@@ -107,7 +104,8 @@ to production.
 
 ## Capture rules
 
-- Use production TestFlight build 1.0.0 (5).
+- Use the selected production TestFlight release build. Record its version, build number, capture
+  date, and device in the corresponding release record.
 - Use real approved Calgary spots. Do not expose pending reports, moderation details, email
   addresses, credentials, notifications, or personal account information.
 - Keep the status bar clean and consistent. Use full cellular or Wi-Fi signal and a sensible time.

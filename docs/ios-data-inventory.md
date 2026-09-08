@@ -1,17 +1,16 @@
 # iOS data inventory
 
-Last verified: September 7, 2026
-
-This is the source of truth for the version 1.0 privacy policy and the App Store Connect answers in
-issue #56. It covers the production iOS app and the public site; Android is deferred. The native
-configuration was checked in #55; re-check the final release archive in #29 because a native SDK
-update can change its bundled privacy manifest.
+This documents the version 1.0 privacy policy and App Store Connect answer set for the production
+iOS app and public site. Android is deferred. Re-check the final archive's merged privacy manifest
+before each submission because native SDK updates can change its declarations. Follow the
+[iOS release runbook](ios-release-runbook.md) and [native privacy checks](development.md#native-privacy-checks).
+Historical archive and submission evidence is in [the release record](releases/1.0.md).
 
 ## App data flows
 
 | Data | Where it comes from | Leaves the device | Linked to an account | Purpose | Visibility, retention, and deletion |
 | --- | --- | --- | --- | --- | --- |
-| Email address | Email-code sign-in, Apple, or Google through Clerk | Yes: Clerk; delivered to Convex only as an authenticated token claim when present | Yes | Authentication, account display, contributor fallback name | Private. Clerk retains it while the account exists and deletes the user during in-app account deletion. Convex does not use email as the ownership key. |
+| Email address | Email-code or password sign-in, Apple, or Google through Clerk | Yes: Clerk; Convex receives it as a token claim when present and can store it as a private moderation label when no name is available | Yes | Authentication, account display, private contributor moderation label | Private. Clerk retains it while the account exists and deletes the user during in-app account deletion. The fallback label is deleted with the user moderation record. Convex uses the token identifier for ownership; public spot bylines use the submitted name, not the email fallback. |
 | Name | Apple or Google profile data exposed by Clerk | Yes: Clerk and Convex | Yes | Profile display, public contributor byline, private admin label | The current Clerk name remains while the account exists. Convex snapshots the available name when a spot is submitted; it is public with an approved spot and does not automatically follow later profile changes. Deleted with the spot or account. |
 | User and provider identifiers | Clerk user ID, Clerk token identifier, Apple/Google external-account identifier, session identifiers | Yes: Clerk, Convex, and the selected sign-in provider | Yes | Authentication, ownership, authorization, moderation, account deletion | Private except for the resulting contributor byline. Clerk and Convex identity records are deleted by in-app account deletion. A Clerk session token is encrypted locally with iOS SecureStore and cleared on sign-out or deletion. |
 | Spot content | Name, types, bust factor, surface, notes, and coordinates entered by a contributor | Yes: Convex | Yes | Build and maintain the spot map | Pending content is visible only to its owner and administrators. Approved content and its contributor name are public until the owner deletes it, an administrator removes it, or the account is deleted. An admin removal keeps only an owner-visible notice; photos, coordinates, and notes are deleted. |
@@ -45,8 +44,8 @@ SDK. Google Maps' own SDK collection still needs to be disclosed.
 
 ## App Store Connect answer set
 
-These are the version 1.0 answers entered and published in App Store Connect on September 7, 2026.
-They were checked against the archived app's merged privacy manifest in #29 before publishing.
+These are the maintained version 1.0 answers. Compare them with the selected archive before
+submission, and enter any changes separately in App Store Connect.
 
 | Apple data type | Collected | Linked | Tracking | Purposes |
 | --- | --- | --- | --- | --- |

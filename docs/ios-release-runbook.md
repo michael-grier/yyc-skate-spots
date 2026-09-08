@@ -80,6 +80,8 @@ The EAS environment must list these five project variables:
 - `GOOGLE_MAPS_API_KEY_ANDROID`
 - `GOOGLE_MAPS_API_KEY_IOS`
 
+For a custom Convex domain, also require `EXPO_PUBLIC_CONVEX_SITE_URL` for photo uploads.
+
 Do not add `--include-sensitive` when checking the list. Confirm in Google Cloud that the iOS Maps
 key remains restricted to `com.yycskatespots.app` and Maps SDK for iOS.
 
@@ -163,7 +165,8 @@ bun x eas-cli build \
 command says credentials are missing, stop and configure them interactively with
 `bun x eas-cli credentials --platform ios`, then run the frozen build again.
 
-Record the EAS build ID. Inspect it before upload:
+Record the EAS build ID. Compare the final archive privacy report with the
+[data inventory](ios-data-inventory.md). Inspect the build before upload:
 
 ```sh
 bun x eas-cli build:view <build-id>
@@ -193,9 +196,11 @@ bun x eas-cli submit:view <submission-id>
 bun x eas-cli submit:status --platform ios --profile production
 ```
 
-The task is complete when Apple finishes processing the binary, reports no unresolved binary or
-compliance error, and the release version printed in step 1 appears in TestFlight. App Store listing
-work, App Review submission, and public release remain manual steps in later release tasks.
+Resolve any upload or processing warnings. The TestFlight upload is complete when Apple finishes
+processing the binary, reports no unresolved binary or compliance error, and the release version
+printed in step 1 appears in TestFlight. App Store listing
+changes, App Review submission, and public release are separate manual operations. Use the
+[listing](app-store-listing.md) and [reviewer notes](app-review-notes.md) when preparing App Review.
 
 ## Recovery
 
