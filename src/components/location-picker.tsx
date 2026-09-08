@@ -1,6 +1,17 @@
 import { StatusBar } from "expo-status-bar";
 import { useRef, useState, type ReactNode } from "react";
-import { Alert, Modal, Pressable, Text, TextInput, View } from "react-native";
+import {
+  Alert,
+  Keyboard,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import MapView, { PROVIDER_GOOGLE, type Region } from "react-native-maps";
 import Svg, { Path } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -119,6 +130,7 @@ function CenterPin({ size = 44 }: { size?: number }) {
 export function LocationPicker({ value, onChange, variant = "expanded" }: LocationPickerProps) {
   const insets = useSafeAreaInsets();
   const mapRef = useRef<MapView>(null);
+  const coordinateInputRef = useRef<TextInput>(null);
   const { coords, locate } = useUserLocation();
   const [mapOpen, setMapOpen] = useState(false);
   const [mapStart, setMapStart] = useState(value ?? CALGARY_CENTER);
@@ -187,12 +199,17 @@ export function LocationPicker({ value, onChange, variant = "expanded" }: Locati
     setMapOpen(false);
   }
 
-  function toggleCoordinates() {
-    if (!coordinatesOpen) {
-      setCoordinateText(value ? formatCoordinatePair(value) : "");
-    }
+  /** Each opening starts from the saved pin, so cancelled drafts never carry over. */
+  function openCoordinates() {
+    setCoordinateText(value ? formatCoordinatePair(value) : "");
     setCoordinateError(null);
-    setCoordinatesOpen((open) => !open);
+    setHelpOpen(false);
+    setCoordinatesOpen(true);
+  }
+
+  function closeCoordinates() {
+    Keyboard.dismiss();
+    setCoordinatesOpen(false);
   }
 
   function applyCoordinates() {
@@ -202,8 +219,7 @@ export function LocationPicker({ value, onChange, variant = "expanded" }: Locati
       return;
     }
     setLocation(next);
-    setCoordinatesOpen(false);
-    setHelpOpen(false);
+    closeCoordinates();
   }
 
   const formattedValue = value ? formatCoordinatePair(value) : null;
@@ -227,68 +243,10 @@ export function LocationPicker({ value, onChange, variant = "expanded" }: Locati
         <LocationMethodButton
           label="Paste coordinates"
           icon={<ClipboardIcon size={16} color={colors.silver} />}
-          onPress={toggleCoordinates}
+          onPress={openCoordinates}
           expanded={coordinatesOpen}
         />
       </View>
-
-      {coordinatesOpen ? (
-        <View className="mt-4 border-t border-white/10 pt-4">
-          <TextInput
-            value={coordinateText}
-            onChangeText={(text) => {
-              setCoordinateText(text);
-              setCoordinateError(null);
-            }}
-            placeholder="51.0447, -114.0719"
-            placeholderTextColor={colors.mute}
-            autoCapitalize="characters"
-            autoCorrect={false}
-            spellCheck={false}
-            returnKeyType="done"
-            selectTextOnFocus
-            onSubmitEditing={applyCoordinates}
-            accessibilityLabel="Latitude and longitude"
-            className={cn(
-              "rounded-xl border border-white/10 bg-base px-3.5 py-3 font-sans text-[14px] text-ink",
-              !!coordinateError && "border-bust-high/60",
-            )}
-            // A numeric keyboard omits punctuation and compass letters used by valid pairs.
-            style={{ paddingVertical: 12 }}
-          />
-          {coordinateError ? (
-            <Text
-              accessibilityRole="alert"
-              className="mt-1.5 px-1 font-sans text-[12px] text-bust-high"
-            >
-              {coordinateError}
-            </Text>
-          ) : null}
-          <Button label="Apply location" onPress={applyCoordinates} className="mt-3 py-3.5" />
-          <Pressable
-            accessibilityRole="button"
-            accessibilityState={{ expanded: helpOpen }}
-            onPress={() => setHelpOpen((open) => !open)}
-            className="mt-3 self-start py-1 active:opacity-80"
-          >
-            <Text className="font-sans text-[11px] text-silver underline">
-              How to copy coordinates
-            </Text>
-          </Pressable>
-          {helpOpen ? (
-            <View className="mt-2 rounded-xl bg-base p-3">
-              <Text className="font-sans text-[11px] leading-4 text-mute">
-                <Text className="font-sans-semibold text-ink">Google Maps: </Text>
-                Touch and hold the spot, open its details, then copy the coordinates.
-              </Text>
-              <Text className="mt-2 font-sans text-[11px] leading-4 text-mute">
-                <Text className="font-sans-semibold text-ink">Apple Maps: </Text>
-                Drop a pin, open its details, then touch and hold the coordinates.
-              </Text>
-            </View>
-          ) : null}
-        </View>
-      ) : null}
     </>
   );
 
@@ -387,6 +345,127 @@ export function LocationPicker({ value, onChange, variant = "expanded" }: Locati
           ) : null}
         </Card>
       )}
+
+      {coordinatesOpen ? (
+        <Modal
+          visible
+          transparent
+          animationType="slide"
+          onRequestClose={closeCoordinates}
+          // Wait for the native modal to appear before asking it to own keyboard focus.
+          onShow={() => coordinateInputRef.current?.focus()}
+        >
+          {/* Own keyboard avoidance here: the form's Next button stays behind the modal. */}
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            className="flex-1 justify-end bg-black/65"
+          >
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Cancel coordinate entry"
+              onPress={closeCoordinates}
+              className="absolute inset-0"
+            />
+            <View
+              accessibilityViewIsModal
+              onAccessibilityEscape={closeCoordinates}
+              className="shrink rounded-t-[28px] border-t border-white/15 bg-card"
+              style={{ maxHeight: "90%", marginTop: insets.top + 12 }}
+            >
+              <View className="px-5 pt-3">
+                <View className="mx-auto h-1 w-9 rounded-full bg-white/20" />
+                <View className="mb-4 mt-4 flex-row items-center justify-between gap-3">
+                  <Text
+                    accessibilityRole="header"
+                    className="font-sans-semibold text-[17px] text-ink"
+                  >
+                    Paste coordinates
+                  </Text>
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={closeCoordinates}
+                    hitSlop={8}
+                    className="py-2 active:opacity-80"
+                  >
+                    <Text className="font-sans-semibold text-[14px] text-silver">Cancel</Text>
+                  </Pressable>
+                </View>
+              </View>
+              <ScrollView
+                keyboardShouldPersistTaps="handled"
+                style={{ flexGrow: 0 }}
+                contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 16 }}
+              >
+                <Text className="mb-2 font-sans-medium text-[11px] text-mute">
+                  LATITUDE, LONGITUDE
+                </Text>
+                <TextInput
+                  ref={coordinateInputRef}
+                  value={coordinateText}
+                  onChangeText={(text) => {
+                    setCoordinateText(text);
+                    setCoordinateError(null);
+                  }}
+                  placeholder="51.0447, -114.0719"
+                  placeholderTextColor={colors.mute}
+                  autoCapitalize="characters"
+                  autoCorrect={false}
+                  spellCheck={false}
+                  returnKeyType="done"
+                  // Keep invalid submissions focused; success closes the sheet explicitly.
+                  submitBehavior="submit"
+                  selectTextOnFocus
+                  onSubmitEditing={applyCoordinates}
+                  accessibilityLabel="Latitude and longitude"
+                  className={cn(
+                    "rounded-xl border border-white/10 bg-base px-3.5 py-3 font-sans text-[14px] text-ink",
+                    !!coordinateError && "border-bust-high/60",
+                  )}
+                  // A numeric keyboard omits punctuation and compass letters used by valid pairs.
+                  style={{ paddingVertical: 12 }}
+                />
+                <Text className="mt-2 font-sans text-[12px] text-mute">
+                  Latitude first. Separate the numbers with a comma.
+                </Text>
+                {coordinateError ? (
+                  <Text
+                    accessibilityRole="alert"
+                    className="mt-1.5 px-1 font-sans text-[12px] text-bust-high"
+                  >
+                    {coordinateError}
+                  </Text>
+                ) : null}
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{ expanded: helpOpen }}
+                  onPress={() => setHelpOpen((open) => !open)}
+                  className="mt-3 self-start py-1 active:opacity-80"
+                >
+                  <Text className="font-sans text-[11px] text-silver underline">
+                    How to copy coordinates
+                  </Text>
+                </Pressable>
+                {helpOpen ? (
+                  <View className="mt-2 rounded-xl bg-base p-3">
+                    <Text className="font-sans text-[11px] leading-4 text-mute">
+                      <Text className="font-sans-semibold text-ink">Google Maps: </Text>
+                      Touch and hold the spot, open its details, then copy the coordinates.
+                    </Text>
+                    <Text className="mt-2 font-sans text-[11px] leading-4 text-mute">
+                      <Text className="font-sans-semibold text-ink">Apple Maps: </Text>
+                      Drop a pin, open its details, then touch and hold the coordinates.
+                    </Text>
+                  </View>
+                ) : null}
+              </ScrollView>
+              {/* Help and validation can scroll without pushing Apply below the keyboard. */}
+              <View className="px-5 pt-2" style={{ paddingBottom: Math.max(insets.bottom, 12) }}>
+                <Button label="Apply location" variant="light" onPress={applyCoordinates} />
+              </View>
+            </View>
+          </KeyboardAvoidingView>
+        </Modal>
+      ) : null}
 
       {mapOpen ? (
         <Modal
