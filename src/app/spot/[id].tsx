@@ -250,8 +250,8 @@ export default function SpotDetailScreen() {
             <Card className="mt-4 border-bust-medium/30 p-4">
               <Text className="font-sans-semibold text-[15px] text-ink">Waiting for review</Text>
               <Text className="mt-1 font-sans text-[13px] leading-relaxed text-mute">
-                This version is visible only to you and administrators until it meets the spot
-                standards.
+                This version is awaiting admin approval. Until then, it is visible only to you and
+                administrators.
               </Text>
             </Card>
           ) : null}

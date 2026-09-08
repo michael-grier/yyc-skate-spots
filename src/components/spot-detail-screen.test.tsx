@@ -117,7 +117,9 @@ describe("SpotDetailScreen moderation status", () => {
 
     expect(screen.getByText("Waiting for review")).toBeOnTheScreen();
     expect(
-      screen.getByText(/visible only to you and administrators until it meets the spot standards/),
+      screen.getByText(
+        "This version is awaiting admin approval. Until then, it is visible only to you and administrators.",
+      ),
     ).toBeOnTheScreen();
     expect(screen.queryByRole("button", { name: "Share spot" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Add to favourites" })).toBeNull();
