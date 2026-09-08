@@ -17,19 +17,21 @@ Connect. These steps change production accounts and authentication settings; per
 of the scheduled App Review submission.
 
 The review contact must be able to answer App Review during the submission window. Both demo
-accounts must use production services, avoid personal sign-in providers, and remain available until
-the version is approved.
+accounts must use production services, avoid personal sign-in providers, and remain available
+while the submission is under review.
 
 Create both accounts directly in the production Clerk instance with distinct, non-personal email
 addresses and strong passwords. Leave the contributor account without a role. Set the admin
 account's public metadata to `{ "role": "admin" }`. Store both passwords in a password manager,
 do not enrol either account in MFA, and keep the accounts active until Apple finishes its review.
-Keep Clerk Device Trust disabled while the reviewer accounts are active so a sign-in from Apple's
+Record the existing Clerk Device Trust setting before changing it. Keep Device Trust disabled
+while the reviewer accounts are active so a sign-in from Apple's
 device does not require access to either account's email inbox. Leave Clerk's lockout and user
 enumeration protections enabled.
 
-After Apple approves the version, delete both reviewer accounts and re-enable Clerk Device Trust.
-Create fresh accounts with new passwords if a future submission needs review access.
+After approval, rejection, cancellation, or withdrawal ends the review, delete both reviewer
+accounts and restore the recorded Clerk Device Trust setting. Create fresh accounts with new
+passwords if a resubmission or future version needs review access.
 
 ## Notes field
 

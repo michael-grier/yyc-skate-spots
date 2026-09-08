@@ -1,7 +1,7 @@
 # Manual development fixtures
 
-Confirm the CLI targets the development deployment before running these commands. Never enable
-fixtures on production.
+Replace `<development-deployment-name>` in every command with the shared development deployment
+used by the app. Use that same target for setup and cleanup. Never enable fixtures on production.
 
 ## Contribution review
 
@@ -24,8 +24,10 @@ the first step.
 Enable test fixtures on the development Convex deployment, then create a reported spot:
 
 ```sh
-bun x convex env set TEST_FIXTURES_ENABLED true
-bun x convex run seed:createModerationScenario
+bun x convex env set TEST_FIXTURES_ENABLED true \
+  --deployment '<development-deployment-name>'
+bun x convex run seed:createModerationScenario \
+  --deployment '<development-deployment-name>'
 ```
 
 In the app, open **Profile → Review spots → Reported**, then open **Reported Test Spot**. Mark it
@@ -36,8 +38,10 @@ The create command resets an earlier copy. Clear the scenario after testing, the
 fixtures:
 
 ```sh
-bun x convex run seed:clearModerationScenario
-bun x convex env remove TEST_FIXTURES_ENABLED
+bun x convex run seed:clearModerationScenario \
+  --deployment '<development-deployment-name>'
+bun x convex env remove TEST_FIXTURES_ENABLED \
+  --deployment '<development-deployment-name>'
 ```
 
 ## Banned contributor
@@ -47,8 +51,10 @@ instance and leave its public metadata without an admin role. Copy that user's C
 the Frontend API URL from the Clerk Convex integration to run the fixture as that identity:
 
 ```sh
-bun x convex env set TEST_FIXTURES_ENABLED true
-bun x convex run seed:createBannedUserScenario --identity '{"subject":"<Clerk user ID>","issuer":"<Frontend API URL>","name":"Banned Workflow Test User"}'
+bun x convex env set TEST_FIXTURES_ENABLED true \
+  --deployment '<development-deployment-name>'
+bun x convex run seed:createBannedUserScenario --identity '{"subject":"<Clerk user ID>","issuer":"<Frontend API URL>","name":"Banned Workflow Test User"}' \
+  --deployment '<development-deployment-name>'
 ```
 
 Sign into the app as that user. The profile shows three private removal notices and a contribution
@@ -59,8 +65,10 @@ signed-in users cannot open the removal notices.
 Clear the fixture with the same identity after testing:
 
 ```sh
-bun x convex run seed:clearBannedUserScenario --identity '{"subject":"<Clerk user ID>","issuer":"<Frontend API URL>","name":"Banned Workflow Test User"}'
-bun x convex env remove TEST_FIXTURES_ENABLED
+bun x convex run seed:clearBannedUserScenario --identity '{"subject":"<Clerk user ID>","issuer":"<Frontend API URL>","name":"Banned Workflow Test User"}' \
+  --deployment '<development-deployment-name>'
+bun x convex env remove TEST_FIXTURES_ENABLED \
+  --deployment '<development-deployment-name>'
 ```
 
 Keep `TEST_FIXTURES_ENABLED` unset on production deployments.

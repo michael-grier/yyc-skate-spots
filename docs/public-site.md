@@ -6,7 +6,7 @@ The standards list comes from `src/lib/spot-standards.json`.
 Build the static public site using the existing App Store record:
 
 ```sh
-EXPO_PUBLIC_SHARE_BASE_URL='https://<share-domain>' \
+EXPO_PUBLIC_SHARE_BASE_URL='https://yycskatespots.com' \
 APPLE_TEAM_ID=4A8Q8XX972 \
 APP_STORE_ID=6807476193 \
 bun run build:share-site
