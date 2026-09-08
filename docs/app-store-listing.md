@@ -1,14 +1,11 @@
 # App Store listing
 
-Status: Entered in App Store Connect and added to a draft submission
-
 Target: iOS 1.0, English (Canada)
 
-Last verified: September 7, 2026
-
-This file preserves the exact product-page copy and the non-secret App Store Connect selections for
-version 1.0. Text inside fenced blocks is ready to paste as written. Character and byte counts do
-not include the fence or its trailing newline.
+This file maintains product-page copy and non-secret App Store Connect selections for version 1.0.
+Changes here must be entered separately in App Store Connect. Historical submission evidence is in
+[the release record](releases/1.0.md). Text inside fenced blocks is ready to paste as written.
+Character and byte counts do not include the fence or its trailing newline.
 
 ## Product-page copy
 
@@ -30,14 +27,14 @@ Community knowledge on one map
 Calgary's spot book, built by skaters.
 ```
 
-### Description, 703 of 4,000 characters
+### Description, 706 of 4,000 characters
 
 ```text
 YYC Skate Spots is Calgary's community-built street skateboarding spot book.
 
 Explore a growing public map of ledges, rails, stairs, curbs, manual pads, DIYs and more. Each listing can include photos, surface notes, bust factor, distance, and directions, so you can decide where to skate before you head out.
 
-Anyone can browse the map. Sign in to save favourites, share spots with friends, add a missing spot, or report a listing that needs attention.
+Anyone can browse the map and share spots with friends. Sign in to save favourites, add a missing spot, or report a listing that needs attention.
 
 New spots and changes to existing listings stay private until they meet the community standards. Approved listings credit the skater who contributed them, keeping local knowledge attached to the map as it grows.
 
@@ -116,9 +113,9 @@ in-app sharing between users. Spot sharing opens the iOS share sheet.
 
 ## App privacy
 
-The answer set in [`ios-data-inventory.md`](ios-data-inventory.md) was entered and published on
-September 7, 2026. The privacy policy URL is `https://yycskatespots.com/privacy`; the optional user
-privacy choices URL is blank because account deletion is available inside the app.
+Use the answer set in [`ios-data-inventory.md`](ios-data-inventory.md). The privacy policy URL is
+`https://yycskatespots.com/privacy`; the optional user privacy choices URL is blank because account
+deletion is available inside the app.
 
 ## App accessibility
 
@@ -128,20 +125,14 @@ based on individual smoke tests.
 
 ## App Review
 
-The reviewer fields and notes in [`app-review-notes.md`](app-review-notes.md) were entered on
-September 7, 2026. The contributor and administrator demo accounts were verified against production
-TestFlight build 1.0.0 (5). Their credentials remain outside this repository.
+Use the fields and notes in [`app-review-notes.md`](app-review-notes.md). Verify both reviewer
+accounts against the selected release build before submission. Keep credentials outside this
+repository.
 
 ## Screenshots
 
-The five approved 6.9-inch iPhone exports are in `app-store/screenshots/en-CA/` and were uploaded in
-the order documented by [`app-store-screenshot-plan.md`](app-store-screenshot-plan.md).
-
-## Submission status
-
-Production build 1.0.0 (5) is attached to iOS version 1.0. App Store Connect accepted the version's
-metadata and added it to a draft submission on September 7, 2026. The draft has not been submitted
-to App Review.
+The five 6.9-inch iPhone exports are in `app-store/screenshots/en-CA/`. Use the order and capture
+guidance in [`app-store-screenshots.md`](app-store-screenshots.md).
 
 ## References
 

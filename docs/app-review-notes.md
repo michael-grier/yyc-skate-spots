@@ -1,16 +1,20 @@
 # App Review notes
 
-Status: Entered in App Store Connect; production reviewer accounts verified
-
 Target: iOS 1.0
 
-Last verified: September 7, 2026
+Historical verification: [version 1.0 release record](releases/1.0.md)
 
 ## App Store Connect fields
 
 Enter the review contact's name, phone number, and monitored email address directly in App Store
 Connect. Put the contributor demo account in the demo username and password fields. Add the admin
 demo account to the notes field described below. Do not commit either account's credentials.
+
+## Reviewer account lifecycle
+
+Verify both accounts in the selected release build before entering their credentials in App Store
+Connect. These steps change production accounts and authentication settings; perform them as part
+of the scheduled App Review submission.
 
 The review contact must be able to answer App Review during the submission window. Both demo
 accounts must use production services, avoid personal sign-in providers, and remain available until
