@@ -1,9 +1,9 @@
 import { Image } from "expo-image";
 import { Pressable, Text, View } from "react-native";
 
-import { BoardMark } from "@/components/board-mark";
 import { ChevronRightIcon } from "@/components/icons";
 import { Card } from "@/components/ui/card";
+import { cn } from "@/lib/cn";
 import { formatDistance } from "@/lib/geo";
 import {
   BUST_FACTOR_COLORS,
@@ -46,20 +46,20 @@ export function SpotPreviewCard({
 
   const card = (
     <Card
-      className="flex-row items-center gap-3 rounded-3xl p-3"
+      className={cn(
+        "flex-row items-center gap-3 rounded-3xl py-3",
+        previewPhotoUrl ? "px-3" : "px-5",
+      )}
       style={{ backgroundColor: "rgba(30,32,36,0.92)" }}
     >
       {previewPhotoUrl ? (
         <Image
           source={{ uri: previewPhotoUrl }}
           contentFit="cover"
-          className="h-[72px] w-[72px] rounded-2xl"
+          // Expo Image has no NativeWind mapping here; className leaves it without dimensions.
+          style={{ width: 72, height: 72, borderRadius: 14 }}
         />
-      ) : (
-        <View className="h-[72px] w-[72px] items-center justify-center rounded-2xl bg-white/5">
-          <BoardMark size={28} color={colors.mute} />
-        </View>
-      )}
+      ) : null}
       <View className="flex-1">
         <Text numberOfLines={1} className="font-sans-semibold text-[15px] text-ink">
           {name}
