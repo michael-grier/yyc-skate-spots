@@ -3,6 +3,7 @@ import { Pressable, Text, View } from "react-native";
 
 import { ChevronRightIcon } from "@/components/icons";
 import { Card } from "@/components/ui/card";
+import { cn } from "@/lib/cn";
 import { formatDistance } from "@/lib/geo";
 import {
   BUST_FACTOR_COLORS,
@@ -45,7 +46,10 @@ export function SpotPreviewCard({
 
   const card = (
     <Card
-      className="flex-row items-center gap-3 rounded-3xl p-3"
+      className={cn(
+        "flex-row items-center gap-3 rounded-3xl py-3",
+        previewPhotoUrl ? "px-3" : "px-5",
+      )}
       style={{ backgroundColor: "rgba(30,32,36,0.92)" }}
     >
       {previewPhotoUrl ? (
