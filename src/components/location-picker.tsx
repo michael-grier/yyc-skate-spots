@@ -207,11 +207,13 @@ export function LocationPicker({ value, onChange, variant = "expanded" }: Locati
     setCoordinatesOpen(true);
   }
 
+  /** Dismiss the sheet and keyboard without changing the saved pin. */
   function closeCoordinates() {
     Keyboard.dismiss();
     setCoordinatesOpen(false);
   }
 
+  /** Commit a valid pair; leave invalid drafts open for correction. */
   function applyCoordinates() {
     const next = parseCoordinatePair(coordinateText);
     if (!next) {
@@ -408,6 +410,8 @@ export function LocationPicker({ value, onChange, variant = "expanded" }: Locati
                   }}
                   placeholder="51.0447, -114.0719"
                   placeholderTextColor={colors.mute}
+                  // Coordinate pairs can include punctuation and compass letters.
+                  keyboardType="default"
                   autoCapitalize="characters"
                   autoCorrect={false}
                   spellCheck={false}
@@ -418,10 +422,10 @@ export function LocationPicker({ value, onChange, variant = "expanded" }: Locati
                   onSubmitEditing={applyCoordinates}
                   accessibilityLabel="Latitude and longitude"
                   className={cn(
-                    "rounded-xl border border-white/10 bg-base px-3.5 py-3 font-sans text-[14px] text-ink",
+                    "rounded-xl border border-white/10 bg-base px-3.5 font-sans text-[14px] text-ink",
                     !!coordinateError && "border-bust-high/60",
                   )}
-                  // A numeric keyboard omits punctuation and compass letters used by valid pairs.
+                  // NativeWind uses a 14-point rem, so py-3 would give only 10.5 points here.
                   style={{ paddingVertical: 12 }}
                 />
                 <Text className="mt-2 font-sans text-[12px] text-mute">

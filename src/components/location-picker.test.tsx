@@ -64,6 +64,10 @@ beforeEach(() => {
   mockLocate.mockResolvedValue(null);
 });
 
+afterEach(() => {
+  jest.restoreAllMocks();
+});
+
 describe("LocationPicker", () => {
   test("does not adopt an available GPS position without a tap", async () => {
     mockCoords = { latitude: 51.05, longitude: -114.08 };
@@ -122,7 +126,9 @@ describe("LocationPicker", () => {
       expect(screen.queryByLabelText("Latitude and longitude")).not.toBeOnTheScreen();
       expect(onChange).not.toHaveBeenCalled();
       await fireEvent.press(screen.getByRole("button", { name: "Paste coordinates" }));
-      expect(screen.getByLabelText("Latitude and longitude")).toHaveDisplayValue("51.050000, -114.080000");
+      expect(screen.getByLabelText("Latitude and longitude")).toHaveDisplayValue(
+        "51.050000, -114.080000",
+      );
     },
   );
 
@@ -144,7 +150,6 @@ describe("LocationPicker", () => {
     expect(onChange).toHaveBeenCalledWith({ latitude: 51.06, longitude: -114.09 });
     expect(dismiss).toHaveBeenCalledTimes(1);
     expect(screen.queryByLabelText("Latitude and longitude")).not.toBeOnTheScreen();
-    dismiss.mockRestore();
   });
 
   test("keeps map movement as a draft until the user confirms it", async () => {
