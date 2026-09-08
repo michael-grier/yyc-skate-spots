@@ -25,6 +25,63 @@ const SPOT = {
 };
 
 describe("spot moderation", () => {
+  test("admin-created spots publish immediately with review attribution", async () => {
+    const t = convexTest(schema, modules);
+    const adminIdentity = { subject: "admin", role: "admin", tokenIdentifier: "clerk|admin" };
+    const asAdmin = t.withIdentity(adminIdentity);
+    await acknowledgeStandards(asAdmin);
+    const id = await asAdmin.mutation(api.spots.create, SPOT);
+
+    expect(await t.query(api.spots.list, {})).toMatchObject([{ _id: id }]);
+    expect(await t.query(api.spots.get, { id })).toMatchObject({ isPendingReview: false });
+    expect(await asAdmin.query(api.spots.mine, {})).toMatchObject([{ _id: id, status: "active" }]);
+    expect(await asAdmin.query(api.moderation.listSpots, {})).toMatchObject([
+      { _id: id, review: { needsReview: false, openReportCount: 0 } },
+    ]);
+    const review = await t.run((ctx) =>
+      ctx.db
+        .query("spotModeration")
+        .withIndex("by_spotId", (q) => q.eq("spotId", id))
+        .unique(),
+    );
+    expect(review).toMatchObject({
+      reviewedBy: adminIdentity.tokenIdentifier,
+      reviewedAt: expect.any(Number),
+    });
+
+    // Automatic approval is for creation; reports still need an explicit admin decision.
+    const asReporter = t.withIdentity({ subject: "reporter" });
+    await asReporter.mutation(api.reports.create, {
+      spotId: id,
+      reason: "duplicate_or_inaccurate",
+    });
+    await asAdmin.mutation(api.spots.update, { ...SPOT, id, notes: "Updated by admin" });
+    expect(await t.query(api.spots.get, { id })).toBeNull();
+    expect(await asAdmin.query(api.moderation.getSpot, { id })).toMatchObject({
+      review: { needsReview: true, attentionReason: "reported", openReportCount: 1 },
+    });
+  });
+
+  test("admin creation still requires standards acceptance and an unblocked account", async () => {
+    const t = convexTest(schema, modules);
+    const asAdmin = t.withIdentity({
+      subject: "admin",
+      role: "admin",
+      tokenIdentifier: "clerk|admin",
+    });
+    await expect(asAdmin.mutation(api.spots.create, SPOT)).rejects.toThrow(/spot standards/);
+    await acknowledgeStandards(asAdmin);
+    await t.run((ctx) =>
+      ctx.db.insert("userModeration", {
+        userIdentifier: "clerk|admin",
+        confirmedRemovalCount: 3,
+        isBanned: true,
+      }),
+    );
+    await expect(asAdmin.mutation(api.spots.create, SPOT)).rejects.toThrow(/contribution access/);
+    expect(await t.query(api.spots.list, {})).toEqual([]);
+  });
+
   test("new and edited spots enter the private review queue", async () => {
     const t = convexTest(schema, modules);
     const asAlice = t.withIdentity({ subject: "alice", name: "Alice" });
