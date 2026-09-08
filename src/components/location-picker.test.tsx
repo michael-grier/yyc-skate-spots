@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { Keyboard } from "react-native";
 
 import { LocationPicker } from "./location-picker";
 
@@ -63,6 +64,10 @@ beforeEach(() => {
   mockLocate.mockResolvedValue(null);
 });
 
+afterEach(() => {
+  jest.restoreAllMocks();
+});
+
 describe("LocationPicker", () => {
   test("does not adopt an available GPS position without a tap", async () => {
     mockCoords = { latitude: 51.05, longitude: -114.08 };
@@ -100,6 +105,51 @@ describe("LocationPicker", () => {
     await fireEvent.press(screen.getByText("Apply location"));
 
     expect(onChange).toHaveBeenCalledWith({ latitude: 51.06, longitude: -114.09 });
+    expect(screen.queryByLabelText("Latitude and longitude")).not.toBeOnTheScreen();
+  });
+
+  test.each(["expanded", "compact"] as const)(
+    "%s coordinate entry discards a cancelled draft and reopens at the saved location",
+    async (variant) => {
+      const position = { latitude: 51.05, longitude: -114.08 };
+      const onChange = jest.fn();
+      await render(<LocationPicker variant={variant} value={position} onChange={onChange} />);
+      if (variant === "compact") {
+        await fireEvent.press(screen.getByRole("button", { name: "Change spot location" }));
+      }
+
+      await fireEvent.press(screen.getByRole("button", { name: "Paste coordinates" }));
+      await fireEvent.changeText(screen.getByLabelText("Latitude and longitude"), "51.06, -114.09");
+      expect(onChange).not.toHaveBeenCalled();
+      await fireEvent.press(screen.getByRole("button", { name: /^Cancel$/ }));
+
+      expect(screen.queryByLabelText("Latitude and longitude")).not.toBeOnTheScreen();
+      expect(onChange).not.toHaveBeenCalled();
+      await fireEvent.press(screen.getByRole("button", { name: "Paste coordinates" }));
+      expect(screen.getByLabelText("Latitude and longitude")).toHaveDisplayValue(
+        "51.050000, -114.080000",
+      );
+    },
+  );
+
+  test("keyboard submission keeps an invalid draft open and closes only after a valid pair", async () => {
+    const dismiss = jest.spyOn(Keyboard, "dismiss").mockImplementation(() => {});
+    const onChange = jest.fn();
+    await render(<LocationPicker value={null} onChange={onChange} />);
+    await fireEvent.press(screen.getByRole("button", { name: "Paste coordinates" }));
+    await fireEvent.changeText(screen.getByLabelText("Latitude and longitude"), "51.0447,");
+    await fireEvent(screen.getByLabelText("Latitude and longitude"), "submitEditing");
+
+    expect(screen.getByRole("alert")).toHaveTextContent(/Use latitude first/);
+    expect(screen.getByLabelText("Latitude and longitude")).toHaveDisplayValue("51.0447,");
+    expect(onChange).not.toHaveBeenCalled();
+    expect(dismiss).not.toHaveBeenCalled();
+
+    await fireEvent.changeText(screen.getByLabelText("Latitude and longitude"), "51.06, -114.09");
+    await fireEvent(screen.getByLabelText("Latitude and longitude"), "submitEditing");
+    expect(onChange).toHaveBeenCalledWith({ latitude: 51.06, longitude: -114.09 });
+    expect(dismiss).toHaveBeenCalledTimes(1);
+    expect(screen.queryByLabelText("Latitude and longitude")).not.toBeOnTheScreen();
   });
 
   test("keeps map movement as a draft until the user confirms it", async () => {
