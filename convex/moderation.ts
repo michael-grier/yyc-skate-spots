@@ -14,7 +14,7 @@ import {
   MAX_OPEN_REPORTS_PER_SPOT,
   spotModerationFor,
 } from "./moderationModel";
-import { contributorName } from "./profileModel";
+import { contributorName, type profileFor } from "./profileModel";
 import { reportReason } from "./schema";
 import { MAX_SPOTS_LISTED, releasePhotos, scheduleSpotDeletion } from "./spots";
 
@@ -94,6 +94,7 @@ export const listSpots = query({
       .filter((q) => q.neq(q.field("deletionRequested"), true))
       .take(MAX_SPOTS_LISTED);
     const creatorIdentifiers = [...new Set(activeSpots.map((spot) => spot.createdBy))];
+    const profiles = new Map<string, ReturnType<typeof profileFor>>();
     // Indexed lookups keep metadata aligned with the selected spots even after
     // the moderation tables grow beyond the queue's display limit.
     const [moderationRows, contributorRows] = await Promise.all([
@@ -113,7 +114,8 @@ export const listSpots = query({
           return {
             ...spot,
             creatorName:
-              (await contributorName(ctx, createdBy, spot.createdByName)) ?? contributor?.name,
+              (await contributorName(ctx, createdBy, spot.createdByName, profiles)) ??
+              contributor?.name,
             creatorRemovalCount: contributor?.confirmedRemovalCount ?? 0,
             creatorIsBanned: contributor?.isBanned ?? false,
             creatorModerationId: contributor?._id ?? null,

@@ -73,16 +73,33 @@ describe("display names", () => {
     await alice.mutation(api.moderation.acknowledgeStandards, {});
     const id = await alice.mutation(api.spots.create, spot);
     await admin.mutation(api.moderation.markMeetsStandards, { spotId: id });
+    const legacyId = await alice.mutation(api.spots.create, { ...spot, name: "Older name" });
+    await admin.mutation(api.moderation.markMeetsStandards, { spotId: legacyId });
+    await t.run((ctx) => ctx.db.patch("spots", legacyId, { createdByName: "Earlier Provider" }));
+    expect(await t.query(api.spots.list, {})).toMatchObject([
+      { createdByName: "Earlier Provider" },
+      { createdByName: "Alice Provider" },
+    ]);
+    expect(await admin.query(api.moderation.listSpots, {})).toMatchObject([
+      { creatorName: "Earlier Provider" },
+      { creatorName: "Alice Provider" },
+    ]);
     await alice.mutation(api.profiles.setDisplayName, { displayName: "Al" });
     expect(await t.query(api.spots.get, { id })).toMatchObject({
       createdByName: "Al",
       isPendingReview: false,
     });
-    expect(await t.query(api.spots.list, {})).toMatchObject([{ createdByName: "Al" }]);
+    expect(await t.query(api.spots.list, {})).toMatchObject([
+      { createdByName: "Al" },
+      { createdByName: "Al" },
+    ]);
     expect(await admin.query(api.moderation.getSpot, { id })).toMatchObject({
       creator: { name: "Al" },
     });
-    expect(await admin.query(api.moderation.listSpots, {})).toMatchObject([{ creatorName: "Al" }]);
+    expect(await admin.query(api.moderation.listSpots, {})).toMatchObject([
+      { creatorName: "Al" },
+      { creatorName: "Al" },
+    ]);
     const newer = await alice.mutation(api.spots.create, { ...spot, name: "New spot" });
     expect(await alice.query(api.spots.get, { id: newer })).toMatchObject({ createdByName: "Al" });
     await alice.mutation(api.profiles.setDisplayName, { displayName: "Alice Renamed" });

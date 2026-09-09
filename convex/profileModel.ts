@@ -13,7 +13,14 @@ export async function contributorName(
   ctx: QueryCtx | MutationCtx,
   userIdentifier: string,
   legacyName?: string,
+  profiles?: Map<string, ReturnType<typeof profileFor>>,
 ) {
-  const profile = await profileFor(ctx, userIdentifier);
+  let pending = profiles?.get(userIdentifier);
+  if (!pending) {
+    pending = profileFor(ctx, userIdentifier);
+    profiles?.set(userIdentifier, pending);
+  }
+  // Cache the lookup, not the resolved name: legacy names can differ between spots.
+  const profile = await pending;
   return publicDisplayName(profile?.displayName ?? legacyName);
 }
