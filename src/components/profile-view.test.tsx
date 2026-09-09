@@ -8,6 +8,7 @@ const mockPush = jest.fn();
 const mockSignOut = jest.fn();
 const mockSetActive = jest.fn();
 const mockDeleteAccount = jest.fn();
+const mockSetDisplayName = jest.fn();
 const mockAppleRefresh = jest.fn();
 const mockOpenUrl = jest.spyOn(Linking, "openURL").mockResolvedValue(true);
 const mockQueryResults: Record<string, unknown> = {};
@@ -30,6 +31,7 @@ jest.mock("convex/react", () => {
   const { getFunctionName } = jest.requireActual<typeof import("convex/server")>("convex/server");
   return {
     useAction: () => mockDeleteAccount,
+    useMutation: () => mockSetDisplayName,
     useQuery: (reference: Parameters<typeof getFunctionName>[0]) =>
       mockQueryResults[getFunctionName(reference)],
   };
@@ -48,6 +50,8 @@ const spot = (id: string, name: string) => ({
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockSetDisplayName.mockReset().mockResolvedValue(null);
+  mockQueryResults["profiles:me"] = { displayName: "Michael Grier" };
   mockDeleteAccount.mockResolvedValue({ status: "complete" });
   mockSetActive.mockResolvedValue(undefined);
   mockSignOut.mockResolvedValue(undefined);
@@ -236,5 +240,72 @@ describe("ProfileView", () => {
     );
     expect(mockSignOut).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: "Delete account" })).not.toBeDisabled();
+  });
+});
+
+describe("display name editor", () => {
+  test("prefills the saved name and Cancel discards the draft", async () => {
+    await render(<ProfileView />);
+    await fireEvent.press(screen.getByRole("button", { name: "Edit display name" }));
+    expect(screen.getByLabelText("Display name")).toHaveDisplayValue("Michael Grier");
+    await fireEvent.changeText(screen.getByLabelText("Display name"), "Draft");
+    await fireEvent.press(screen.getByRole("button", { name: /^Cancel$/ }));
+    expect(mockSetDisplayName).not.toHaveBeenCalled();
+    await fireEvent.press(screen.getByRole("button", { name: "Edit display name" }));
+    expect(screen.getByLabelText("Display name")).toHaveDisplayValue("Michael Grier");
+  });
+
+  test("lets an email-code account choose a name without using its email", async () => {
+    mockQueryResults["profiles:me"] = { displayName: null };
+    await render(<ProfileView />);
+    await fireEvent.press(screen.getByRole("button", { name: "Edit display name" }));
+    expect(screen.getByLabelText("Display name")).toHaveDisplayValue("");
+    await fireEvent.changeText(screen.getByLabelText("Display name"), "  Skater  ");
+    await fireEvent.press(screen.getByRole("button", { name: "Save name" }));
+    expect(mockSetDisplayName).toHaveBeenCalledWith({ displayName: "Skater" });
+    await waitFor(() => expect(screen.queryByLabelText("Display name")).toBeNull());
+  });
+
+  test("keeps invalid drafts open and allows retry after a save failure", async () => {
+    mockSetDisplayName.mockRejectedValueOnce(new Error("offline"));
+    await render(<ProfileView />);
+    await fireEvent.press(screen.getByRole("button", { name: "Edit display name" }));
+    await fireEvent.changeText(screen.getByLabelText("Display name"), "private@example.com");
+    await fireEvent.press(screen.getByRole("button", { name: "Save name" }));
+    expect(mockSetDisplayName).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert")).toHaveTextContent(/Use letters/);
+    await fireEvent.changeText(screen.getByLabelText("Display name"), "New Name");
+    await fireEvent.press(screen.getByRole("button", { name: "Save name" }));
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(/Couldn't save/));
+    expect(screen.getByLabelText("Display name")).toHaveDisplayValue("New Name");
+    await fireEvent.press(screen.getByRole("button", { name: "Save name" }));
+    await waitFor(() => expect(screen.queryByLabelText("Display name")).toBeNull());
+  });
+
+  test("prevents duplicate saves and dismissal while a save is in flight", async () => {
+    let completeSave!: (value: null) => void;
+    mockSetDisplayName.mockImplementationOnce(
+      () =>
+        new Promise<null>((resolve) => {
+          completeSave = resolve;
+        }),
+    );
+    await render(<ProfileView />);
+    await fireEvent.press(screen.getByRole("button", { name: "Edit display name" }));
+    await fireEvent(screen.getByLabelText("Display name"), "submitEditing");
+    await fireEvent(screen.getByLabelText("Display name"), "submitEditing");
+    expect(mockSetDisplayName).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: "Saving…" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /^Cancel$/ })).toBeDisabled();
+    await act(async () => completeSave(null));
+    await waitFor(() => expect(screen.queryByLabelText("Display name")).toBeNull());
+  });
+
+  test("reflects a reactive name change on Profile", async () => {
+    const view = await render(<ProfileView />);
+    mockQueryResults["profiles:me"] = { displayName: "Renamed Skater" };
+    await view.rerender(<ProfileView />);
+    expect(screen.getByText("Renamed Skater")).toBeOnTheScreen();
+    expect(screen.queryByText("Michael Grier")).toBeNull();
   });
 });

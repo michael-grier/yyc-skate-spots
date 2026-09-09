@@ -9,6 +9,7 @@ import {
   recordNewSpotModeration,
   spotIsPublished,
 } from "./moderationModel";
+import { contributorName, type profileFor } from "./profileModel";
 import { bustFactor, spotType, surface } from "./schema";
 
 // Caps chosen so a spot document stays far under Convex's 1MB limit and
@@ -188,6 +189,7 @@ export const list = query({
     // identity-aware, so it re-runs on sign-in and sign-out.
     const identity = await ctx.auth.getUserIdentity();
     const publishedSpots: Doc<"spots">[] = [];
+    const profiles = new Map<string, ReturnType<typeof profileFor>>();
     // Iteration lets pending rows be skipped before the public result cap.
     for await (const spot of ctx.db.query("spots").order("desc")) {
       if (spot.deletionRequested || !(await spotIsPublished(ctx, spot))) {
@@ -208,6 +210,7 @@ export const list = query({
           ...spot
         }) => ({
           ...spot,
+          createdByName: await contributorName(ctx, createdBy, spot.createdByName, profiles),
           isMine: identity !== null && createdBy === identity.tokenIdentifier,
           previewPhotoUrl: photoIds.length > 0 ? await ctx.storage.getUrl(photoIds[0]) : null,
         }),
@@ -328,6 +331,7 @@ export const get = query({
     return {
       status: "active" as const,
       ...publicFields,
+      createdByName: await contributorName(ctx, spot.createdBy, spot.createdByName),
       photoUrls,
       isOwner,
       isFavorite: favorite !== null,
@@ -353,7 +357,7 @@ export const create = mutation({
       ...args,
       name: args.name.trim(),
       createdBy: identity.tokenIdentifier,
-      createdByName: identity.name,
+      createdByName: await contributorName(ctx, identity.tokenIdentifier, identity.name),
       // Only the verified Clerk role can skip review; client arguments cannot set this status.
       publicationStatus: identity.role === "admin" ? "published" : "pending",
     });
