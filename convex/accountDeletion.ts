@@ -15,6 +15,7 @@ import {
   MAX_OPEN_REPORTS_PER_SPOT,
   spotModerationFor,
 } from "./moderationModel";
+import { deleteReport } from "./reportPhotos";
 import { profileFor } from "./profileModel";
 import { releasePhotos, scheduleSpotDeletion } from "./spots";
 
@@ -360,13 +361,25 @@ export const cleanupBatch = internalMutation({
       return false;
     }
 
+    const reportUploads = await ctx.db
+      .query("reportUploads")
+      .withIndex("by_uploadedBy", (q) => q.eq("uploadedBy", userIdentifier))
+      .take(UPLOAD_DELETE_BATCH_SIZE);
+    if (reportUploads.length > 0) {
+      for (const upload of reportUploads) {
+        await ctx.storage.delete(upload.storageId);
+        await ctx.db.delete("reportUploads", upload._id);
+      }
+      return false;
+    }
+
     const reports = await ctx.db
       .query("spotReports")
       .withIndex("by_reportedBy", (q) => q.eq("reportedBy", userIdentifier))
       .take(DELETE_BATCH_SIZE);
     if (reports.length > 0) {
       for (const report of reports) {
-        await ctx.db.delete("spotReports", report._id);
+        await deleteReport(ctx, report);
         await repairModerationAfterReportRemoval(ctx, report.spotId);
       }
       return false;

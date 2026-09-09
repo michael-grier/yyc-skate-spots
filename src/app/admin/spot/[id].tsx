@@ -203,6 +203,11 @@ export default function AdminSpotReviewScreen() {
                       {report.details}
                     </Text>
                   ) : null}
+                  {report.photoUrls.length > 0 ? (
+                    <View className="mt-3">
+                      <PhotoCarousel urls={report.photoUrls} spotName="Private report evidence" />
+                    </View>
+                  ) : null}
                   <Text className="mt-2 font-sans text-[11px] text-mute">
                     Reported {formatMonthYear(report._creationTime)}
                   </Text>
@@ -254,7 +259,7 @@ export default function AdminSpotReviewScreen() {
             <Text className="font-sans-semibold text-[15px] text-ink">Finish this review</Text>
             <Text className="mt-1 font-sans text-[12px] leading-relaxed text-mute">
               Approving publishes the current version and clears its reports. Removal deletes the
-              spot and records one confirmed violation.
+              spot. Dead-spot removal does not add a contributor strike.
             </Text>
             <Button
               label={working ? "Working…" : "Meets standards"}

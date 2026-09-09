@@ -64,9 +64,9 @@ export default function SpotStandardsScreen() {
           and return a spot to the review queue so an administrator can approve it or remove it.
         </Text>
         <Text className="mt-3 px-1 font-sans text-[12px] leading-relaxed text-mute">
-          A confirmed removal counts toward the contributor’s moderation record. After three
-          confirmed removals, an administrator may block that account from adding spots, editing,
-          uploading photos, or sending reports.
+          Dead-spot removal does not add a strike. Other confirmed removals count toward the
+          contributor’s moderation record. After three confirmed removals, an administrator may
+          block that account from adding spots, editing, uploading photos, or sending reports.
         </Text>
       </ScrollView>
     </View>

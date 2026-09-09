@@ -27,6 +27,14 @@ Historical archive and submission evidence is in [the release record](releases/1
 | Shared spot link | Public spot identifier in `https://yycskatespots.com/share?id=…` | Yes: iOS share-sheet recipient and Cloudflare when opened in a browser | Link identifies a spot, not the sender | Open the spot in-app or show the static App Store fallback | The static fallback does not fetch the spot record. Cloudflare may retain ordinary web request logs under its policy. |
 | Support email | Sender address, message, and optional attachments chosen in the user's email app | Yes: sender's mail provider and Cloudflare Email Routing | Linked to the sender address they use | Answer support, privacy, safety, and abuse requests | Routed to the app operator's mailbox and deleted when no longer needed to resolve or document the request. Earlier deletion can be requested at `support@yycskatespots.com`. |
 
+## Planned day-one patch: private report evidence
+
+Dead-spot reports require 1–3 photo-library images, resized and re-encoded before upload.
+Evidence is linked to the reporter and returned only by administrator queries. It is deleted
+with the report after a moderation decision, spot deletion, or reporter account deletion.
+Unsubmitted report uploads expire after 24 hours; failed submissions also attempt immediate
+cleanup. This adds a private moderation use of photos to the data flows above.
+
 ## Providers in the shipped service
 
 | Provider | Role | End-user data involved |

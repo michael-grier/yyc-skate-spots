@@ -132,8 +132,9 @@ export default function SpotDetailScreen() {
               {spot.name}
             </Text>
             <Text className="mt-3 font-sans text-[15px] leading-relaxed text-mute">
-              This spot was removed because it did not meet YYC Skate Spots standards. Other users
-              can no longer see it; this notice is visible only to you.
+              {spot.reason === "gone_or_unusable" && spot.strikeNumber === 0
+                ? "This spot was removed because it is no longer skateable. This notice is visible only to you."
+                : "This spot was removed because it did not meet YYC Skate Spots standards. Other users can no longer see it; this notice is visible only to you."}
             </Text>
           </Card>
           <Card className="mt-3 p-5">
@@ -142,8 +143,9 @@ export default function SpotDetailScreen() {
               {reportReasonLabel(spot.reason)}
             </Text>
             <Text className="mt-2 font-sans text-[13px] leading-relaxed text-mute">
-              This was confirmed removal {spot.strikeNumber}. At three, an administrator may block
-              an account from adding or editing spots.
+              {spot.strikeNumber === 0
+                ? "No strike was added to your contribution record."
+                : `This was confirmed removal ${spot.strikeNumber}. At three, an administrator may block an account from adding or editing spots.`}
             </Text>
           </Card>
           <Button
@@ -288,8 +290,20 @@ export default function SpotDetailScreen() {
             <Card className="mt-6 p-4">
               <Text className="font-sans-semibold text-[15px] text-ink">Spot not right?</Text>
               <Text className="mt-1 font-sans text-[13px] leading-relaxed text-mute">
-                Send a private report if this listing does not meet the spot standards.
+                Report a dead spot with photo evidence, or let us know about another problem.
               </Text>
+              <Button
+                label="Report dead spot"
+                className="mt-4"
+                onPress={() =>
+                  isSignedIn
+                    ? router.push({
+                        pathname: "/spot/report/[id]",
+                        params: { id: spotId, kind: "dead" },
+                      })
+                    : router.push("/account")
+                }
+              />
               <Pressable
                 accessibilityRole="button"
                 onPress={() =>
@@ -300,7 +314,7 @@ export default function SpotDetailScreen() {
                 className="mt-3 self-start py-1 active:opacity-80"
               >
                 <Text className="font-sans-semibold text-[13px] text-silver">
-                  {isSignedIn ? "Report this spot" : "Sign in to report"}
+                  {isSignedIn ? "Report another problem" : "Sign in to report"}
                 </Text>
               </Pressable>
             </Card>

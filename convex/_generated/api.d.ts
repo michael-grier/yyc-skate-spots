@@ -18,6 +18,7 @@ import type * as moderation from "../moderation.js";
 import type * as moderationModel from "../moderationModel.js";
 import type * as profileModel from "../profileModel.js";
 import type * as profiles from "../profiles.js";
+import type * as reportPhotos from "../reportPhotos.js";
 import type * as reports from "../reports.js";
 import type * as seed from "../seed.js";
 import type * as spots from "../spots.js";
@@ -39,6 +40,7 @@ declare const fullApi: ApiFromModules<{
   moderationModel: typeof moderationModel;
   profileModel: typeof profileModel;
   profiles: typeof profiles;
+  reportPhotos: typeof reportPhotos;
   reports: typeof reports;
   seed: typeof seed;
   spots: typeof spots;

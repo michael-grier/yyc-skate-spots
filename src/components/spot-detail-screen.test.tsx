@@ -125,3 +125,13 @@ describe("SpotDetailScreen moderation status", () => {
     expect(screen.queryByRole("button", { name: "Add to favourites" })).toBeNull();
   });
 });
+
+test("opens the focused dead-spot form from the detail shortcut", async () => {
+  mockAuthState.isSignedIn = true;
+  await render(<SpotDetailScreen />);
+  await fireEvent.press(screen.getByRole("button", { name: "Report dead spot" }));
+  expect(mockPush).toHaveBeenCalledWith({
+    pathname: "/spot/report/[id]",
+    params: { id: "spot-1", kind: "dead" },
+  });
+});
