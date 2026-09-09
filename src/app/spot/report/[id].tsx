@@ -1,8 +1,10 @@
 import { useAuth } from "@clerk/expo";
+import { MAX_REPORT_PHOTOS } from "@convex/constants";
+import type { Id } from "@convex/_generated/dataModel";
 import { api } from "@convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -15,6 +17,10 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { PhotoStrip } from "@/components/spot-fields";
+import type { FormPhoto } from "@/lib/spot-form";
+import { pickPhotos, uploadPhoto } from "@/lib/spot-photos";
+import { resolveConvexSiteUrl } from "@/lib/convex-site";
 import { BackIcon } from "@/components/icons";
 import { ModerationReasonPicker } from "@/components/moderation-reason-picker";
 import { Button } from "@/components/ui/button";
@@ -23,40 +29,90 @@ import type { ReportReason } from "@/lib/spot-standards";
 import { colors } from "@/theme/colors";
 
 const MAX_DETAILS_LENGTH = 500;
+const UPLOAD_HOST = resolveConvexSiteUrl(
+  process.env.EXPO_PUBLIC_CONVEX_URL ?? "",
+  process.env.EXPO_PUBLIC_CONVEX_SITE_URL,
+);
 
 /** Signed-in report form; the mutation independently checks identity and ownership. */
 export default function ReportSpotScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, kind } = useLocalSearchParams<{ id: string; kind?: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { isLoaded, isSignedIn } = useAuth();
+  const { isLoaded, isSignedIn, getToken } = useAuth();
   const spot = useQuery(api.spots.get, { id });
   const createReport = useMutation(api.reports.create);
-  const [reason, setReason] = useState<ReportReason | null>(null);
+  const [reason, setReason] = useState<ReportReason | null>(
+    kind === "dead" ? "gone_or_unusable" : null,
+  );
+  const isDeadReport = reason === "gone_or_unusable";
+  const [photos, setPhotos] = useState<FormPhoto[]>([]);
+  const [picking, setPicking] = useState(false);
+  const busy = useRef(false);
+  const discardUpload = useMutation(api.reportPhotos.discardUpload);
   const [details, setDetails] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  async function addPhotos() {
+    if (picking || submitting || photos.length >= MAX_REPORT_PHOTOS) return;
+    setPicking(true);
+    try {
+      const picked = await pickPhotos(MAX_REPORT_PHOTOS - photos.length);
+      setPhotos((current) => {
+        const keys = new Set(current.map((photo) => photo.key));
+        const added = picked.filter((photo) => {
+          if (keys.has(photo.key)) return false;
+          keys.add(photo.key);
+          return true;
+        });
+        return [...current, ...added].slice(0, MAX_REPORT_PHOTOS);
+      });
+    } catch {
+      setError("Couldn't open your photos. Try again.");
+    } finally {
+      setPicking(false);
+    }
+  }
+
   async function submit() {
+    if (busy.current || picking) return;
     if (!reason || spot?.status !== "active") {
       setError("Choose the reason that best describes the problem.");
       return;
     }
+    if (isDeadReport && photos.length === 0) {
+      setError("Add at least one photo showing why the spot is no longer skateable.");
+      return;
+    }
+    busy.current = true;
+    const uploaded: Id<"_storage">[] = [];
     setSubmitting(true);
     setError(null);
     try {
+      // Upload only on submit. Failed or abandoned uploads have server-side expiry too.
+      if (isDeadReport) {
+        for (const photo of photos) {
+          const token = await getToken({ template: "convex" });
+          if (!token) throw new Error("Sign in again to upload photos.");
+          uploaded.push(await uploadPhoto(photo, UPLOAD_HOST, token, "report"));
+        }
+      }
       await createReport({
         spotId: spot._id,
         reason,
+        ...(uploaded.length ? { photoIds: uploaded } : {}),
         ...(details.trim() ? { details: details.trim() } : {}),
       });
       setSubmitted(true);
     } catch (submitError) {
+      await Promise.allSettled(uploaded.map((storageId) => discardUpload({ storageId })));
       setError(
         submitError instanceof Error ? submitError.message : "The report could not be sent.",
       );
     } finally {
+      busy.current = false;
       setSubmitting(false);
     }
   }
@@ -70,12 +126,17 @@ export default function ReportSpotScreen() {
         accessibilityRole="button"
         accessibilityLabel="Back"
         hitSlop={8}
-        onPress={() => router.back()}
+        onPress={() => {
+          if (!busy.current) router.back();
+        }}
+        disabled={submitting}
         className="h-9 w-9 items-center justify-center rounded-full border border-white/10 active:opacity-80"
       >
         <BackIcon size={18} color={colors.ink} />
       </Pressable>
-      <Text className="font-sans-semibold text-[20px] tracking-tight text-ink">Report spot</Text>
+      <Text className="font-sans-semibold text-[20px] tracking-tight text-ink">
+        {kind === "dead" ? "Report dead spot" : "Report spot"}
+      </Text>
     </View>
   );
 
@@ -164,18 +225,61 @@ export default function ReportSpotScreen() {
         >
           <Text className="font-sans-semibold text-[18px] text-ink">{spot.name}</Text>
           <Text className="mt-1 font-sans text-[14px] leading-relaxed text-mute">
-            Choose the closest reason. Reports are not shown to the contributor.
+            {kind === "dead"
+              ? "Skate-stopped, demolished, or permanently blocked? Help keep the map up to date."
+              : "Choose the closest reason. Reports are not shown to the contributor."}
           </Text>
 
-          <View className="mt-5">
-            <ModerationReasonPicker
-              value={reason}
-              onChange={(selectedReason) => {
-                setReason(selectedReason);
-                setError(null);
-              }}
-            />
-          </View>
+          {kind !== "dead" ? (
+            <View className="mt-5" pointerEvents={submitting ? "none" : "auto"}>
+              <ModerationReasonPicker
+                value={reason}
+                onChange={(selectedReason) => {
+                  if (busy.current) return;
+                  setReason(selectedReason);
+                  setError(null);
+                }}
+              />
+            </View>
+          ) : null}
+
+          {isDeadReport ? (
+            <View className="mt-5">
+              <Text className="mb-2 font-sans-medium text-[13px] text-silver">
+                Photos · Required
+              </Text>
+              {photos.length === 0 ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Add photos"
+                  onPress={() => void addPhotos()}
+                  disabled={picking || submitting}
+                  className="items-center rounded-2xl border border-dashed border-white/20 bg-card px-4 py-7 active:opacity-80"
+                >
+                  <Text className="font-sans text-[28px] text-mute">+</Text>
+                  <Text className="mt-2 font-sans-semibold text-[15px] text-silver">
+                    Add photos
+                  </Text>
+                  <Text className="mt-1 font-sans text-[12px] text-mute">
+                    Show what makes this spot unskateable.
+                  </Text>
+                </Pressable>
+              ) : (
+                <PhotoStrip
+                  photos={photos}
+                  maxPhotos={MAX_REPORT_PHOTOS}
+                  disabled={submitting || picking}
+                  onAdd={() => void addPhotos()}
+                  onRemove={(photo) =>
+                    setPhotos((current) => current.filter((p) => p.key !== photo.key))
+                  }
+                />
+              )}
+              <Text className="mt-2 font-sans text-[12px] leading-relaxed text-mute">
+                Add 1–3 recent photos. Only administrators can see your evidence.
+              </Text>
+            </View>
+          ) : null}
 
           <Text className="mt-5 mb-2 px-1 font-sans-medium text-[11px] text-mute">
             DETAILS (OPTIONAL)
@@ -183,6 +287,7 @@ export default function ReportSpotScreen() {
           <Card className="px-4 py-3">
             <TextInput
               value={details}
+              editable={!submitting}
               onChangeText={setDetails}
               maxLength={MAX_DETAILS_LENGTH}
               placeholder="What should the admin know?"
@@ -201,10 +306,15 @@ export default function ReportSpotScreen() {
           {error ? (
             <Text className="mt-3 font-sans text-[13px] text-bust-high">{error}</Text>
           ) : null}
+          {isDeadReport ? (
+            <Text className="mt-4 font-sans text-[12px] leading-relaxed text-mute">
+              An admin will review your evidence before deciding whether to remove the spot.
+            </Text>
+          ) : null}
           <Button
             label={submitting ? "Sending…" : "Send report"}
             onPress={() => void submit()}
-            disabled={submitting}
+            disabled={submitting || picking || (isDeadReport && photos.length === 0)}
             className="mt-4"
           />
           <Pressable

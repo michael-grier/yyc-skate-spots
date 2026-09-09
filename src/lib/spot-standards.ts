@@ -18,7 +18,7 @@ export const REPORT_REASONS = [
   },
   {
     value: "gone_or_unusable",
-    label: "Gone or unusable",
+    label: "Dead spot",
     description: "The feature was removed, blocked permanently, or can no longer be skated.",
   },
   {

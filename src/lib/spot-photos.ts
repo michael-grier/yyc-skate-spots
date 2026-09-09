@@ -42,6 +42,7 @@ export async function uploadPhoto(
   photo: FormPhoto,
   siteUrl: string,
   token: string,
+  purpose: "spot" | "report" = "spot",
 ): Promise<Id<"_storage">> {
   const context = ImageManipulator.manipulate(photo.uri);
   const scale = Math.min(1, MAX_EDGE_PX / Math.max(photo.width, photo.height));
@@ -56,7 +57,7 @@ export async function uploadPhoto(
 
   // Expo's File body preserves local file bytes; React Native's file:// Blob
   // round trip can produce an empty request body on device.
-  const response = await fetch(`${siteUrl}/upload`, {
+  const response = await fetch(`${siteUrl}/${purpose === "report" ? "report-upload" : "upload"}`, {
     method: "POST",
     headers: { "Content-Type": "image/jpeg", Authorization: `Bearer ${token}` },
     body: new File(saved.uri),

@@ -14,10 +14,8 @@ const http = httpRouter();
  * another user could register as their own, and a failure after the store
  * deletes the file rather than orphaning it.
  */
-http.route({
-  path: "/upload",
-  method: "POST",
-  handler: httpAction(async (ctx, request) => {
+function uploadHandler(purpose: "spot" | "report") {
+  return httpAction(async (ctx, request) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
       return new Response("Sign in required", { status: 401 });
@@ -33,13 +31,19 @@ http.route({
 
     const storageId = await ctx.storage.store(blob);
     try {
-      await ctx.runMutation(internal.spots.recordUpload, { storageId });
+      await ctx.runMutation(
+        purpose === "spot" ? internal.spots.recordUpload : internal.reportPhotos.recordUpload,
+        { storageId },
+      );
     } catch (error) {
       await ctx.storage.delete(storageId);
       throw error;
     }
     return Response.json({ storageId });
-  }),
-});
+  });
+}
+
+http.route({ path: "/upload", method: "POST", handler: uploadHandler("spot") });
+http.route({ path: "/report-upload", method: "POST", handler: uploadHandler("report") });
 
 export default http;

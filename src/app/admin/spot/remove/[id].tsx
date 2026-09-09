@@ -170,7 +170,7 @@ export default function AdminRemoveSpotScreen() {
             <Text className="mt-3 font-sans text-[14px] leading-relaxed text-mute">
               {result.strikeCount > 0
                 ? `The spot is no longer public. This is confirmed removal ${result.strikeCount} for the contributor.`
-                : "The spot is no longer public. Seed listings do not count toward a contributor."}
+                : "The spot is no longer public. No contributor strike was added."}
             </Text>
           </Card>
 
@@ -250,8 +250,8 @@ export default function AdminRemoveSpotScreen() {
             <Text className="font-sans-medium text-[11px] text-bust-high">REMOVING</Text>
             <Text className="mt-1 font-sans-semibold text-[18px] text-ink">{spot.name}</Text>
             <Text className="mt-2 font-sans text-[13px] leading-relaxed text-mute">
-              Choose the standard this spot failed. This reason appears in the contributor’s private
-              removal notice.
+              Choose why this spot is being removed. This reason appears in the contributor’s
+              private removal notice. Dead-spot removal does not add a strike.
             </Text>
           </Card>
 
@@ -266,6 +266,11 @@ export default function AdminRemoveSpotScreen() {
             }}
           />
 
+          {reason === "gone_or_unusable" ? (
+            <Text className="mt-3 font-sans text-[13px] text-bust-low">
+              No contributor strike will be added for a dead spot.
+            </Text>
+          ) : null}
           <Text className="mt-5 mb-2 px-1 font-sans-medium text-[11px] text-mute">
             INTERNAL DETAILS (OPTIONAL)
           </Text>
