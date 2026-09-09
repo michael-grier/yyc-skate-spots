@@ -15,6 +15,7 @@ import {
   MAX_OPEN_REPORTS_PER_SPOT,
   spotModerationFor,
 } from "./moderationModel";
+import { profileFor } from "./profileModel";
 import { releasePhotos, scheduleSpotDeletion } from "./spots";
 
 const CLERK_API_ORIGIN = "https://api.clerk.com";
@@ -421,6 +422,12 @@ export const cleanupBatch = internalMutation({
       .unique();
     if (acknowledgement) {
       await ctx.db.delete("communityAcknowledgements", acknowledgement._id);
+      return false;
+    }
+
+    const profile = await profileFor(ctx, userIdentifier);
+    if (profile) {
+      await ctx.db.delete("profiles", profile._id);
       return false;
     }
 

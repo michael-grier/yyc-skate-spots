@@ -9,6 +9,7 @@ import {
   recordNewSpotModeration,
   spotIsPublished,
 } from "./moderationModel";
+import { contributorName } from "./profileModel";
 import { bustFactor, spotType, surface } from "./schema";
 
 // Caps chosen so a spot document stays far under Convex's 1MB limit and
@@ -208,6 +209,7 @@ export const list = query({
           ...spot
         }) => ({
           ...spot,
+          createdByName: await contributorName(ctx, createdBy, spot.createdByName),
           isMine: identity !== null && createdBy === identity.tokenIdentifier,
           previewPhotoUrl: photoIds.length > 0 ? await ctx.storage.getUrl(photoIds[0]) : null,
         }),
@@ -328,6 +330,7 @@ export const get = query({
     return {
       status: "active" as const,
       ...publicFields,
+      createdByName: await contributorName(ctx, spot.createdBy, spot.createdByName),
       photoUrls,
       isOwner,
       isFavorite: favorite !== null,
@@ -353,7 +356,7 @@ export const create = mutation({
       ...args,
       name: args.name.trim(),
       createdBy: identity.tokenIdentifier,
-      createdByName: identity.name,
+      createdByName: await contributorName(ctx, identity.tokenIdentifier, identity.name),
       // Only the verified Clerk role can skip review; client arguments cannot set this status.
       publicationStatus: identity.role === "admin" ? "published" : "pending",
     });

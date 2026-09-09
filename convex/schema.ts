@@ -39,6 +39,12 @@ export const reportReason = v.union(
 const reviewReason = v.union(v.literal("new"), v.literal("edited"), v.literal("reported"));
 
 export default defineSchema({
+  // Public display names are separate from private moderation identity fallbacks.
+  profiles: defineTable({
+    userIdentifier: v.string(),
+    displayName: v.string(),
+  }).index("by_userIdentifier", ["userIdentifier"]),
+
   spots: defineTable({
     name: v.string(),
     // Most real spots have more than one obstacle (a plaza with ledges and
@@ -53,8 +59,7 @@ export default defineSchema({
     photoIds: v.array(v.id("_storage")),
     // Clerk identity tokenIdentifier — the ownership key for edit/delete.
     createdBy: v.string(),
-    // Denormalized at creation for the "Added by …" byline, so reads never
-    // need a Clerk lookup. Not updated if the user later renames themselves.
+    // Legacy/provider fallback. Queries prefer the current name in profiles.
     createdByName: v.optional(v.string()),
     // Optional during rollout so existing rows remain valid. Public reads use
     // their moderation row as the fallback until the next review or edit.

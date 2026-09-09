@@ -1,5 +1,6 @@
 import { useClerk, useUser } from "@clerk/expo";
 import { api } from "@convex/_generated/api";
+import { publicDisplayName } from "@convex/displayNames";
 import type { FunctionReturnType } from "convex/server";
 import { useAction, useQuery } from "convex/react";
 import * as AppleAuthentication from "expo-apple-authentication";
@@ -8,6 +9,7 @@ import { useState } from "react";
 import { ActivityIndicator, Alert, FlatList, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { DisplayNameSheet } from "@/components/display-name-sheet";
 import { ChevronRightIcon } from "@/components/icons";
 import { PublicSiteLinks } from "@/components/public-site-links";
 import { Button } from "@/components/ui/button";
@@ -74,6 +76,10 @@ export function ProfileView() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user } = useUser();
+  const profile = useQuery(api.profiles.me);
+  const displayName =
+    profile === undefined ? publicDisplayName(user?.fullName) : profile?.displayName;
+  const [editingName, setEditingName] = useState(false);
   const { setActive, signOut } = useClerk();
   const deleteAccount = useAction(api.accountDeletion.deleteAccount);
   const favorites = useQuery(api.favorites.list);
@@ -148,169 +154,184 @@ export function ProfileView() {
   };
 
   return (
-    <FlatList
-      className="flex-1 bg-base"
-      contentContainerStyle={{
-        paddingTop: insets.top + 24,
-        paddingHorizontal: 20,
-        paddingBottom: insets.bottom + 24,
-      }}
-      data={activeSpots ?? []}
-      keyExtractor={(spot) => spot._id}
-      extraData={activeList}
-      ListHeaderComponent={
-        <>
-          <Text className="font-sans-semibold text-[26px] tracking-tight text-ink">Profile</Text>
-          <Card className="mt-6 flex-row items-center gap-3 px-4 py-3">
-            <View className="h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5">
-              <Text className="font-sans-semibold text-[13px] text-silver">
-                {initialsOf(user?.fullName, email)}
-              </Text>
-            </View>
-            <View className="flex-1">
-              {user?.fullName ? (
-                <Text numberOfLines={1} className="font-sans-semibold text-[16px] text-ink">
-                  {user.fullName}
-                </Text>
-              ) : null}
-              {email ? (
-                <Text numberOfLines={1} className="font-sans text-[13px] text-mute">
-                  {email}
-                </Text>
-              ) : null}
-            </View>
-          </Card>
-
-          {moderation?.isAdmin ? (
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => router.push("/admin")}
-              className="mt-3 active:opacity-90"
-            >
-              <Card className="flex-row items-center gap-3 p-4">
-                <View className="flex-1">
-                  <Text className="font-sans-semibold text-[15px] text-ink">Review spots</Text>
-                  <Text className="mt-1 font-sans text-[12px] text-mute">
-                    Check recent submissions, reports, and ban eligibility.
-                  </Text>
-                </View>
-                <ChevronRightIcon size={18} color={colors.mute} />
-              </Card>
-            </Pressable>
-          ) : null}
-
-          {moderation?.isBanned ? (
-            <Card className="mt-3 p-4">
-              <Text className="font-sans-semibold text-[15px] text-ink">
-                Contribution access removed
-              </Text>
-              <Text className="mt-1 font-sans text-[13px] leading-relaxed text-mute">
-                You can browse and delete your existing spots, but you cannot add, edit, upload, or
-                report.
-              </Text>
-              <Pressable
-                accessibilityRole="link"
-                onPress={() => router.push("/standards")}
-                className="mt-2 self-start py-1 active:opacity-80"
-              >
+    <>
+      <FlatList
+        className="flex-1 bg-base"
+        contentContainerStyle={{
+          paddingTop: insets.top + 24,
+          paddingHorizontal: 20,
+          paddingBottom: insets.bottom + 24,
+        }}
+        data={activeSpots ?? []}
+        keyExtractor={(spot) => spot._id}
+        extraData={activeList}
+        ListHeaderComponent={
+          <>
+            <Text className="font-sans-semibold text-[26px] tracking-tight text-ink">Profile</Text>
+            <Card className="mt-6 flex-row items-center gap-3 px-4 py-3">
+              <View className="h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5">
                 <Text className="font-sans-semibold text-[13px] text-silver">
-                  Read the spot standards
+                  {initialsOf(displayName, email)}
                 </Text>
+              </View>
+              <View className="flex-1">
+                {displayName ? (
+                  <Text numberOfLines={1} className="font-sans-semibold text-[16px] text-ink">
+                    {displayName}
+                  </Text>
+                ) : null}
+                {email ? (
+                  <Text numberOfLines={1} className="font-sans text-[13px] text-mute">
+                    {email}
+                  </Text>
+                ) : null}
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Edit display name"
+                disabled={profile === undefined || isDeleting}
+                onPress={() => setEditingName(true)}
+                hitSlop={8}
+                className="px-2 py-3 active:opacity-80"
+              >
+                <Text className="font-sans-semibold text-[13px] text-silver">Edit</Text>
               </Pressable>
             </Card>
-          ) : null}
 
-          <View className="mt-7 flex-row rounded-2xl border border-white/10 bg-card p-1">
-            <ProfileSegment
-              label="Favourites"
-              count={favorites?.length}
-              selected={activeList === "favorites"}
-              onPress={() => setActiveList("favorites")}
-            />
-            <ProfileSegment
-              label="Your spots"
-              count={mySpots?.length}
-              selected={activeList === "mine"}
-              onPress={() => setActiveList("mine")}
-            />
-          </View>
+            {moderation?.isAdmin ? (
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => router.push("/admin")}
+                className="mt-3 active:opacity-90"
+              >
+                <Card className="flex-row items-center gap-3 p-4">
+                  <View className="flex-1">
+                    <Text className="font-sans-semibold text-[15px] text-ink">Review spots</Text>
+                    <Text className="mt-1 font-sans text-[12px] text-mute">
+                      Check recent submissions, reports, and ban eligibility.
+                    </Text>
+                  </View>
+                  <ChevronRightIcon size={18} color={colors.mute} />
+                </Card>
+              </Pressable>
+            ) : null}
 
-          {activeSpots === undefined ? (
-            <ActivityIndicator
-              accessibilityLabel={`Loading ${activeList === "favorites" ? "favourites" : "your spots"}`}
-              color={colors.mute}
-              className="mt-4 self-start px-1"
-            />
-          ) : null}
-          {activeSpots?.length === 0 ? (
-            <Text className="mt-4 px-1 font-sans text-[14px] text-mute">{emptyMessage}</Text>
-          ) : null}
-          {activeSpots && activeSpots.length > 0 ? <View className="h-4" /> : null}
-        </>
-      }
-      renderItem={({ item }) => (
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => router.push({ pathname: "/spot/[id]", params: { id: item._id } })}
-          className="active:opacity-90"
-        >
-          <Card className="mb-2 flex-row items-center gap-3 px-4 py-3">
-            <View className="flex-1">
-              <Text numberOfLines={1} className="font-sans-semibold text-[15px] text-ink">
-                {item.name}
-              </Text>
-              {item.status === "removed" ? (
-                <View className="mt-1">
-                  <Text className="font-sans text-[12px]" style={{ color: colors.bust.high }}>
-                    Removed · {reportReasonLabel(item.reason)}
+            {moderation?.isBanned ? (
+              <Card className="mt-3 p-4">
+                <Text className="font-sans-semibold text-[15px] text-ink">
+                  Contribution access removed
+                </Text>
+                <Text className="mt-1 font-sans text-[13px] leading-relaxed text-mute">
+                  You can browse and delete your existing spots, but you cannot add, edit, upload,
+                  or report.
+                </Text>
+                <Pressable
+                  accessibilityRole="link"
+                  onPress={() => router.push("/standards")}
+                  className="mt-2 self-start py-1 active:opacity-80"
+                >
+                  <Text className="font-sans-semibold text-[13px] text-silver">
+                    Read the spot standards
                   </Text>
-                  <Text className="mt-0.5 font-sans text-[11px] text-mute">
-                    Confirmed removal {item.strikeNumber} · ban threshold 3
-                  </Text>
-                </View>
-              ) : item.status === "pending" ? (
-                <View className="mt-1">
-                  <Text className="font-sans-medium text-[12px] text-bust-medium">
-                    Waiting for review
-                  </Text>
-                  <Text className="mt-0.5 font-sans text-[11px] text-mute">
-                    Visible only to you and administrators
-                  </Text>
-                </View>
-              ) : (
-                <View className="mt-1 flex-row items-center gap-1.5">
-                  <View
-                    className="h-1.5 w-1.5 rounded-full"
-                    style={{ backgroundColor: BUST_FACTOR_COLORS[item.bustFactor] }}
-                  />
-                  <Text numberOfLines={1} className="font-sans text-[12px] text-mute">
-                    {formatSpotTypes(item.types)} · {BUST_FACTOR_LABELS[item.bustFactor]} bust
-                  </Text>
-                </View>
-              )}
+                </Pressable>
+              </Card>
+            ) : null}
+
+            <View className="mt-7 flex-row rounded-2xl border border-white/10 bg-card p-1">
+              <ProfileSegment
+                label="Favourites"
+                count={favorites?.length}
+                selected={activeList === "favorites"}
+                onPress={() => setActiveList("favorites")}
+              />
+              <ProfileSegment
+                label="Your spots"
+                count={mySpots?.length}
+                selected={activeList === "mine"}
+                onPress={() => setActiveList("mine")}
+              />
             </View>
-            <ChevronRightIcon size={18} color={colors.mute} />
-          </Card>
-        </Pressable>
-      )}
-      ListFooterComponent={
-        <View className="mt-6">
-          <Button label="Sign out" onPress={() => void signOut()} disabled={isDeleting} />
+
+            {activeSpots === undefined ? (
+              <ActivityIndicator
+                accessibilityLabel={`Loading ${activeList === "favorites" ? "favourites" : "your spots"}`}
+                color={colors.mute}
+                className="mt-4 self-start px-1"
+              />
+            ) : null}
+            {activeSpots?.length === 0 ? (
+              <Text className="mt-4 px-1 font-sans text-[14px] text-mute">{emptyMessage}</Text>
+            ) : null}
+            {activeSpots && activeSpots.length > 0 ? <View className="h-4" /> : null}
+          </>
+        }
+        renderItem={({ item }) => (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Delete account"
-            disabled={isDeleting}
-            onPress={confirmAccountDeletion}
-            className="mt-3 min-h-11 flex-row items-center justify-center gap-2 self-center px-4 active:opacity-70 disabled:opacity-40"
+            onPress={() => router.push({ pathname: "/spot/[id]", params: { id: item._id } })}
+            className="active:opacity-90"
           >
-            {isDeleting ? <ActivityIndicator size="small" color={colors.bust.high} /> : null}
-            <Text className="font-sans-semibold text-[14px]" style={{ color: colors.bust.high }}>
-              {isDeleting ? "Deleting account…" : "Delete account"}
-            </Text>
+            <Card className="mb-2 flex-row items-center gap-3 px-4 py-3">
+              <View className="flex-1">
+                <Text numberOfLines={1} className="font-sans-semibold text-[15px] text-ink">
+                  {item.name}
+                </Text>
+                {item.status === "removed" ? (
+                  <View className="mt-1">
+                    <Text className="font-sans text-[12px]" style={{ color: colors.bust.high }}>
+                      Removed · {reportReasonLabel(item.reason)}
+                    </Text>
+                    <Text className="mt-0.5 font-sans text-[11px] text-mute">
+                      Confirmed removal {item.strikeNumber} · ban threshold 3
+                    </Text>
+                  </View>
+                ) : item.status === "pending" ? (
+                  <View className="mt-1">
+                    <Text className="font-sans-medium text-[12px] text-bust-medium">
+                      Waiting for review
+                    </Text>
+                    <Text className="mt-0.5 font-sans text-[11px] text-mute">
+                      Visible only to you and administrators
+                    </Text>
+                  </View>
+                ) : (
+                  <View className="mt-1 flex-row items-center gap-1.5">
+                    <View
+                      className="h-1.5 w-1.5 rounded-full"
+                      style={{ backgroundColor: BUST_FACTOR_COLORS[item.bustFactor] }}
+                    />
+                    <Text numberOfLines={1} className="font-sans text-[12px] text-mute">
+                      {formatSpotTypes(item.types)} · {BUST_FACTOR_LABELS[item.bustFactor]} bust
+                    </Text>
+                  </View>
+                )}
+              </View>
+              <ChevronRightIcon size={18} color={colors.mute} />
+            </Card>
           </Pressable>
-          <PublicSiteLinks className="mt-5" onOpenStandards={() => router.push("/standards")} />
-        </View>
-      }
-    />
+        )}
+        ListFooterComponent={
+          <View className="mt-6">
+            <Button label="Sign out" onPress={() => void signOut()} disabled={isDeleting} />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Delete account"
+              disabled={isDeleting}
+              onPress={confirmAccountDeletion}
+              className="mt-3 min-h-11 flex-row items-center justify-center gap-2 self-center px-4 active:opacity-70 disabled:opacity-40"
+            >
+              {isDeleting ? <ActivityIndicator size="small" color={colors.bust.high} /> : null}
+              <Text className="font-sans-semibold text-[14px]" style={{ color: colors.bust.high }}>
+                {isDeleting ? "Deleting account…" : "Delete account"}
+              </Text>
+            </Pressable>
+            <PublicSiteLinks className="mt-5" onOpenStandards={() => router.push("/standards")} />
+          </View>
+        }
+      />
+      {editingName ? (
+        <DisplayNameSheet initialName={displayName ?? ""} onClose={() => setEditingName(false)} />
+      ) : null}
+    </>
   );
 }

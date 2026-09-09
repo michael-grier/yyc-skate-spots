@@ -14,6 +14,7 @@ import {
   MAX_OPEN_REPORTS_PER_SPOT,
   spotModerationFor,
 } from "./moderationModel";
+import { contributorName } from "./profileModel";
 import { reportReason } from "./schema";
 import { MAX_SPOTS_LISTED, releasePhotos, scheduleSpotDeletion } from "./spots";
 
@@ -111,7 +112,8 @@ export const listSpots = query({
           const contributor = contributorByIdentifier.get(createdBy);
           return {
             ...spot,
-            creatorName: spot.createdByName ?? contributor?.name,
+            creatorName:
+              (await contributorName(ctx, createdBy, spot.createdByName)) ?? contributor?.name,
             creatorRemovalCount: contributor?.confirmedRemovalCount ?? 0,
             creatorIsBanned: contributor?.isBanned ?? false,
             creatorModerationId: contributor?._id ?? null,
@@ -160,7 +162,7 @@ export const getSpot = query({
       photoUrls,
       review: reviewState(spot, moderation ?? undefined),
       creator: {
-        name: spot.createdByName ?? contributor?.name,
+        name: (await contributorName(ctx, spot.createdBy, spot.createdByName)) ?? contributor?.name,
         confirmedRemovalCount: contributor?.confirmedRemovalCount ?? 0,
         isBanned: contributor?.isBanned ?? false,
         moderationId: contributor?._id ?? null,
@@ -287,11 +289,13 @@ export const listEligibleContributors = query({
       )
       .order("desc")
       .take(MAX_ELIGIBLE_CONTRIBUTORS);
-    return contributors.map(({ _id, name, confirmedRemovalCount }) => ({
-      _id,
-      name,
-      confirmedRemovalCount,
-    }));
+    return Promise.all(
+      contributors.map(async ({ _id, userIdentifier, name, confirmedRemovalCount }) => ({
+        _id,
+        name: (await contributorName(ctx, userIdentifier)) ?? name,
+        confirmedRemovalCount,
+      })),
+    );
   },
 });
 
