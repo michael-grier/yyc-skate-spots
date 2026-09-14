@@ -90,7 +90,7 @@ export function ProfileView() {
   const email = user?.primaryEmailAddress?.emailAddress;
   const activeSpots: ProfileSpot[] | undefined =
     activeList === "favorites"
-      ? favorites?.map((spot) => ({ status: "active" as const, ...spot }))
+      ? favorites?.map((spot) => ({ status: "active" as const, ...spot, adminPhotosUnseen: false }))
       : mySpots;
   const emptyMessage =
     activeList === "favorites"
@@ -276,6 +276,11 @@ export function ProfileView() {
                 <Text numberOfLines={1} className="font-sans-semibold text-[15px] text-ink">
                   {item.name}
                 </Text>
+                {"adminPhotosUnseen" in item && item.adminPhotosUnseen ? (
+                  <Text className="mt-2 font-sans-medium text-[12px] text-bust-low">
+                    New photos from admin
+                  </Text>
+                ) : null}
                 {item.status === "removed" ? (
                   <View className="mt-1">
                     <Text className="font-sans text-[12px]" style={{ color: colors.bust.high }}>

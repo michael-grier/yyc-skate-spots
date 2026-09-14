@@ -34,6 +34,7 @@ export type SpotFormValues = {
   latitude: number | null;
   longitude: number | null;
   photos: FormPhoto[];
+  adminPhotosAddedAt?: number;
 };
 
 export const EMPTY_SPOT_FORM: SpotFormValues = {
@@ -57,12 +58,14 @@ type EditableSpot = {
   longitude: number;
   photoIds: Id<"_storage">[];
   photoUrls: string[];
+  adminPhotosAddedAt?: number;
 };
 
 /** Prefills the form from a spot the owner is editing. */
 export function spotToFormValues(spot: EditableSpot): SpotFormValues {
   return {
     name: spot.name,
+    adminPhotosAddedAt: spot.adminPhotosAddedAt,
     types: spot.types,
     bustFactor: spot.bustFactor,
     surface: spot.surface ?? null,
@@ -120,6 +123,7 @@ export type SpotFormErrors = Partial<Record<(typeof STEP_FIELDS)[SpotFormStep][n
 
 /** What create/update accept, minus photoIds (uploaded separately on save). */
 export type SpotPayload = {
+  allowAdminPhotos?: boolean;
   name: string;
   types: SpotType[];
   bustFactor: BustFactor;

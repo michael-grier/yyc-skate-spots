@@ -2,7 +2,7 @@ import { useAuth } from "@clerk/expo";
 import { api } from "@convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -67,6 +67,17 @@ export default function SpotDetailScreen() {
   const insets = useSafeAreaInsets();
   const { isLoaded: authLoaded, isSignedIn } = useAuth();
   const spot = useQuery(api.spots.get, { id });
+  const markAdminPhotosSeen = useMutation(api.spots.markAdminPhotosSeen);
+  const setAdminPhotoPermission = useMutation(api.spots.setAdminPhotoPermission);
+  const unreadPhotoSpotId =
+    spot?.status === "active" && spot.isOwner && spot.adminPhotosUnseen ? spot._id : undefined;
+  const unreadPhotoAddedAt = spot?.status === "active" ? spot.adminPhotosAddedAt : undefined;
+  useEffect(() => {
+    if (unreadPhotoSpotId === undefined || unreadPhotoAddedAt === undefined) return;
+    void markAdminPhotosSeen({ id: unreadPhotoSpotId, addedAt: unreadPhotoAddedAt }).catch(() => {
+      // Leave the badge unread if offline; opening the spot again retries it.
+    });
+  }, [unreadPhotoSpotId, unreadPhotoAddedAt, markAdminPhotosSeen]);
   const removeSpot = useMutation(api.spots.remove);
   const toggleFavorite = useMutation(api.favorites.toggle);
   const [favoritePending, setFavoritePending] = useState(false);
@@ -286,6 +297,23 @@ export default function SpotDetailScreen() {
           ) : null}
           <Text className="mt-4 font-sans text-[12px] text-mute">{byline}</Text>
 
+          {spot.isOwner && spot.allowAdminPhotos ? (
+            <Card className="mt-5 p-4">
+              <Text className="font-sans-semibold text-[14px] text-ink">Admin photos allowed</Text>
+              <Text className="mt-2 font-sans text-[13px] text-mute">
+                The admin may add photos when they can. Photos are not guaranteed.
+              </Text>
+              <Button
+                label="Withdraw photo permission"
+                className="mt-4"
+                onPress={() => {
+                  void setAdminPhotoPermission({ id: spotId, allowed: false }).catch(() =>
+                    Alert.alert("Couldn't update permission", "Try again."),
+                  );
+                }}
+              />
+            </Card>
+          ) : null}
           {!spot.isOwner ? (
             <Card className="mt-6 p-4">
               <Text className="font-sans-semibold text-[15px] text-ink">Spot not right?</Text>

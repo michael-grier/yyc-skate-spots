@@ -119,6 +119,7 @@ export const listSpots = query({
             creatorRemovalCount: contributor?.confirmedRemovalCount ?? 0,
             creatorIsBanned: contributor?.isBanned ?? false,
             creatorModerationId: contributor?._id ?? null,
+            canAddAdminPhotos: spot.allowAdminPhotos === true && photoIds.length === 0,
             previewPhotoUrl: photoIds.length > 0 ? await ctx.storage.getUrl(photoIds[0]) : null,
             review: reviewState({ ...spot, photoIds, createdBy }, moderationBySpot.get(spot._id)),
           };
@@ -162,6 +163,7 @@ export const getSpot = query({
     return {
       ...fields,
       photoUrls,
+      canAddAdminPhotos: spot.allowAdminPhotos === true && spot.photoIds.length === 0,
       review: reviewState(spot, moderation ?? undefined),
       creator: {
         name: (await contributorName(ctx, spot.createdBy, spot.createdByName)) ?? contributor?.name,

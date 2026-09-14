@@ -2,8 +2,8 @@ import { useAuth } from "@clerk/expo";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 import { useMutation } from "convex/react";
-import { useState } from "react";
-import { Alert } from "react-native";
+import { useRef, useState } from "react";
+import { Alert, Platform } from "react-native";
 
 import { resolveConvexSiteUrl } from "@/lib/convex-site";
 import {
@@ -23,7 +23,11 @@ const UPLOAD_HOST = resolveConvexSiteUrl(
 );
 
 /** Receives the validated payload and the final photo ids; new photos upload first. */
-export type SpotFormSave = (payload: SpotPayload, photoIds: Id<"_storage">[]) => Promise<void>;
+export type SpotFormSave = (
+  payload: SpotPayload,
+  photoIds: Id<"_storage">[],
+  expectedAdminPhotosAddedAt?: number,
+) => Promise<void>;
 export type StandardsAcknowledge = () => Promise<void>;
 
 /**
@@ -40,6 +44,10 @@ export function useSpotForm(
   const [values, setValues] = useState(initialValues);
   const [errors, setErrors] = useState<SpotFormErrors>({});
   const [saving, setSaving] = useState(false);
+  const busy = useRef(false);
+  const [photoPermissionOpen, setPhotoPermissionOpen] = useState(false);
+  const photoPermission = useRef<boolean | undefined>(undefined);
+  const saveAfterDismiss = useRef(false);
   const [standardsOpen, setStandardsOpen] = useState(false);
   const [standardsAcknowledged, setStandardsAcknowledged] = useState(
     onAcknowledgeStandards === undefined,
@@ -75,6 +83,8 @@ export function useSpotForm(
 
   /** Uploads and saves a payload that already passed client validation. */
   async function savePayload(payload: SpotPayload) {
+    if (busy.current) return;
+    busy.current = true;
     setSaving(true);
     // Uploads happen at save time so a cancelled form leaves no orphan files;
     // if the save itself fails, the fresh uploads are discarded for the same reason.
@@ -94,23 +104,34 @@ export function useSpotForm(
         uploaded.push(storageId);
         photoIds.push(storageId);
       }
-      await onSave(payload, photoIds);
+      await onSave(
+        { ...payload, allowAdminPhotos: photoIds.length === 0 && photoPermission.current === true },
+        photoIds,
+        // Use the version captured with the form, not a later reactive prop update.
+        values.adminPhotosAddedAt,
+      );
     } catch (err) {
       await Promise.allSettled(uploaded.map((storageId) => discardUpload({ storageId })));
       Alert.alert("Couldn't save the spot", err instanceof Error ? err.message : "Try again.");
     } finally {
+      busy.current = false;
       setSaving(false);
     }
   }
 
-  /** Returns the errors that blocked the save, or opens the first-use agreement. */
+  /** Returns validation errors, or opens the required consent sheets before saving. */
   async function save(): Promise<SpotFormErrors | null> {
+    if (busy.current || acknowledgingStandards) return null;
     const result = validateSpotForm(values);
     if (!result.ok) {
       setErrors(result.errors);
       return result.errors;
     }
     setErrors({});
+    if (values.photos.length === 0 && photoPermission.current === undefined) {
+      setPhotoPermissionOpen(true);
+      return null;
+    }
     if (!standardsAcknowledged && onAcknowledgeStandards) {
       setStandardsOpen(true);
       return null;
@@ -147,6 +168,21 @@ export function useSpotForm(
     }
   }
 
+  function resumeAfterPhotoPermission() {
+    if (!saveAfterDismiss.current) return;
+    saveAfterDismiss.current = false;
+    void save();
+  }
+
+  function choosePhotoPermission(allowed: boolean) {
+    if (saveAfterDismiss.current) return;
+    photoPermission.current = allowed;
+    saveAfterDismiss.current = true;
+    setPhotoPermissionOpen(false);
+    // iOS must finish dismissing this native modal before presenting standards.
+    if (Platform.OS !== "ios") resumeAfterPhotoPermission();
+  }
+
   // Both forms hand this to the picker; deriving it here keeps the null-pair
   // check in one place rather than repeated at each call site.
   const location =
@@ -159,6 +195,14 @@ export function useSpotForm(
     errors,
     saving,
     standardsOpen,
+    photoPermissionOpen,
+    choosePhotoPermission,
+    resumeAfterPhotoPermission,
+    closePhotoPermission: () => {
+      saveAfterDismiss.current = false;
+      photoPermission.current = undefined;
+      setPhotoPermissionOpen(false);
+    },
     acknowledgingStandards,
     location,
     setField,

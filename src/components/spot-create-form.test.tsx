@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import { Alert } from "react-native";
 
 import type { FormPhoto } from "@/lib/spot-form";
@@ -93,16 +93,21 @@ describe("SpotCreateForm", () => {
     await fireEvent.press(screen.getByText("Next · Details"));
     await fireEvent.press(screen.getByText("Low"));
     await fireEvent.press(screen.getByText("Save spot"));
+    const dismissPermission = screen.getByTestId("photo-permission-sheet").props.onDismiss;
+    await fireEvent.press(screen.getByText("Save without permission"));
+    await act(() => dismissPermission());
 
     expect(onSave).toHaveBeenCalledWith(
       {
         name: "Test Ledge",
+        allowAdminPhotos: false,
         types: ["ledge"],
         bustFactor: "low",
         latitude: 51.05,
         longitude: -114.07,
       },
       [],
+      undefined,
     );
   });
 
@@ -122,6 +127,9 @@ describe("SpotCreateForm", () => {
     await fireEvent.press(screen.getByText("Next · Details"));
     await fireEvent.press(screen.getByText("Low"));
     await fireEvent.press(screen.getByText("Save spot"));
+    const dismissPermission = screen.getByTestId("photo-permission-sheet").props.onDismiss;
+    await fireEvent.press(screen.getByText("Save without permission"));
+    await act(() => dismissPermission());
 
     expect(screen.getByText("First contribution")).toBeOnTheScreen();
     expect(onSave).not.toHaveBeenCalled();
@@ -175,4 +183,30 @@ describe("SpotCreateForm", () => {
     expect(mockDiscardUpload).toHaveBeenCalledWith({ storageId: "storage-1" });
     expect(onSave).not.toHaveBeenCalled();
   });
+});
+
+test("dismissing photo permission cancels saving, while allowing it saves once after dismissal", async () => {
+  const onSave = jest.fn().mockResolvedValue(undefined);
+  await render(<SpotCreateForm onCancel={jest.fn()} onSave={onSave} />);
+  await fillBasics();
+  await fireEvent.press(screen.getByText("Set test location"));
+  await fireEvent.press(screen.getByText("Next · Details"));
+  await fireEvent.press(screen.getByText("Low"));
+  await fireEvent.press(screen.getByText("Save spot"));
+  const firstDismiss = screen.getByTestId("photo-permission-sheet").props.onDismiss;
+  await fireEvent.press(screen.getByLabelText("Close photo permission"));
+  await act(() => firstDismiss());
+  expect(onSave).not.toHaveBeenCalled();
+  await fireEvent.press(screen.getByText("Save spot"));
+  const dismissPermission = screen.getByTestId("photo-permission-sheet").props.onDismiss;
+  await fireEvent.press(screen.getByText("Allow and save spot"));
+  expect(onSave).not.toHaveBeenCalled();
+  await act(() => dismissPermission());
+  await act(() => dismissPermission());
+  expect(onSave).toHaveBeenCalledTimes(1);
+  expect(onSave).toHaveBeenCalledWith(
+    expect.objectContaining({ allowAdminPhotos: true }),
+    [],
+    undefined,
+  );
 });

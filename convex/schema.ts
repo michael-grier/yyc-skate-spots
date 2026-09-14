@@ -57,6 +57,10 @@ export default defineSchema({
     longitude: v.number(),
     // Bounded by MAX_PHOTOS in convex/spots.ts, so an array is safe here.
     photoIds: v.array(v.id("_storage")),
+    // Permission is owner-controlled; absent on older spots means no consent.
+    allowAdminPhotos: v.optional(v.boolean()),
+    adminPhotosAddedAt: v.optional(v.number()),
+    adminPhotosUnseen: v.optional(v.boolean()),
     // Clerk identity tokenIdentifier — the ownership key for edit/delete.
     createdBy: v.string(),
     // Legacy/provider fallback. Queries prefer the current name in profiles.

@@ -14,6 +14,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { LocationPicker } from "@/components/location-picker";
+import { PhotoPermissionSheet } from "@/components/photo-permission-sheet";
 import { StandardsAcceptanceSheet } from "@/components/standards-acceptance-sheet";
 import {
   BustFactorField,
@@ -68,6 +69,10 @@ export function SpotCreateForm({ onCancel, onSave, onAcknowledgeStandards }: Spo
     values,
     errors,
     saving,
+    photoPermissionOpen,
+    choosePhotoPermission,
+    resumeAfterPhotoPermission,
+    closePhotoPermission,
     standardsOpen,
     acknowledgingStandards,
     location,
@@ -279,6 +284,12 @@ export function SpotCreateForm({ onCancel, onSave, onAcknowledgeStandards }: Spo
           standardsRef.current?.dismiss();
           router.push("/standards");
         }}
+      />
+      <PhotoPermissionSheet
+        visible={photoPermissionOpen}
+        onChoose={choosePhotoPermission}
+        onClose={closePhotoPermission}
+        onDismiss={resumeAfterPhotoPermission}
       />
       <StandardsAcceptanceSheet
         visible={standardsOpen}
