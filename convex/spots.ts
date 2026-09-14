@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { internalMutation, mutation, query, type MutationCtx } from "./_generated/server";
-import { requireCanContribute, requireIdentity, userModerationFor } from "./auth";
+import { requireAdmin, requireCanContribute, requireIdentity, userModerationFor } from "./auth";
 import {
   clearSpotModeration,
   queueEditedSpot,
@@ -33,6 +33,7 @@ const spotFields = v.object({
   latitude: v.number(),
   longitude: v.number(),
   photoIds: v.array(v.id("_storage")),
+  allowAdminPhotos: v.optional(v.boolean()),
 });
 
 /** Loads a spot and verifies the caller owns it; throws otherwise. */
@@ -205,6 +206,9 @@ export const list = query({
         async ({
           photoIds,
           createdBy,
+          allowAdminPhotos: _allowAdminPhotos,
+          adminPhotosAddedAt: _adminPhotosAddedAt,
+          adminPhotosUnseen: _adminPhotosUnseen,
           publicationStatus: _status,
           deletionRequested: _deletionRequested,
           ...spot
@@ -249,6 +253,7 @@ export const mine = query({
           name: spot.name,
           types: spot.types,
           bustFactor: spot.bustFactor,
+          adminPhotosUnseen: spot.adminPhotosUnseen ?? false,
         })),
     );
     return [
@@ -323,6 +328,9 @@ export const get = query({
     ).filter((url): url is string => url !== null);
     const {
       photoIds,
+      allowAdminPhotos,
+      adminPhotosAddedAt,
+      adminPhotosUnseen,
       createdBy: _createdBy,
       publicationStatus: _publicationStatus,
       deletionRequested: _deletionRequested,
@@ -337,6 +345,13 @@ export const get = query({
       isFavorite: favorite !== null,
       isPendingReview: !isPublished,
       photoIds: isOwner ? photoIds : null,
+      ...(isOwner
+        ? {
+            allowAdminPhotos: allowAdminPhotos ?? false,
+            adminPhotosAddedAt,
+            adminPhotosUnseen: adminPhotosUnseen ?? false,
+          }
+        : {}),
     };
   },
 });
@@ -356,6 +371,7 @@ export const create = mutation({
     const id = await ctx.db.insert("spots", {
       ...args,
       name: args.name.trim(),
+      allowAdminPhotos: args.photoIds.length === 0 && args.allowAdminPhotos === true,
       createdBy: identity.tokenIdentifier,
       createdByName: await contributorName(ctx, identity.tokenIdentifier, identity.name),
       // Only the verified Clerk role can skip review; client arguments cannot set this status.
@@ -372,10 +388,20 @@ export const create = mutation({
 });
 
 export const update = mutation({
-  args: { id: v.id("spots"), ...spotFields.fields },
+  args: {
+    id: v.id("spots"),
+    ...spotFields.fields,
+    expectedAdminPhotosAddedAt: v.optional(v.number()),
+  },
   handler: async (ctx, args) => {
-    const { id, ...fields } = args;
+    const { id, expectedAdminPhotosAddedAt, ...fields } = args;
     const { spot: existing, identity } = await requireOwnedSpot(ctx, id, true);
+    // An editor opened before an admin upload must not silently drop the new photos.
+    if (existing.adminPhotosAddedAt !== expectedAdminPhotosAddedAt) {
+      throw new Error(
+        "Admin photos were added while you were editing. Reopen the editor to see them before saving.",
+      );
+    }
     validateSpotFields(fields);
     await assertPhotosUnclaimed(ctx, fields.photoIds, id);
     const before = new Set(existing.photoIds);
@@ -398,6 +424,9 @@ export const update = mutation({
     await ctx.db.replace("spots", id, {
       ...fields,
       name: fields.name.trim(),
+      allowAdminPhotos: fields.photoIds.length === 0 && fields.allowAdminPhotos === true,
+      adminPhotosAddedAt: existing.adminPhotosAddedAt,
+      adminPhotosUnseen: fields.photoIds.length > 0 && existing.adminPhotosUnseen === true,
       createdBy: existing.createdBy,
       createdByName: existing.createdByName,
       publicationStatus: "pending",
@@ -481,6 +510,60 @@ export const discardUpload = mutation({
     }
     await ctx.db.delete("uploads", upload._id);
     await ctx.storage.delete(args.storageId);
+    return null;
+  },
+});
+
+/** Consent changes do not edit public content or reopen moderation. */
+export const setAdminPhotoPermission = mutation({
+  args: { id: v.id("spots"), allowed: v.boolean() },
+  handler: async (ctx, { id, allowed }) => {
+    const { spot } = await requireOwnedSpot(ctx, id, allowed);
+    if (allowed && spot.photoIds.length > 0) throw new Error("This spot already has photos.");
+    await ctx.db.patch("spots", id, { allowAdminPhotos: allowed });
+    return null;
+  },
+});
+
+/** Admins may fill an empty gallery, but cannot edit details or resolve reviews here. */
+export const addAdminPhotos = mutation({
+  args: { id: v.id("spots"), photoIds: v.array(v.id("_storage")) },
+  handler: async (ctx, { id, photoIds }) => {
+    const identity = await requireAdmin(ctx);
+    await requireCanContribute(ctx);
+    const spot = await ctx.db.get("spots", id);
+    if (!spot || spot.deletionRequested) throw new Error("Spot not found.");
+    if (!spot.allowAdminPhotos) throw new Error("The contributor has not given photo permission.");
+    if (spot.photoIds.length > 0)
+      throw new Error("This spot already has photos. Reopen it to see the latest version.");
+    if (
+      photoIds.length === 0 ||
+      photoIds.length > MAX_PHOTOS ||
+      new Set(photoIds).size !== photoIds.length
+    ) {
+      throw new Error(`Add between 1 and ${MAX_PHOTOS} different photos.`);
+    }
+    await assertPhotosUnclaimed(ctx, photoIds, null);
+    await consumeUploads(ctx, identity.tokenIdentifier, photoIds);
+    await claimPhotos(ctx, photoIds, id);
+    await ctx.db.patch("spots", id, {
+      photoIds,
+      allowAdminPhotos: false,
+      adminPhotosAddedAt: Date.now(),
+      adminPhotosUnseen: true,
+    });
+    return null;
+  },
+});
+
+/** Acknowledges only the upload the owner actually opened, preserving newer updates. */
+export const markAdminPhotosSeen = mutation({
+  args: { id: v.id("spots"), addedAt: v.number() },
+  handler: async (ctx, { id, addedAt }) => {
+    const { spot } = await requireOwnedSpot(ctx, id);
+    if (spot.adminPhotosAddedAt === addedAt && spot.adminPhotosUnseen) {
+      await ctx.db.patch("spots", id, { adminPhotosUnseen: false });
+    }
     return null;
   },
 });

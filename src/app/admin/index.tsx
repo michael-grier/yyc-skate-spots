@@ -16,12 +16,13 @@ import { formatMonthYear } from "@/lib/dates";
 import { formatSpotTypes } from "@/lib/spot-labels";
 import { colors } from "@/theme/colors";
 
-type QueueFilter = "needs_review" | "reported" | "all";
+type QueueFilter = "needs_review" | "reported" | "needs_photos" | "all";
 type QueueSpot = FunctionReturnType<typeof api.moderation.listSpots>[number];
 
 const FILTERS: { value: QueueFilter; label: string }[] = [
   { value: "needs_review", label: "Needs review" },
   { value: "reported", label: "Reported" },
+  { value: "needs_photos", label: "Needs photos" },
   { value: "all", label: "All" },
 ];
 
@@ -75,7 +76,9 @@ function QueueSpotCard({ spot, onPress }: { spot: QueueSpot; onPress: () => void
             {formatSpotTypes(spot.types)} · {spot.creatorName ?? "Unknown contributor"}
           </Text>
           <Text className="mt-1 font-sans text-[11px] text-mute">
-            Added {formatMonthYear(spot._creationTime)}
+            {spot.canAddAdminPhotos
+              ? "Photo permission granted"
+              : `Added ${formatMonthYear(spot._creationTime)}`}
           </Text>
         </View>
         <View className="justify-center pr-3">
@@ -103,6 +106,7 @@ export default function AdminQueueScreen() {
 
   const filteredSpots = useMemo(() => {
     if (!spots) return [];
+    if (filter === "needs_photos") return spots.filter((spot) => spot.canAddAdminPhotos);
     if (filter === "reported") return spots.filter((spot) => spot.review.openReportCount > 0);
     if (filter === "needs_review") return spots.filter((spot) => spot.review.needsReview);
     return spots;
@@ -224,21 +228,23 @@ export default function AdminQueueScreen() {
               </Card>
             ) : null}
 
-            <View className="mt-5 mb-4 flex-row gap-2">
+            <View className="mt-5 mb-4 flex-row flex-wrap gap-2">
               {FILTERS.map((option) => {
                 const count =
                   option.value === "reported"
                     ? reportedCount
                     : option.value === "needs_review"
                       ? needsReviewCount
-                      : spots?.length;
+                      : option.value === "needs_photos"
+                        ? spots?.filter((spot) => spot.canAddAdminPhotos).length
+                        : spots?.length;
                 return (
                   <Chip
                     key={option.value}
                     label={`${option.label}${count === undefined ? "" : ` ${count}`}`}
                     selected={filter === option.value}
                     onPress={() => setFilter(option.value)}
-                    className="flex-1 px-2"
+                    className="px-3"
                   />
                 );
               })}

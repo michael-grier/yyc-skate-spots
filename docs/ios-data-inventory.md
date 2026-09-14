@@ -35,6 +35,16 @@ with the report after a moderation decision, spot deletion, or reporter account 
 Unsubmitted report uploads expire after 24 hours; failed submissions also attempt immediate
 cleanup. This adds a private moderation use of photos to the data flows above.
 
+## Planned day-one patch: admin-added spot photos
+
+Contributors can permit the administrator to fill an empty spot gallery. Permission is off
+unless explicitly granted and can be withdrawn before the upload. The administrator can add
+photos but cannot edit spot details through this workflow. These photos follow the existing
+spot visibility and deletion rules and remain under the spot owner's control. Deleting the
+administrator's account does not delete photos already attached to another contributor's spot.
+An owner-only unread flag marks the addition until the owner opens the spot. Photo permission
+and notification state are deleted with the spot. Push delivery is deferred to issue #62.
+
 ## Providers in the shipped service
 
 | Provider | Role | End-user data involved |

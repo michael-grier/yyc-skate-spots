@@ -188,6 +188,23 @@ export default function AdminSpotReviewScreen() {
             </Text>
           ) : null}
 
+          {spot.canAddAdminPhotos ? (
+            <Card className="mt-5 p-4">
+              <Text className="font-sans-medium text-[13px] text-bust-low">
+                Contributor permission granted
+              </Text>
+              <Text className="mt-2 font-sans text-[13px] text-mute">
+                You can add photos. Spot details and review decisions stay unchanged.
+              </Text>
+              <Button
+                label="Add spot photos"
+                className="mt-4"
+                onPress={() =>
+                  router.push({ pathname: "/admin/spot/photos/[id]", params: { id: spot._id } })
+                }
+              />
+            </Card>
+          ) : null}
           <Text className="mt-7 mb-2 px-1 font-sans-medium text-[11px] text-mute">
             REPORTS ({spot.reports.length})
           </Text>

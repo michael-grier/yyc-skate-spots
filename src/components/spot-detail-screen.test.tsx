@@ -7,6 +7,8 @@ import SpotDetailScreen from "@/app/spot/[id]";
 const mockPush = jest.fn();
 const mockToggleFavorite = jest.fn();
 const mockRemoveSpot = jest.fn();
+const mockMarkPhotosSeen = jest.fn();
+const mockSetPhotoPermission = jest.fn();
 const mockAuthState = { isLoaded: true, isSignedIn: false };
 const mockSpot = {
   _id: "spot-1" as Id<"spots">,
@@ -22,6 +24,10 @@ const mockSpot = {
   isOwner: false,
   isFavorite: false,
   isPendingReview: false,
+  status: "active" as const,
+  adminPhotosUnseen: false,
+  adminPhotosAddedAt: 123,
+  allowAdminPhotos: false,
 };
 
 jest.mock("@clerk/expo", () => ({ useAuth: () => mockAuthState }));
@@ -34,8 +40,13 @@ jest.mock("convex/react", () => {
   const { getFunctionName } = jest.requireActual<typeof import("convex/server")>("convex/server");
   return {
     useQuery: () => mockSpot,
-    useMutation: (reference: Parameters<typeof getFunctionName>[0]) =>
-      getFunctionName(reference) === "favorites:toggle" ? mockToggleFavorite : mockRemoveSpot,
+    useMutation: (reference: Parameters<typeof getFunctionName>[0]) => {
+      const name = getFunctionName(reference);
+      if (name === "favorites:toggle") return mockToggleFavorite;
+      if (name === "spots:markAdminPhotosSeen") return mockMarkPhotosSeen;
+      if (name === "spots:setAdminPhotoPermission") return mockSetPhotoPermission;
+      return mockRemoveSpot;
+    },
   };
 });
 jest.mock("@/components/photo-carousel", () => ({ PhotoCarousel: () => null }));
@@ -51,6 +62,10 @@ beforeEach(() => {
   mockAuthState.isSignedIn = false;
   mockSpot.isOwner = false;
   mockSpot.isPendingReview = false;
+  mockSpot.adminPhotosUnseen = false;
+  mockSpot.allowAdminPhotos = false;
+  mockMarkPhotosSeen.mockResolvedValue(null);
+  mockSetPhotoPermission.mockResolvedValue(null);
   mockToggleFavorite.mockResolvedValue(true);
   process.env.EXPO_PUBLIC_SHARE_BASE_URL = "https://share.example.com";
 });
@@ -134,4 +149,25 @@ test("opens the focused dead-spot form from the detail shortcut", async () => {
     pathname: "/spot/report/[id]",
     params: { id: "spot-1", kind: "dead" },
   });
+});
+
+test("acknowledges admin photos only when the owner opens them", async () => {
+  mockAuthState.isSignedIn = true;
+  mockSpot.adminPhotosUnseen = true;
+  await render(<SpotDetailScreen />);
+  expect(mockMarkPhotosSeen).not.toHaveBeenCalled();
+  mockSpot.isOwner = true;
+  await screen.rerender(<SpotDetailScreen />);
+  await waitFor(() =>
+    expect(mockMarkPhotosSeen).toHaveBeenCalledWith({ id: "spot-1", addedAt: 123 }),
+  );
+});
+
+test("lets the owner withdraw unused photo permission", async () => {
+  mockAuthState.isSignedIn = true;
+  mockSpot.isOwner = true;
+  mockSpot.allowAdminPhotos = true;
+  await render(<SpotDetailScreen />);
+  await fireEvent.press(screen.getByRole("button", { name: "Withdraw photo permission" }));
+  expect(mockSetPhotoPermission).toHaveBeenCalledWith({ id: "spot-1", allowed: false });
 });

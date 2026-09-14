@@ -309,3 +309,12 @@ describe("display name editor", () => {
     expect(screen.queryByText("Michael Grier")).toBeNull();
   });
 });
+
+test("shows an admin-photo indicator on the owner's unread spot", async () => {
+  mockQueryResults["spots:mine"] = [
+    { ...spot("admin-photo-spot", "BMO Ledges"), status: "active", adminPhotosUnseen: true },
+  ];
+  await render(<ProfileView />);
+  await fireEvent.press(screen.getByRole("tab", { name: "Your spots, 1 spot" }));
+  expect(screen.getByText("New photos from admin")).toBeOnTheScreen();
+});
