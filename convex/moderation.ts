@@ -109,7 +109,16 @@ export const listSpots = query({
     );
     return await Promise.all(
       activeSpots.map(
-        async ({ photoIds, createdBy, deletionRequested: _deletionRequested, ...spot }) => {
+        // Admins need upload eligibility, not the owner's notification/read state.
+        async ({
+          photoIds,
+          createdBy,
+          deletionRequested: _deletionRequested,
+          allowAdminPhotos,
+          adminPhotosAddedAt: _adminPhotosAddedAt,
+          adminPhotosUnseen: _adminPhotosUnseen,
+          ...spot
+        }) => {
           const contributor = contributorByIdentifier.get(createdBy);
           return {
             ...spot,
@@ -119,7 +128,7 @@ export const listSpots = query({
             creatorRemovalCount: contributor?.confirmedRemovalCount ?? 0,
             creatorIsBanned: contributor?.isBanned ?? false,
             creatorModerationId: contributor?._id ?? null,
-            canAddAdminPhotos: spot.allowAdminPhotos === true && photoIds.length === 0,
+            canAddAdminPhotos: allowAdminPhotos === true && photoIds.length === 0,
             previewPhotoUrl: photoIds.length > 0 ? await ctx.storage.getUrl(photoIds[0]) : null,
             review: reviewState({ ...spot, photoIds, createdBy }, moderationBySpot.get(spot._id)),
           };
@@ -154,10 +163,14 @@ export const getSpot = query({
     const photoUrls = (
       await Promise.all(spot.photoIds.map((photoId) => ctx.storage.getUrl(photoId)))
     ).filter((url): url is string => url !== null);
+    // Owner notification metadata must also stay out of the admin detail response.
     const {
       photoIds: _photoIds,
       createdBy: _createdBy,
       deletionRequested: _deletionRequested,
+      allowAdminPhotos: _allowAdminPhotos,
+      adminPhotosAddedAt: _adminPhotosAddedAt,
+      adminPhotosUnseen: _adminPhotosUnseen,
       ...fields
     } = spot;
     return {

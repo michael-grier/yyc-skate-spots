@@ -115,6 +115,8 @@ describe("admin spot photos", () => {
     for (const result of [
       await t.query(api.spots.get, { id }),
       (await t.query(api.spots.list, {}))[0],
+      await admin.query(api.moderation.getSpot, { id }),
+      (await admin.query(api.moderation.listSpots, {}))[0],
     ]) {
       expect(result).not.toHaveProperty("adminPhotosUnseen");
       expect(result).not.toHaveProperty("adminPhotosAddedAt");
