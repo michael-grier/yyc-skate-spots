@@ -192,10 +192,14 @@ export function PhotoStrip({
   photos,
   onAdd,
   onRemove,
+  maxPhotos = MAX_PHOTOS,
+  disabled = false,
 }: {
   photos: FormPhoto[];
   onAdd: () => void;
   onRemove: (photo: FormPhoto) => void;
+  maxPhotos?: number;
+  disabled?: boolean;
 }) {
   return (
     <View className="flex-row flex-wrap gap-2.5">
@@ -213,6 +217,7 @@ export function PhotoStrip({
             accessibilityLabel="Remove photo"
             hitSlop={6}
             onPress={() => onRemove(photo)}
+            disabled={disabled}
             className="absolute -right-1.5 -top-1.5 h-6 w-6 items-center justify-center rounded-full border border-white/20"
             style={{ backgroundColor: "rgba(30,32,36,0.95)" }}
           >
@@ -220,11 +225,12 @@ export function PhotoStrip({
           </Pressable>
         </View>
       ))}
-      {photos.length < MAX_PHOTOS ? (
+      {photos.length < maxPhotos ? (
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Add photos"
           onPress={onAdd}
+          disabled={disabled}
           className="items-center justify-center rounded-xl border border-dashed border-white/20 active:opacity-80"
           style={PHOTO_TILE_DIMENSIONS}
         >

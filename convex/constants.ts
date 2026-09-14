@@ -7,3 +7,5 @@ export const MODERATION_FIXTURE_OWNER = "seed:moderation-workflow";
 
 // Increment this only when contributors must accept a materially changed policy.
 export const COMMUNITY_STANDARDS_VERSION = 1;
+
+export const MAX_REPORT_PHOTOS = 3;

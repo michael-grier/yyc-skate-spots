@@ -1,6 +1,8 @@
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 
+import { deleteReport } from "./reportPhotos";
+
 export const MAX_OPEN_REPORTS_PER_SPOT = 20;
 
 export async function spotModerationFor(ctx: QueryCtx | MutationCtx, spotId: Id<"spots">) {
@@ -63,7 +65,7 @@ export async function deleteOpenReports(ctx: MutationCtx, spotId: Id<"spots">) {
     .withIndex("by_spotId", (q) => q.eq("spotId", spotId))
     .take(MAX_OPEN_REPORTS_PER_SPOT);
   for (const report of reports) {
-    await ctx.db.delete("spotReports", report._id);
+    await deleteReport(ctx, report);
   }
   return reports.length;
 }

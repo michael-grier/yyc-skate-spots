@@ -99,11 +99,21 @@ export default defineSchema({
     .index("by_storageId", ["storageId"])
     .index("by_uploadedBy", ["uploadedBy"]),
 
+  // Pending evidence is separate from public spot uploads and expires after 24 hours.
+  reportUploads: defineTable({
+    storageId: v.id("_storage"),
+    uploadedBy: v.string(),
+  })
+    .index("by_storageId", ["storageId"])
+    .index("by_uploadedBy", ["uploadedBy"]),
+
   // Reports stay private and exist only while a spot awaits a decision.
   // Removing them on resolution lets the same person report a later edit.
   spotReports: defineTable({
     spotId: v.id("spots"),
     reportedBy: v.string(),
+    // Optional for reports submitted before evidence was supported.
+    photoIds: v.optional(v.array(v.id("_storage"))),
     reason: reportReason,
     details: v.optional(v.string()),
   })

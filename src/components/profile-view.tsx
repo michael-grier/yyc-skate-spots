@@ -282,7 +282,9 @@ export function ProfileView() {
                       Removed · {reportReasonLabel(item.reason)}
                     </Text>
                     <Text className="mt-0.5 font-sans text-[11px] text-mute">
-                      Confirmed removal {item.strikeNumber} · ban threshold 3
+                      {item.strikeNumber === 0
+                        ? "No strike added"
+                        : `Confirmed removal ${item.strikeNumber} · ban threshold 3`}
                     </Text>
                   </View>
                 ) : item.status === "pending" ? (

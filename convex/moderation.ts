@@ -169,12 +169,17 @@ export const getSpot = query({
         isBanned: contributor?.isBanned ?? false,
         moderationId: contributor?._id ?? null,
       },
-      reports: reports.map(({ _id, _creationTime, reason, details }) => ({
-        _id,
-        _creationTime,
-        reason,
-        details,
-      })),
+      reports: await Promise.all(
+        reports.map(async ({ _id, _creationTime, reason, details, photoIds }) => ({
+          _id,
+          _creationTime,
+          reason,
+          details,
+          photoUrls: (
+            await Promise.all((photoIds ?? []).map((id) => ctx.storage.getUrl(id)))
+          ).filter((url): url is string => url !== null),
+        })),
+      ),
     };
   },
 });
@@ -215,7 +220,7 @@ export const markMeetsStandards = mutation({
   },
 });
 
-/** Removes a spot and records one confirmed standards violation. */
+/** Dead spots are map maintenance; only other removal reasons add a contributor strike. */
 export const removeSpot = mutation({
   args: {
     spotId: v.id("spots"),
@@ -238,7 +243,7 @@ export const removeSpot = mutation({
 
     let strikeNumber = 0;
     let contributorModerationId = null;
-    if (spot.createdBy !== SEED_OWNER) {
+    if (spot.createdBy !== SEED_OWNER && args.reason !== "gone_or_unusable") {
       const existing = await userModerationFor(ctx, spot.createdBy);
       strikeNumber = (existing?.confirmedRemovalCount ?? 0) + 1;
       if (existing) {

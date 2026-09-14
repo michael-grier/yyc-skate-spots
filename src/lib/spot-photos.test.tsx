@@ -38,24 +38,31 @@ beforeEach(() => {
   });
 });
 
-test("uploads the rendered JPEG as an Expo file body", async () => {
-  const storageId = await uploadPhoto(
-    {
-      key: "picked-photo",
-      uri: "file:///cache/picked.heic",
-      width: 4000,
-      height: 3000,
-    },
-    "https://example.convex.site",
-    "clerk-token",
-  );
+test.each(["spot", "report"] as const)(
+  "uploads a rendered JPEG to the %s endpoint",
+  async (purpose) => {
+    const storageId = await uploadPhoto(
+      {
+        key: "picked-photo",
+        uri: "file:///cache/picked.heic",
+        width: 4000,
+        height: 3000,
+      },
+      "https://example.convex.site",
+      "clerk-token",
+      purpose,
+    );
 
-  expect(mockResize).toHaveBeenCalledWith({ width: 1600, height: 1200 });
-  expect(mockFileUris).toEqual(["file:///cache/rendered.jpg"]);
-  expect(mockFetch).toHaveBeenCalledWith("https://example.convex.site/upload", {
-    method: "POST",
-    headers: { "Content-Type": "image/jpeg", Authorization: "Bearer clerk-token" },
-    body: expect.objectContaining({ uri: "file:///cache/rendered.jpg" }),
-  });
-  expect(storageId).toBe("storage-1");
-});
+    expect(mockResize).toHaveBeenCalledWith({ width: 1600, height: 1200 });
+    expect(mockFileUris).toEqual(["file:///cache/rendered.jpg"]);
+    expect(mockFetch).toHaveBeenCalledWith(
+      `https://example.convex.site/${purpose === "report" ? "report-upload" : "upload"}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "image/jpeg", Authorization: "Bearer clerk-token" },
+        body: expect.objectContaining({ uri: "file:///cache/rendered.jpg" }),
+      },
+    );
+    expect(storageId).toBe("storage-1");
+  },
+);
