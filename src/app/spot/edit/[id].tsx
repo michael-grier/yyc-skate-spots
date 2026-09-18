@@ -63,8 +63,8 @@ export default function EditSpotScreen() {
       <SpotEditForm
         initialValues={spotToFormValues({ ...spot, photoIds: spot.photoIds })}
         onCancel={() => router.back()}
-        onSave={async (payload, photoIds) => {
-          await updateSpot({ id: spotId, ...payload, photoIds });
+        onSave={async (payload, photoIds, expectedAdminPhotosAddedAt) => {
+          await updateSpot({ id: spotId, ...payload, photoIds, expectedAdminPhotosAddedAt });
           router.back();
         }}
         onAcknowledgeStandards={

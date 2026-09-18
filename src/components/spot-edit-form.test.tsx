@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import { Alert, StyleSheet } from "react-native";
 
 import { EMPTY_SPOT_FORM, type FormPhoto, type SpotFormValues } from "@/lib/spot-form";
@@ -95,16 +95,21 @@ describe("SpotEditForm", () => {
     // Tapping the chosen surface is what clears an optional field.
     await fireEvent.press(screen.getByText("Smooth"));
     await fireEvent.press(screen.getByText("Save changes"));
+    const dismissPermission = screen.getByTestId("photo-permission-sheet").props.onDismiss;
+    await fireEvent.press(screen.getByText("Save without permission"));
+    await act(() => dismissPermission());
 
     expect(onSave).toHaveBeenCalledWith(
       {
         name: "Harmony Park Ledges",
+        allowAdminPhotos: false,
         types: ["ledge", "stairs"],
         bustFactor: "medium",
         latitude: 51.05,
         longitude: -114.07,
       },
       [],
+      undefined,
     );
   });
 
@@ -121,6 +126,9 @@ describe("SpotEditForm", () => {
     );
 
     await fireEvent.press(screen.getByText("Save changes"));
+    const dismissPermission = screen.getByTestId("photo-permission-sheet").props.onDismiss;
+    await fireEvent.press(screen.getByText("Save without permission"));
+    await act(() => dismissPermission());
     expect(screen.getByText("First contribution")).toBeOnTheScreen();
     expect(onSave).not.toHaveBeenCalled();
 
@@ -208,4 +216,28 @@ describe("SpotEditForm", () => {
     expect(mockDiscardUpload).toHaveBeenCalledWith({ storageId: "storage-1" });
     expect(onSave).not.toHaveBeenCalled();
   });
+});
+
+test("keeps the photo version from when the editor opened if a reactive update arrives", async () => {
+  const onSave = jest.fn().mockResolvedValue(undefined);
+  const onCancel = jest.fn();
+  await render(
+    <SpotEditForm
+      initialValues={{ ...EXISTING, adminPhotosAddedAt: 100 }}
+      onCancel={onCancel}
+      onSave={onSave}
+    />,
+  );
+  await screen.rerender(
+    <SpotEditForm
+      initialValues={{ ...EXISTING, adminPhotosAddedAt: 200 }}
+      onCancel={onCancel}
+      onSave={onSave}
+    />,
+  );
+  await fireEvent.press(screen.getByText("Save changes"));
+  const dismissPermission = screen.getByTestId("photo-permission-sheet").props.onDismiss;
+  await fireEvent.press(screen.getByText("Save without permission"));
+  await act(() => dismissPermission());
+  expect(onSave).toHaveBeenCalledWith(expect.any(Object), [], 100);
 });
