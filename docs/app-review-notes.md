@@ -4,6 +4,10 @@ Target: iOS 1.0
 
 Historical verification: [version 1.0 release record](releases/1.0.md)
 
+For the Guideline 2.1 information request, use the [recording and resubmission guide](app-review-resubmission.md).
+The text below is a draft until the selected build, recording, account access, and content rights
+have been verified. Repository checks do not establish that the submitted binary passed device QA.
+
 ## App Store Connect fields
 
 Enter the review contact's name, phone number, and monitored email address directly in App Store
@@ -35,40 +39,61 @@ passwords if a resubmission or future version needs review access.
 
 ## Notes field
 
-Paste the following text into App Store Connect after replacing both bracketed account placeholders
-with the credentials stored outside this repository.
+Replace every bracketed placeholder, then paste the following text into the Notes field. Use the
+same completed text in the reply to Apple, preceded by the short introduction in the resubmission
+guide. Keep credentials outside this repository. Check the final character count in App Store
+Connect after filling in the recording link and account details.
 
 ```text
-YYC Skate Spots is a public map of Calgary street skateboarding spots. An account is not required to browse the map or open spot details.
+1. PHYSICAL-DEVICE WALKTHROUGH
+Recording: [REVIEWER-ACCESSIBLE VIDEO URL]
+Device: [IPHONE MODEL]; iOS: [VERSION]; app: 1.0.0 ([BUILD NUMBER]); tested: [DATE].
+Shows launch, main features, registration/login, reporting, moderation, contribution blocking, and deletion.
 
-LOCATION
-Location access is optional. If allowed, it shows the device's position, calculates distance to spots, and enables nearby filtering. The app remains usable if access is denied.
+2. PURPOSE AND AUDIENCE
+YYC Skate Spots helps skateboarders living in or visiting Calgary find and assess places to skate. Its searchable map has photos, feature types, surface notes, bust factor, and directions. Users can save favourites and contribute spots.
 
-SIGN-IN AND CONTRIBUTOR FLOW
-Open Sign in, enter the contributor demo email from the App Review Information fields, tap "Sign in with a password," enter the supplied password, and tap "Sign in."
-The contributor account can save favourites, submit a spot, manage its own spots, report a public listing, and delete itself from Profile > Delete account.
+3. ACCESS AND MAIN FEATURES
+Internet required; browsing needs no account or sample files. Map > marker > details shows photos, notes, directions, and sharing. Search/filter by type, bust factor, or distance. Location is optional; outside Calgary select Any distance.
 
-USER-GENERATED CONTENT
-New spots and changes to existing listings remain private to their contributor and administrators until an administrator approves them. Contributors must accept the public spot standards before their first submission. Every public spot has a private "Report this spot" action.
+Contributor demo: Sign in > enter the supplied email > Sign in with a password > enter supplied password > Sign in. A spot's heart saves it in Profile > Favourites. Add spot guides name, type, location, optional photos/notes, and bust factor; save and accept the standards. Find submissions in Profile > Your spots; edit your display name on Profile.
 
-ADMIN MODERATION
+Registration: Sign in > new email > Continue > emailed code > Verify. Apple/Google sign-in are also available. Forgot password? sends a reset code. Back to sign in or switching app tabs resets the form, retaining email. Opening Mail preserves verification.
+
+Contributor submissions/edits stay private until admin approval. Report another user's spot via Report this spot > reason > submit. Dead spot requires 1–3 private evidence photos.
+
 Admin demo email: [ADMIN DEMO EMAIL]
 Admin demo password: [ADMIN DEMO PASSWORD]
+Sign out, use admin password login > Profile > Review spots > select a spot. Meets standards approves; Remove spot requires a reason. Dead-spot removal adds no strike. After three other confirmed removals, Ban contributor blocks submissions, edits, uploads, and reports. Sign-in, browsing, and deletion remain available. Blocking is admin-managed; no personal block-user control or chat. Use disposable content for removal tests.
 
-Sign out of the contributor account, then use the same password flow with the admin credentials above. Open Profile > Review spots and select the test submission. The review screen can approve it, remove it, inspect private reports, and manage contribution bans. Please leave the seeded public listings in place.
+Photo assistance: submit without photos > Allow and save spot. Admins use Review spots > Needs photos to add photos with owner permission; pending spots stay pending. Owners can withdraw permission.
 
-ACCOUNT DELETION
-Profile > Delete account permanently removes the account and its submitted spots, photos, favourites, reports, and moderation history. An Apple-authenticated account may receive Apple's confirmation prompt before deletion completes.
+Deletion: Profile > Delete account > confirm. Removes the account, spots, photos, favourites, reports, and moderation history. Apple sign-in may require Apple confirmation. Use a disposable account.
 
-PUBLIC POLICIES AND SUPPORT
+All features are free. No purchases, subscriptions, paid content, advertisements, or payment processors.
+
+4. EXTERNAL SERVICES
+Clerk: authentication/sessions, including Apple/Google sign-in.
+Convex: database, backend functions, photos, favourites, reports, moderation.
+Google Maps Platform: in-app maps; optional directions handoff.
+Apple: location/geocoding, secure session storage, sign-in, sharing, optional Maps directions.
+Cloudflare: public website, policy/support pages, share-link fallback, support-email routing.
+Expo/React Native: framework; EAS builds/distributes the binary. No AI services.
+
+5. REGIONS
+Canada-only distribution; listings cover Calgary and nearby areas. Features/content do not switch by region. Distance depends on location/filters. Calgary browsing works remotely without location permission.
+
+6. REGULATED SERVICES AND CONTENT RIGHTS
+No regulated services. I own or have permission to use the initial descriptions, photos, and branding. No other licensed content needs authorization documents. Contributors must have permission to share photos and follow the standards.
+
 Privacy: https://yycskatespots.com/privacy
 Support: https://yycskatespots.com/support
-Spot standards: https://yycskatespots.com/standards
+Standards: https://yycskatespots.com/standards
 ```
 
 ## Guideline 1.2: user-generated content
 
-YYC Skate Spots holds every new spot and changed listing out of the public map, list, and spot
+YYC Skate Spots holds ordinary contributors' new spots and changed listings out of the public map, list, and spot
 pages until an administrator marks it as meeting the spot standards. The contributor and
 administrators can see the pending version while it is reviewed.
 
@@ -77,9 +102,11 @@ The app records the current policy version on their account, and the Convex back
 and photo writes until that record exists. The standards prohibit explicit or harassing content,
 spam, misleading listings, sensitive private locations, and photos the contributor cannot share.
 
-Every public spot page has a "Report this spot" action. Reports are private, enter the admin review
-queue, and include the selected reason and optional details. An administrator can approve the spot
-or remove it. Confirmed removals count against the contributor. After three removals, an
+Public spot pages offer "Report this spot" to signed-in users other than the owner, or
+"Sign in to report" to signed-out users. Reports are private, enter the admin review
+queue, and include the selected reason and optional details. Dead-spot reports additionally
+require 1–3 private evidence photos, deleted when the report is resolved. An administrator can approve the spot
+or remove it. Dead-spot removal does not count against the contributor. After three other removals, an
 administrator can block the account from creating spots, editing, uploading photos, and reporting.
 The backend enforces the block even if someone calls the Convex functions directly.
 
