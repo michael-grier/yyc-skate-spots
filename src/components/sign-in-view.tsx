@@ -54,10 +54,10 @@ export function SignInView() {
   const [ssoError, setSsoError] = useState<string | null>(null);
   const [socialBusy, setSocialBusy] = useState<"apple" | "google" | null>(null);
   const [appleAvailable, setAppleAvailable] = useState(false);
-  const [tabResetPending, setTabResetPending] = useState(false);
+  const [tabReset, setTabReset] = useState<"idle" | "pending" | "failed">("idle");
   const tabResetRunning = useRef(false);
-  const busy = emailBusy || tabResetPending;
-  const step = tabResetPending ? { kind: "email" as const } : authStep;
+  const busy = emailBusy || tabReset !== "idle";
+  const step = tabReset !== "idle" ? { kind: "email" as const } : authStep;
 
   useEffect(() => {
     const initialState = navigation.getState();
@@ -71,7 +71,7 @@ export function SignInView() {
         setPassword("");
         setCode("");
         setSsoError(null);
-        setTabResetPending(true);
+        setTabReset("pending");
       }
       previousTab = tab;
     });
@@ -81,10 +81,11 @@ export function SignInView() {
     if (tabResetRunning.current) return;
     tabResetRunning.current = true;
     try {
-      await reset();
+      const succeeded = await reset();
       setSsoError(null);
+      // A failed reset must not reveal the abandoned step or retry in a loop.
+      setTabReset(succeeded ? "idle" : "failed");
     } finally {
-      setTabResetPending(false);
       tabResetRunning.current = false;
     }
   });
@@ -92,8 +93,8 @@ export function SignInView() {
   useEffect(() => {
     // Let an in-flight Clerk operation settle before clearing its attempt, while
     // showing the base form immediately so its late response cannot restore a step.
-    if (tabResetPending && !emailBusy && !socialBusy) void finishTabReset();
-  }, [tabResetPending, emailBusy, socialBusy]);
+    if (tabReset === "pending" && !emailBusy && !socialBusy) void finishTabReset();
+  }, [tabReset, emailBusy, socialBusy]);
 
   useEffect(() => {
     let mounted = true;
@@ -154,13 +155,13 @@ export function SignInView() {
     }
   }
 
-  const message = tabResetPending ? null : (error ?? ssoError);
+  const message = tabReset === "pending" ? null : (error ?? ssoError);
   const passwordSignInDisabled =
     busy || socialBusy !== null || email.trim().length === 0 || password.length === 0;
 
   async function chooseEmailMethod(method: "code" | "password" | "reset") {
     Keyboard.dismiss();
-    await reset();
+    if (!(await reset())) return;
     setSsoError(null);
     setEmailMethod(method);
     setPassword("");
@@ -244,7 +245,7 @@ export function SignInView() {
             accessibilityLabel="Email address"
           />
           <Button
-            label={busy ? "Sending code…" : "Continue"}
+            label={emailBusy && tabReset === "idle" ? "Sending code…" : "Continue"}
             disabled={busy || socialBusy !== null || email.trim().length === 0}
             onPress={() => void sendCode(email)}
           />
@@ -405,6 +406,10 @@ export function SignInView() {
         <Text accessibilityRole="alert" className="mt-4 font-sans text-[13px] text-bust-high">
           {message}
         </Text>
+      ) : null}
+
+      {tabReset === "failed" ? (
+        <Button label="Retry sign-in reset" onPress={() => setTabReset("pending")} />
       ) : null}
 
       {/* Clerk renders its bot-protection widget here on web; skipped on native. */}

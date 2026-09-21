@@ -216,4 +216,26 @@ describe("useEmailCodeAuth", () => {
     expect(result.current.step).toEqual({ kind: "email" });
     expect(result.current.error).toBeNull();
   });
+
+  test.each([
+    ["signIn", "returned"],
+    ["signUp", "returned"],
+    ["signIn", "rejected"],
+    ["signUp", "rejected"],
+  ] as const)("reset reports a %s %s failure and permits a retry", async (attempt, failure) => {
+    const { result } = await renderHook(() => useEmailCodeAuth());
+    await act(() => result.current.sendCode("skater@example.com"));
+    const reset = attempt === "signIn" ? mockSignIn.reset : mockSignUp.reset;
+    if (failure === "returned") reset.mockResolvedValueOnce(err("reset_failed", "Reset failed"));
+    else reset.mockRejectedValueOnce(new Error("Reset failed"));
+
+    await act(async () => expect(await result.current.reset()).toBe(false));
+    expect(result.current.step.kind).toBe("code");
+    expect(result.current.error).toBe("Reset failed");
+    expect(result.current.busy).toBe(false);
+
+    await act(async () => expect(await result.current.reset()).toBe(true));
+    expect(result.current.step.kind).toBe("email");
+    expect(result.current.error).toBeNull();
+  });
 });

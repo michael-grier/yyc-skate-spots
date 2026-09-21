@@ -244,6 +244,51 @@ describe("SignInView", () => {
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
+  test("a failed reset preserves the current method until the user retries", async () => {
+    await render(<SignInView />);
+    await fireEvent.press(screen.getByRole("button", { name: "Sign in with a password" }));
+    await fireEvent.changeText(screen.getByLabelText("Password"), "existing password");
+    mockSignUp.reset.mockResolvedValueOnce({ error: { message: "Reset failed" } });
+
+    await fireEvent.press(screen.getByRole("button", { name: "Back to sign in" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("Reset failed");
+    expect(screen.getByLabelText("Password")).toHaveProp("value", "existing password");
+
+    await fireEvent.press(screen.getByRole("button", { name: "Back to sign in" }));
+    expect(screen.queryByLabelText("Password")).toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  test.each(["returned", "rejected"])(
+    "a %s tab reset failure hides the old code screen and offers a retry",
+    async (failure) => {
+      await render(<SignInView />);
+      await fireEvent.changeText(screen.getByLabelText("Email address"), "skater@example.com");
+      await fireEvent.press(screen.getByRole("button", { name: "Continue" }));
+      await fireEvent.changeText(screen.getByLabelText("Verification code"), "123456");
+      if (failure === "returned") {
+        mockSignIn.reset.mockResolvedValueOnce({ error: { message: "Reset failed" } });
+      } else {
+        mockSignIn.reset.mockRejectedValueOnce(new Error("Reset failed"));
+      }
+
+      await switchTab(0);
+      await switchTab(2);
+      expect(screen.queryByLabelText("Verification code")).toBeNull();
+      expect(screen.getByRole("alert")).toHaveTextContent("Reset failed");
+      expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
+      expect(screen.getByRole("button", { name: "Continue with Google" })).toBeDisabled();
+      expect(mockSignIn.reset).toHaveBeenCalledTimes(1);
+
+      await fireEvent.press(screen.getByRole("button", { name: "Retry sign-in reset" }));
+      expect(mockSignIn.reset).toHaveBeenCalledTimes(2);
+      expect(screen.queryByRole("alert")).toBeNull();
+      expect(screen.getByRole("button", { name: "Continue" })).toBeEnabled();
+      await fireEvent.press(screen.getByRole("button", { name: "Continue" }));
+      expect(screen.getByLabelText("Verification code")).toHaveProp("value", "");
+    },
+  );
+
   test("recovers a forgotten password through an emailed code", async () => {
     await render(<SignInView />);
     await fireEvent.press(screen.getByRole("button", { name: "Sign in with a password" }));

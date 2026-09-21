@@ -105,9 +105,11 @@ spam, misleading listings, sensitive private locations, and photos the contribut
 Public spot pages offer "Report this spot" to signed-in users other than the owner, or
 "Sign in to report" to signed-out users. Reports are private, enter the admin review
 queue, and include the selected reason and optional details. Dead-spot reports additionally
-require 1–3 private evidence photos, deleted when the report is resolved. An administrator can approve the spot
-or remove it. Dead-spot removal does not count against the contributor. After three other removals, an
-administrator can block the account from creating spots, editing, uploading photos, and reporting.
+require 1–3 private evidence photos. Evidence is deleted when the report is resolved, the spot
+or reporter account is deleted, or an unattached upload expires after 24 hours. An administrator
+can approve the spot or remove it. Dead-spot removal does not count against the contributor.
+After three other removals, an administrator can block the account from creating spots,
+editing, uploading photos, and reporting.
 The backend enforces the block even if someone calls the Convex functions directly.
 
 The reviewer can use the contributor and administrator demo accounts entered in App Store Connect

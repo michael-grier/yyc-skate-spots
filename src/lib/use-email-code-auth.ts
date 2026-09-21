@@ -176,16 +176,22 @@ export function useEmailCodeAuth() {
 
   /** Back to the email field, e.g. to correct a typo. */
   async function reset() {
+    let succeeded = false;
     await run(async () => {
       // Clear Clerk's attempt as well as our screen so a retry can use a different account.
-      const results = await Promise.all([signIn.reset(), signUp.reset()]);
-      const resetError = results.find((result) => result.error)?.error;
-      if (resetError) {
-        setError(describeAuthError(resetError));
-        return;
+      // Wait for both attempts to settle before allowing another reset.
+      const results = await Promise.allSettled([signIn.reset(), signUp.reset()]);
+      for (const result of results) {
+        if (result.status === "rejected") throw result.reason;
+        if (result.value.error) {
+          setError(describeAuthError(result.value.error));
+          return;
+        }
       }
       setStep({ kind: "email" });
+      succeeded = true;
     });
+    return succeeded;
   }
 
   return {
