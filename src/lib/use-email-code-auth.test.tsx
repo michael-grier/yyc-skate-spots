@@ -6,9 +6,13 @@ const mockSignIn = {
   status: "complete",
   emailCode: { sendCode: jest.fn(), verifyCode: jest.fn() },
   password: jest.fn(),
+  create: jest.fn(),
+  reset: jest.fn(),
+  resetPasswordEmailCode: { sendCode: jest.fn(), verifyCode: jest.fn(), submitPassword: jest.fn() },
   finalize: jest.fn(),
 };
 const mockSignUp = {
+  reset: jest.fn(),
   create: jest.fn(),
   verifications: { sendEmailCode: jest.fn(), verifyEmailCode: jest.fn() },
   finalize: jest.fn(),
@@ -33,6 +37,12 @@ const ALL_MOCKS = [
   mockSignIn.emailCode.sendCode,
   mockSignIn.emailCode.verifyCode,
   mockSignIn.password,
+  mockSignIn.create,
+  mockSignIn.reset,
+  mockSignIn.resetPasswordEmailCode.sendCode,
+  mockSignIn.resetPasswordEmailCode.verifyCode,
+  mockSignIn.resetPasswordEmailCode.submitPassword,
+  mockSignUp.reset,
   mockSignIn.finalize,
   mockSignUp.create,
   mockSignUp.verifications.sendEmailCode,
@@ -141,15 +151,91 @@ describe("useEmailCodeAuth", () => {
     },
   );
 
+  test("network failures release the form for a retry", async () => {
+    mockSignIn.password.mockRejectedValueOnce(new Error("Connection interrupted"));
+    const { result } = await renderHook(() => useEmailCodeAuth());
+    await act(() => result.current.signInWithPassword("skater@example.com", "password"));
+    expect(result.current.busy).toBe(false);
+    expect(result.current.error).toBe("Connection interrupted");
+    await act(() => result.current.signInWithPassword("skater@example.com", "password"));
+    expect(result.current.error).toBeNull();
+    expect(mockSignIn.finalize).toHaveBeenCalledTimes(1);
+  });
+
+  test("password reset verifies the code before accepting a new password", async () => {
+    const { result } = await renderHook(() => useEmailCodeAuth());
+    await act(() => result.current.submitNewPassword("too early"));
+    expect(mockSignIn.resetPasswordEmailCode.submitPassword).not.toHaveBeenCalled();
+    await act(() => result.current.sendPasswordResetCode(" skater@example.com "));
+    expect(mockSignIn.create).toHaveBeenCalledWith({ identifier: "skater@example.com" });
+    expect(result.current.step).toMatchObject({ kind: "code", mode: "passwordReset" });
+    mockSignIn.resetPasswordEmailCode.verifyCode.mockResolvedValueOnce(err("form_code_incorrect"));
+    await act(() => result.current.verifyCode("000000"));
+    expect(result.current.step.kind).toBe("code");
+    expect(mockSignIn.finalize).not.toHaveBeenCalled();
+    await act(() => result.current.resendCode());
+    expect(mockSignIn.resetPasswordEmailCode.sendCode).toHaveBeenCalledTimes(2);
+    expect(mockSignIn.emailCode.sendCode).not.toHaveBeenCalled();
+    await act(() => result.current.verifyCode(" 123456 "));
+    expect(mockSignIn.resetPasswordEmailCode.verifyCode).toHaveBeenLastCalledWith({
+      code: "123456",
+    });
+    expect(result.current.step.kind).toBe("newPassword");
+    mockSignIn.resetPasswordEmailCode.submitPassword.mockResolvedValueOnce(
+      err("form_password_pwned", "Choose a stronger password."),
+    );
+    await act(() => result.current.submitNewPassword("weak"));
+    expect(result.current.error).toBe("Choose a stronger password.");
+    expect(mockSignIn.finalize).not.toHaveBeenCalled();
+    await act(() => result.current.submitNewPassword("new password "));
+    expect(mockSignIn.resetPasswordEmailCode.submitPassword).toHaveBeenLastCalledWith({
+      password: "new password ",
+      signOutOfOtherSessions: true,
+    });
+    expect(mockSignIn.finalize).toHaveBeenCalledTimes(1);
+  });
+
+  test("a reset requiring another factor never activates a session", async () => {
+    const { result } = await renderHook(() => useEmailCodeAuth());
+    await act(() => result.current.sendPasswordResetCode("skater@example.com"));
+    await act(() => result.current.verifyCode("123456"));
+    mockSignIn.status = "needs_second_factor";
+    await act(() => result.current.submitNewPassword("new password"));
+    expect(mockSignIn.finalize).not.toHaveBeenCalled();
+    expect(result.current.error).toContain("Go back to sign in with an email code");
+  });
+
   test("reset returns to the email step and clears the error", async () => {
     mockSignIn.emailCode.sendCode.mockResolvedValue(err("too_many_requests"));
     const { result } = await renderHook(() => useEmailCodeAuth());
     await act(() => result.current.sendCode("skater@example.com"));
 
-    await act(() => {
-      result.current.reset();
-    });
+    await act(() => result.current.reset());
+    expect(mockSignIn.reset).toHaveBeenCalledTimes(1);
+    expect(mockSignUp.reset).toHaveBeenCalledTimes(1);
     expect(result.current.step).toEqual({ kind: "email" });
+    expect(result.current.error).toBeNull();
+  });
+
+  test.each([
+    ["signIn", "returned"],
+    ["signUp", "returned"],
+    ["signIn", "rejected"],
+    ["signUp", "rejected"],
+  ] as const)("reset reports a %s %s failure and permits a retry", async (attempt, failure) => {
+    const { result } = await renderHook(() => useEmailCodeAuth());
+    await act(() => result.current.sendCode("skater@example.com"));
+    const reset = attempt === "signIn" ? mockSignIn.reset : mockSignUp.reset;
+    if (failure === "returned") reset.mockResolvedValueOnce(err("reset_failed", "Reset failed"));
+    else reset.mockRejectedValueOnce(new Error("Reset failed"));
+
+    await act(async () => expect(await result.current.reset()).toBe(false));
+    expect(result.current.step.kind).toBe("code");
+    expect(result.current.error).toBe("Reset failed");
+    expect(result.current.busy).toBe(false);
+
+    await act(async () => expect(await result.current.reset()).toBe(true));
+    expect(result.current.step.kind).toBe("email");
     expect(result.current.error).toBeNull();
   });
 });

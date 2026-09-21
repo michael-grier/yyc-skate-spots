@@ -154,6 +154,43 @@ describe("spot moderation", () => {
     expect(queue.every((spot) => spot.review.attentionReason === "new")).toBe(true);
   });
 
+  test("unnamed legacy contributors have consistent private labels without changing ownership", async () => {
+    const t = convexTest(schema, modules);
+    const admin = t.withIdentity({ subject: "admin", role: "admin" });
+    for (const [owner, label] of [
+      ["seed", "Seeded content"],
+      ["clerk|unnamed-a", "Contributor clerk|unnamed-a"],
+      ["clerk|unnamed-b", "Contributor clerk|unnamed-b"],
+    ]) {
+      const id = await t.run((ctx) => ctx.db.insert("spots", { ...SPOT, createdBy: owner }));
+      expect(await admin.query(api.moderation.listSpots, {})).toEqual(
+        expect.arrayContaining([expect.objectContaining({ _id: id, creatorName: label })]),
+      );
+      expect(await admin.query(api.moderation.getSpot, { id })).toMatchObject({
+        creator: { name: label },
+      });
+      await admin.mutation(api.moderation.markMeetsStandards, { spotId: id });
+      const publicSpot = await t.query(api.spots.get, { id });
+      expect(publicSpot).not.toHaveProperty("createdBy");
+      expect(publicSpot).not.toHaveProperty("createdByName");
+      expect(await t.run((ctx) => ctx.db.get("spots", id))).toMatchObject({ createdBy: owner });
+    }
+    await t.run((ctx) =>
+      ctx.db.insert("userModeration", {
+        userIdentifier: "clerk|unnamed-a",
+        confirmedRemovalCount: 3,
+        isBanned: false,
+      }),
+    );
+    const [eligible] = await admin.query(api.moderation.listEligibleContributors, {});
+    expect(eligible.name).toBe("Contributor clerk|unnamed-a");
+    await admin.mutation(api.moderation.banContributor, { moderationUserId: eligible._id });
+    const banned = t.withIdentity({ subject: "unnamed-a", tokenIdentifier: "clerk|unnamed-a" });
+    const other = t.withIdentity({ subject: "unnamed-b", tokenIdentifier: "clerk|unnamed-b" });
+    expect(await banned.query(api.moderation.viewer, {})).toMatchObject({ isBanned: true });
+    expect(await other.query(api.moderation.viewer, {})).toMatchObject({ isBanned: false });
+  });
+
   test("queue cap and metadata remain correlated after moderation tables exceed the limit", async () => {
     const t = convexTest(schema, modules);
     const asAdmin = t.withIdentity({ subject: "admin", role: "admin" });
