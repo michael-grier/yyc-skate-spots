@@ -5,7 +5,8 @@ import { IDENTIFIER_NOT_FOUND, describeAuthError, hasAuthErrorCode } from "@/lib
 
 export type EmailCodeStep =
   | { kind: "email" }
-  | { kind: "code"; emailAddress: string; mode: "signIn" | "signUp" };
+  | { kind: "code"; emailAddress: string; mode: "signIn" | "signUp" | "passwordReset" }
+  | { kind: "newPassword" };
 
 /**
  * Email auth that signs existing users in by code or password and signs new
@@ -25,6 +26,12 @@ export function useEmailCodeAuth() {
     setError(null);
     try {
       await work();
+    } catch (err) {
+      setError(
+        describeAuthError(
+          err instanceof Error ? err : { message: "Something went wrong. Try again." },
+        ),
+      );
     } finally {
       setBusy(false);
     }
@@ -62,6 +69,17 @@ export function useEmailCodeAuth() {
       return;
     }
     await run(async () => {
+      if (step.mode === "passwordReset") {
+        const { error: verifyError } = await signIn.resetPasswordEmailCode.verifyCode({
+          code: code.trim(),
+        });
+        if (verifyError) {
+          setError(describeAuthError(verifyError));
+          return;
+        }
+        setStep({ kind: "newPassword" });
+        return;
+      }
       const { error: verifyError } =
         step.mode === "signIn"
           ? await signIn.emailCode.verifyCode({ code: code.trim() })
@@ -100,15 +118,56 @@ export function useEmailCodeAuth() {
     });
   }
 
+  async function sendPasswordResetCode(input: string) {
+    await run(async () => {
+      const emailAddress = input.trim();
+      const { error: createError } = await signIn.create({ identifier: emailAddress });
+      if (createError) {
+        setError(describeAuthError(createError));
+        return;
+      }
+      const { error: sendError } = await signIn.resetPasswordEmailCode.sendCode();
+      if (sendError) {
+        setError(describeAuthError(sendError));
+        return;
+      }
+      setStep({ kind: "code", emailAddress, mode: "passwordReset" });
+    });
+  }
+
+  async function submitNewPassword(password: string) {
+    if (step.kind !== "newPassword") return;
+    await run(async () => {
+      const { error: resetError } = await signIn.resetPasswordEmailCode.submitPassword({
+        password,
+        signOutOfOtherSessions: true,
+      });
+      if (resetError) {
+        setError(describeAuthError(resetError));
+        return;
+      }
+      if (signIn.status !== "complete") {
+        setError(
+          "Your password was updated. Go back to sign in with an email code to finish verification.",
+        );
+        return;
+      }
+      const { error: finalizeError } = await signIn.finalize();
+      if (finalizeError) setError(describeAuthError(finalizeError));
+    });
+  }
+
   async function resendCode() {
     if (step.kind !== "code") {
       return;
     }
     await run(async () => {
       const { error: sendError } =
-        step.mode === "signIn"
-          ? await signIn.emailCode.sendCode({ emailAddress: step.emailAddress })
-          : await signUp.verifications.sendEmailCode();
+        step.mode === "passwordReset"
+          ? await signIn.resetPasswordEmailCode.sendCode()
+          : step.mode === "signIn"
+            ? await signIn.emailCode.sendCode({ emailAddress: step.emailAddress })
+            : await signUp.verifications.sendEmailCode();
       if (sendError) {
         setError(describeAuthError(sendError));
       }
@@ -116,10 +175,29 @@ export function useEmailCodeAuth() {
   }
 
   /** Back to the email field, e.g. to correct a typo. */
-  function reset() {
-    setStep({ kind: "email" });
-    setError(null);
+  async function reset() {
+    await run(async () => {
+      // Clear Clerk's attempt as well as our screen so a retry can use a different account.
+      const results = await Promise.all([signIn.reset(), signUp.reset()]);
+      const resetError = results.find((result) => result.error)?.error;
+      if (resetError) {
+        setError(describeAuthError(resetError));
+        return;
+      }
+      setStep({ kind: "email" });
+    });
   }
 
-  return { step, error, busy, sendCode, verifyCode, signInWithPassword, resendCode, reset };
+  return {
+    step,
+    error,
+    busy,
+    sendCode,
+    verifyCode,
+    signInWithPassword,
+    sendPasswordResetCode,
+    submitNewPassword,
+    resendCode,
+    reset,
+  };
 }

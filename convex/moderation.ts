@@ -21,6 +21,14 @@ import { MAX_SPOTS_LISTED, releasePhotos, scheduleSpotDeletion } from "./spots";
 const MAX_REMOVAL_DETAILS_LENGTH = 500;
 const MAX_ELIGIBLE_CONTRIBUTORS = 100;
 
+/** Admin-only fallback for legacy accounts that never supplied a display name. */
+function privateContributorLabel(userIdentifier: string, ...names: (string | undefined)[]) {
+  return (
+    names.find((name) => name?.trim())?.trim() ??
+    (userIdentifier === SEED_OWNER ? "Seeded content" : `Contributor ${userIdentifier}`)
+  );
+}
+
 function reviewState(spot: Doc<"spots">, moderation: Doc<"spotModeration"> | undefined) {
   return {
     needsReview: moderation?.needsReview ?? true,
@@ -122,9 +130,12 @@ export const listSpots = query({
           const contributor = contributorByIdentifier.get(createdBy);
           return {
             ...spot,
-            creatorName:
-              (await contributorName(ctx, createdBy, spot.createdByName, profiles)) ??
+            creatorName: privateContributorLabel(
+              createdBy,
+              await contributorName(ctx, createdBy, spot.createdByName, profiles),
               contributor?.name,
+              spot.createdByName,
+            ),
             creatorRemovalCount: contributor?.confirmedRemovalCount ?? 0,
             creatorIsBanned: contributor?.isBanned ?? false,
             creatorModerationId: contributor?._id ?? null,
@@ -179,7 +190,12 @@ export const getSpot = query({
       canAddAdminPhotos: spot.allowAdminPhotos === true && spot.photoIds.length === 0,
       review: reviewState(spot, moderation ?? undefined),
       creator: {
-        name: (await contributorName(ctx, spot.createdBy, spot.createdByName)) ?? contributor?.name,
+        name: privateContributorLabel(
+          spot.createdBy,
+          await contributorName(ctx, spot.createdBy, spot.createdByName),
+          contributor?.name,
+          spot.createdByName,
+        ),
         confirmedRemovalCount: contributor?.confirmedRemovalCount ?? 0,
         isBanned: contributor?.isBanned ?? false,
         moderationId: contributor?._id ?? null,
@@ -314,7 +330,11 @@ export const listEligibleContributors = query({
     return Promise.all(
       contributors.map(async ({ _id, userIdentifier, name, confirmedRemovalCount }) => ({
         _id,
-        name: (await contributorName(ctx, userIdentifier)) ?? name,
+        name: privateContributorLabel(
+          userIdentifier,
+          await contributorName(ctx, userIdentifier),
+          name,
+        ),
         confirmedRemovalCount,
       })),
     );
