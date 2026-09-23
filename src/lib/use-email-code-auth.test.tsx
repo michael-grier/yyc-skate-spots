@@ -6,9 +6,7 @@ const mockSignIn = {
   status: "complete",
   emailCode: { sendCode: jest.fn(), verifyCode: jest.fn() },
   password: jest.fn(),
-  create: jest.fn(),
   reset: jest.fn(),
-  resetPasswordEmailCode: { sendCode: jest.fn(), verifyCode: jest.fn(), submitPassword: jest.fn() },
   finalize: jest.fn(),
 };
 const mockSignUp = {
@@ -37,11 +35,7 @@ const ALL_MOCKS = [
   mockSignIn.emailCode.sendCode,
   mockSignIn.emailCode.verifyCode,
   mockSignIn.password,
-  mockSignIn.create,
   mockSignIn.reset,
-  mockSignIn.resetPasswordEmailCode.sendCode,
-  mockSignIn.resetPasswordEmailCode.verifyCode,
-  mockSignIn.resetPasswordEmailCode.submitPassword,
   mockSignUp.reset,
   mockSignIn.finalize,
   mockSignUp.create,
@@ -160,49 +154,6 @@ describe("useEmailCodeAuth", () => {
     await act(() => result.current.signInWithPassword("skater@example.com", "password"));
     expect(result.current.error).toBeNull();
     expect(mockSignIn.finalize).toHaveBeenCalledTimes(1);
-  });
-
-  test("password reset verifies the code before accepting a new password", async () => {
-    const { result } = await renderHook(() => useEmailCodeAuth());
-    await act(() => result.current.submitNewPassword("too early"));
-    expect(mockSignIn.resetPasswordEmailCode.submitPassword).not.toHaveBeenCalled();
-    await act(() => result.current.sendPasswordResetCode(" skater@example.com "));
-    expect(mockSignIn.create).toHaveBeenCalledWith({ identifier: "skater@example.com" });
-    expect(result.current.step).toMatchObject({ kind: "code", mode: "passwordReset" });
-    mockSignIn.resetPasswordEmailCode.verifyCode.mockResolvedValueOnce(err("form_code_incorrect"));
-    await act(() => result.current.verifyCode("000000"));
-    expect(result.current.step.kind).toBe("code");
-    expect(mockSignIn.finalize).not.toHaveBeenCalled();
-    await act(() => result.current.resendCode());
-    expect(mockSignIn.resetPasswordEmailCode.sendCode).toHaveBeenCalledTimes(2);
-    expect(mockSignIn.emailCode.sendCode).not.toHaveBeenCalled();
-    await act(() => result.current.verifyCode(" 123456 "));
-    expect(mockSignIn.resetPasswordEmailCode.verifyCode).toHaveBeenLastCalledWith({
-      code: "123456",
-    });
-    expect(result.current.step.kind).toBe("newPassword");
-    mockSignIn.resetPasswordEmailCode.submitPassword.mockResolvedValueOnce(
-      err("form_password_pwned", "Choose a stronger password."),
-    );
-    await act(() => result.current.submitNewPassword("weak"));
-    expect(result.current.error).toBe("Choose a stronger password.");
-    expect(mockSignIn.finalize).not.toHaveBeenCalled();
-    await act(() => result.current.submitNewPassword("new password "));
-    expect(mockSignIn.resetPasswordEmailCode.submitPassword).toHaveBeenLastCalledWith({
-      password: "new password ",
-      signOutOfOtherSessions: true,
-    });
-    expect(mockSignIn.finalize).toHaveBeenCalledTimes(1);
-  });
-
-  test("a reset requiring another factor never activates a session", async () => {
-    const { result } = await renderHook(() => useEmailCodeAuth());
-    await act(() => result.current.sendPasswordResetCode("skater@example.com"));
-    await act(() => result.current.verifyCode("123456"));
-    mockSignIn.status = "needs_second_factor";
-    await act(() => result.current.submitNewPassword("new password"));
-    expect(mockSignIn.finalize).not.toHaveBeenCalled();
-    expect(result.current.error).toContain("Go back to sign in with an email code");
   });
 
   test("reset returns to the email step and clears the error", async () => {

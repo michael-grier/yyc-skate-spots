@@ -141,15 +141,23 @@ describe("SpotDetailScreen moderation status", () => {
   });
 });
 
-test("opens the focused dead-spot form from the detail shortcut", async () => {
-  mockAuthState.isSignedIn = true;
-  await render(<SpotDetailScreen />);
-  await fireEvent.press(screen.getByRole("button", { name: "Report dead spot" }));
-  expect(mockPush).toHaveBeenCalledWith({
-    pathname: "/spot/report/[id]",
-    params: { id: "spot-1", kind: "dead" },
-  });
-});
+test.each([false, true])(
+  "retains the report destination when signed in is %s",
+  async (signedIn) => {
+    mockAuthState.isSignedIn = signedIn;
+    await render(<SpotDetailScreen />);
+    await fireEvent.press(screen.getByRole("button", { name: "Report dead spot" }));
+    expect(mockPush).toHaveBeenCalledWith({
+      pathname: "/spot/report/[id]",
+      params: { id: "spot-1", kind: "dead" },
+    });
+    await fireEvent.press(screen.getByRole("button", { name: "Report another problem" }));
+    expect(mockPush).toHaveBeenLastCalledWith({
+      pathname: "/spot/report/[id]",
+      params: { id: "spot-1" },
+    });
+  },
+);
 
 test("acknowledges admin photos only when the owner opens them", async () => {
   mockAuthState.isSignedIn = true;

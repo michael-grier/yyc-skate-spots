@@ -16,6 +16,11 @@ The rejected submission used 1.0.0 (5). Prepare a replacement binary containing 
 features and fixes for #90, #104, and #105. Keep the app version at 1.0.0 unless App Store Connect
 requires otherwise; EAS assigns the next production build number. Do not reuse build 5.
 
+TestFlight 1.0.0 (6) passed the owner's initial browsing and account checks on September 23, 2026,
+using an iPhone 17 running iOS 26.6.2. It is being replaced to remove in-app password reset and fix
+report sign-in continuation and error visibility, issues #107 and #108. Repeat the affected checks
+on the replacement candidate; build 6 has not completed the full moderation/deletion walkthrough.
+
 The owner confirmed the sign-in focus, recovery controls, and tab-reset behavior on the physical
 iPhone using the development client and Metro. Development build
 `9b09903a-8716-429e-a9b5-a58e9e84d62c` was internally distributed with the label 1.0.0 (5).
@@ -66,7 +71,7 @@ results visible. Record all applicable flows even if they take longer than expec
 | Register | Sign in > enter the unused disposable email > Continue > enter the received code > Verify. | Profile for the newly created account. Explain that the same email-code form registers new addresses and signs existing users in. |
 | Save and submit | Save an existing spot with the heart and open Profile > Favourites. In Add spot, enter the real feature, location, your photo, notes, and bust factor. Save and accept the standards when prompted. Open Profile > Your spots. | Saved favourite, standards acceptance, and the pending submission. |
 | Password login and approval | Sign out. Sign in to the admin reviewer account using Sign in with a password. Open Profile > Review spots > the new submission > Meets standards > Confirm. | Successful password login and the approved listing. Only approve accurate, appropriate content belonging to the demonstration. |
-| Report | Sign out; sign in with the contributor reviewer account's password. Open the disposable account's approved listing > Report this spot. Pick a reason and explain in details that this is an App Review demonstration, not a real complaint. Submit. | Report confirmation. The reporter must be a different account from the listing owner. |
+| Report | Sign out. Open the disposable account's approved listing > Report another problem, then sign in with the contributor reviewer account's password. Confirm the selected report opens automatically. Pick a reason and explain in details that this is an App Review demonstration, not a real complaint. Submit. | Sign-in continuation and report confirmation. The reporter must be a different account from the listing owner. |
 | Review a report | Sign back in as admin. Profile > Review spots > Reported > the demonstration listing. Inspect the report, then use Meets standards to resolve the demonstration report. | Private report details and the moderation result. |
 | Block contributions | Follow the preparation below, then show the third removal and Ban contributor, including confirmation. Sign back in to the disposable account. Open Profile and Add spot. | The administrator's ban result and the affected user's contribution restriction. |
 | Delete account | While signed in as the disposable account, open Profile > Delete account and confirm. | Account deleted confirmation and the signed-out screen. Its demonstration spot and photo should disappear from the public map. |
@@ -105,7 +110,10 @@ checks are already confirmed, but they do not replace testing this production bi
 - [ ] Wrong password and wrong/expired email code show an error with a usable Back to sign in.
 - [ ] Switching to Map or Add spot resets the flow, clears errors/password/code, and keeps email.
 - [ ] Opening Mail preserves code entry; Apple and Google sign-in return successfully.
-- [ ] Password reset succeeds using a separate test account, including resend and invalid-code recovery.
+- [ ] Password sign-in works for both reviewer accounts. Wrong-password/code errors are centered,
+      become visible without manually closing the keyboard, and allow a retry.
+- [ ] Signed-out Report dead spot and Report another problem open sign-in, then resume the selected
+      report after authentication. Back cancels; signing in as the owner does not allow reporting.
 - [ ] Registration, favourites, creation, editing, and current display-name labels work.
 - [ ] Admin queue/detail labels identify contributors; unnamed legacy accounts have stable private labels.
 - [ ] Approval publishes contributor content; admin-created content is immediately published.
