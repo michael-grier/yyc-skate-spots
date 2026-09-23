@@ -18,6 +18,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { PhotoStrip } from "@/components/spot-fields";
+import { SignInView } from "@/components/sign-in-view";
 import type { FormPhoto } from "@/lib/spot-form";
 import { pickPhotos, uploadPhoto } from "@/lib/spot-photos";
 import { resolveConvexSiteUrl } from "@/lib/convex-site";
@@ -151,19 +152,13 @@ export default function ReportSpotScreen() {
   }
 
   if (!isSignedIn) {
+    // Keep the spot and report kind in this route while Clerk completes any sign-in method.
+    // Back leaves this route; successful sign-in reveals the original report form.
     return (
       <View className="flex-1 bg-base">
         <Stack.Screen options={{ headerShown: false }} />
         {header}
-        <View className="flex-1 justify-center px-8">
-          <Text className="text-center font-sans-semibold text-[18px] text-ink">
-            Sign in to report a spot
-          </Text>
-          <Text className="mt-2 text-center font-sans text-[14px] leading-relaxed text-mute">
-            Reports stay private and are reviewed by the administrator.
-          </Text>
-          <Button label="Sign in" onPress={() => router.push("/account")} className="mt-6" />
-        </View>
+        <SignInView hasHeader />
       </View>
     );
   }

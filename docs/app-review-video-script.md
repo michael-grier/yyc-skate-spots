@@ -117,15 +117,14 @@ to the disposable account using its email code afterward.
 
 ### Show sign-in recovery without changing reviewer credentials
 
-During a signed-out interval, show **Sign in with a password** and the **Forgot password?** and
-**Back to sign in** controls. Switch to Map, then return to Sign in to show the base screen with
+During a signed-out interval, show **Sign in with a password** and **Back to sign in**.
+Switch to Map, then return to Sign in to show the base screen with
 the email preserved. Return to the disposable account with its email code.
 
 > Leaving the sign-in tab starts a fresh attempt. Opening Mail to retrieve a code keeps the
 > verification screen available.
 
-Test password reset before recording with a separate account whose inbox you control. Do not
-reset either reviewer password in the walkthrough.
+Reviewer passwords are managed in Clerk by the app operator. There is no in-app password reset.
 
 Stop recording with the original submission still pending.
 
@@ -168,10 +167,11 @@ Stop recording after showing the results. Remain signed in as administrator.
 
 ### Report content from another account
 
-Sign out and use password sign-in for the contributor reviewer account.
+Sign out. Open the disposable account's approved spot, then **Report another problem**.
+Use password sign-in for the contributor reviewer account and show that the selected report
+opens automatically after sign-in.
 
-Open the disposable account's approved spot, then **Report this spot**. Briefly select
-**Dead spot** to show the requirement for 1–3 evidence photos. Do not submit a false dead-spot
+Briefly select **Dead spot** to show the requirement for 1–3 evidence photos. Do not submit a false dead-spot
 claim. Switch to **Something else** and enter:
 
 > App Review workflow demonstration using our disposable account's listing. This is not a

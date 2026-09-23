@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
-import { AppState, Linking } from "react-native";
+import { AppState, Keyboard, Linking } from "react-native";
 
 import { SignInView } from "./sign-in-view";
 
@@ -13,6 +13,7 @@ const mockNavigationListeners = new Set<(event: { data: { state: TabState } }) =
 let mockTabState: TabState;
 const mockNavigation = {
   getState: () => mockTabState,
+  isFocused: () => mockTabState.routes[mockTabState.index].name === "account",
   addListener: (_event: string, callback: (event: { data: { state: TabState } }) => void) => {
     mockNavigationListeners.add(callback);
     return () => mockNavigationListeners.delete(callback);
@@ -28,11 +29,9 @@ const mockOpenUrl = jest.spyOn(Linking, "openURL").mockResolvedValue(true);
 const mockSignIn = {
   status: "complete",
   password: jest.fn(),
-  create: jest.fn(),
   reset: jest.fn(),
   finalize: jest.fn(),
   emailCode: { sendCode: jest.fn(), verifyCode: jest.fn() },
-  resetPasswordEmailCode: { sendCode: jest.fn(), verifyCode: jest.fn(), submitPassword: jest.fn() },
 };
 const mockSignUp = {
   create: jest.fn(),
@@ -92,14 +91,10 @@ beforeEach(() => {
   mockTabState = { index: 2, routes: [{ name: "index" }, { name: "add" }, { name: "account" }] };
   for (const fn of [
     mockSignIn.password,
-    mockSignIn.create,
     mockSignIn.reset,
     mockSignIn.finalize,
     mockSignIn.emailCode.sendCode,
     mockSignIn.emailCode.verifyCode,
-    mockSignIn.resetPasswordEmailCode.sendCode,
-    mockSignIn.resetPasswordEmailCode.verifyCode,
-    mockSignIn.resetPasswordEmailCode.submitPassword,
     mockSignUp.reset,
     mockSignUp.create,
     mockSignUp.finalize,
@@ -203,6 +198,7 @@ describe("SignInView", () => {
   });
 
   test("a failed password attempt can return to the main sign-in screen", async () => {
+    const dismiss = jest.spyOn(Keyboard, "dismiss");
     mockSignIn.password.mockResolvedValue({
       error: { code: "form_password_incorrect", message: "Wrong password" },
     });
@@ -210,10 +206,13 @@ describe("SignInView", () => {
     await fireEvent.press(screen.getByRole("button", { name: "Sign in with a password" }));
     await fireEvent.changeText(screen.getByLabelText("Email address"), "wrong@example.com");
     await fireEvent.changeText(screen.getByLabelText("Password"), "wrong");
+    dismiss.mockClear();
     await fireEvent.press(screen.getByRole("button", { name: "Sign in" }));
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "That email or password isn't right.",
     );
+    expect(dismiss).toHaveBeenCalledTimes(1);
+    expect(screen.getByLabelText("Password")).toHaveProp("value", "wrong");
     await fireEvent.press(screen.getByRole("button", { name: "Back to sign in" }));
     expect(screen.queryByRole("alert")).toBeNull();
     expect(screen.getByRole("button", { name: "Continue with Google" })).toBeOnTheScreen();
@@ -223,6 +222,7 @@ describe("SignInView", () => {
   });
 
   test("a failed email code can start over with another account and an empty code", async () => {
+    const dismiss = jest.spyOn(Keyboard, "dismiss");
     mockSignIn.emailCode.verifyCode.mockResolvedValueOnce({
       error: { code: "form_code_incorrect", message: "Wrong code" },
     });
@@ -230,10 +230,12 @@ describe("SignInView", () => {
     await fireEvent.changeText(screen.getByLabelText("Email address"), "first@example.com");
     await fireEvent.press(screen.getByRole("button", { name: "Continue" }));
     await fireEvent.changeText(screen.getByLabelText("Verification code"), "000000");
+    dismiss.mockClear();
     await fireEvent.press(screen.getByRole("button", { name: "Verify" }));
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "That code isn't right. Check it and try again.",
     );
+    expect(dismiss).toHaveBeenCalledTimes(1);
     await fireEvent.press(screen.getByRole("button", { name: "Back to sign in" }));
     await fireEvent.changeText(screen.getByLabelText("Email address"), "second@example.com");
     await fireEvent.press(screen.getByRole("button", { name: "Continue" }));
@@ -289,24 +291,6 @@ describe("SignInView", () => {
     },
   );
 
-  test("recovers a forgotten password through an emailed code", async () => {
-    await render(<SignInView />);
-    await fireEvent.press(screen.getByRole("button", { name: "Sign in with a password" }));
-    await fireEvent.changeText(screen.getByLabelText("Email address"), "skater@example.com");
-    await fireEvent.changeText(screen.getByLabelText("Password"), "forgotten password");
-    await fireEvent.press(screen.getByRole("button", { name: "Forgot password?" }));
-    await fireEvent.press(screen.getByRole("button", { name: "Send reset code" }));
-    await fireEvent.changeText(screen.getByLabelText("Verification code"), "123456");
-    await fireEvent.press(screen.getByRole("button", { name: "Verify" }));
-    expect(screen.getByLabelText("New password")).toHaveProp("value", "");
-    await fireEvent.changeText(screen.getByLabelText("New password"), "new password");
-    await fireEvent.press(screen.getByRole("button", { name: "Update password and sign in" }));
-    expect(mockSignIn.resetPasswordEmailCode.submitPassword).toHaveBeenCalledWith({
-      password: "new password",
-      signOutOfOtherSessions: true,
-    });
-    expect(mockSignIn.finalize).toHaveBeenCalledTimes(1);
-  });
   test.each([0, 1])(
     "leaving for tab %s clears password and error but preserves email",
     async (tab) => {

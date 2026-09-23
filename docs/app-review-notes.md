@@ -58,9 +58,9 @@ Internet required; browsing needs no account or sample files. Map > marker > det
 
 Contributor demo: Sign in > enter the supplied email > Sign in with a password > enter supplied password > Sign in. A spot's heart saves it in Profile > Favourites. Add spot guides name, type, location, optional photos/notes, and bust factor; save and accept the standards. Find submissions in Profile > Your spots; edit your display name on Profile.
 
-Registration: Sign in > new email > Continue > emailed code > Verify. Apple/Google sign-in are also available. Forgot password? sends a reset code. Back to sign in or switching app tabs resets the form, retaining email. Opening Mail preserves verification.
+Registration: Sign in > new email > Continue > emailed code > Verify. Apple/Google sign-in are also available. Back to sign in or switching app tabs resets the form, retaining email. Opening Mail preserves verification. Passwords for demo accounts are managed by the app operator.
 
-Contributor submissions/edits stay private until admin approval. Report another user's spot via Report this spot > reason > submit. Dead spot requires 1–3 private evidence photos.
+Contributor submissions/edits stay private until admin approval. Report another user's spot via Report another problem > reason > Send report. Report dead spot requires 1–3 private evidence photos. Signed-out users see sign-in first, then continue directly to the selected report.
 
 Admin demo email: [ADMIN DEMO EMAIL]
 Admin demo password: [ADMIN DEMO PASSWORD]
@@ -102,8 +102,9 @@ The app records the current policy version on their account, and the Convex back
 and photo writes until that record exists. The standards prohibit explicit or harassing content,
 spam, misleading listings, sensitive private locations, and photos the contributor cannot share.
 
-Public spot pages offer "Report this spot" to signed-in users other than the owner, or
-"Sign in to report" to signed-out users. Reports are private, enter the admin review
+Public spot pages offer "Report dead spot" and "Report another problem" to users other than the
+owner. Signed-out users sign in within the report route, then continue to their selected report.
+Reports are private, enter the admin review
 queue, and include the selected reason and optional details. Dead-spot reports additionally
 require 1–3 private evidence photos. Evidence is deleted when the report is resolved, the spot
 or reporter account is deleted, or an unattached upload expires after 24 hours. An administrator

@@ -28,8 +28,8 @@ WebBrowser.maybeCompleteAuthSession();
 
 const GOOGLE_SSO_REDIRECT_URL = "yycskatespots://sso-callback";
 
-/** Signed-out state of the Account tab: Apple, Google, or an email code. */
-export function SignInView() {
+/** Shared sign-in form for the Account tab and actions that require an account. */
+export function SignInView({ hasHeader = false }: { hasHeader?: boolean }) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const navigation = useNavigation();
@@ -42,20 +42,19 @@ export function SignInView() {
     sendCode,
     verifyCode,
     signInWithPassword,
-    sendPasswordResetCode,
-    submitNewPassword,
     resendCode,
     reset,
   } = useEmailCodeAuth();
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [password, setPassword] = useState("");
-  const [emailMethod, setEmailMethod] = useState<"code" | "password" | "reset">("code");
+  const [emailMethod, setEmailMethod] = useState<"code" | "password">("code");
   const [ssoError, setSsoError] = useState<string | null>(null);
   const [socialBusy, setSocialBusy] = useState<"apple" | "google" | null>(null);
   const [appleAvailable, setAppleAvailable] = useState(false);
   const [tabReset, setTabReset] = useState<"idle" | "pending" | "failed">("idle");
   const tabResetRunning = useRef(false);
+  const scroll = useRef<ScrollView>(null);
   const busy = emailBusy || tabReset !== "idle";
   const step = tabReset !== "idle" ? { kind: "email" as const } : authStep;
 
@@ -156,10 +155,17 @@ export function SignInView() {
   }
 
   const message = tabReset === "pending" ? null : (error ?? ssoError);
+  useEffect(() => {
+    if (!message || !navigation.isFocused()) return;
+    // Failed attempts must be readable without manually hiding the keyboard or scrolling.
+    Keyboard.dismiss();
+    scroll.current?.scrollTo({ y: 0, animated: true });
+  }, [message, navigation]);
+
   const passwordSignInDisabled =
     busy || socialBusy !== null || email.trim().length === 0 || password.length === 0;
 
-  async function chooseEmailMethod(method: "code" | "password" | "reset") {
+  async function chooseEmailMethod(method: "code" | "password") {
     Keyboard.dismiss();
     if (!(await reset())) return;
     setSsoError(null);
@@ -177,12 +183,13 @@ export function SignInView() {
 
   return (
     <ScrollView
+      ref={scroll}
       keyboardShouldPersistTaps="handled"
       automaticallyAdjustKeyboardInsets
       keyboardDismissMode="on-drag"
       contentContainerStyle={{
         flexGrow: 1,
-        paddingTop: insets.top + 48,
+        paddingTop: hasHeader ? 24 : insets.top + 48,
         paddingHorizontal: 28,
         paddingBottom: 40,
       }}
@@ -198,6 +205,15 @@ export function SignInView() {
         Sign in to save favourite spots, add new ones, and manage the spots you&apos;ve shared.
         Browsing never needs an account.
       </Text>
+
+      {message ? (
+        <Text
+          accessibilityRole="alert"
+          className="mt-4 text-center font-sans text-[13px] text-bust-high"
+        >
+          {message}
+        </Text>
+      ) : null}
 
       {step.kind === "email" && emailMethod === "code" ? (
         <View className="mt-9 gap-2.5">
@@ -258,29 +274,6 @@ export function SignInView() {
             <Text className="font-sans text-[13px] text-silver">Sign in with a password</Text>
           </Pressable>
         </View>
-      ) : step.kind === "email" && emailMethod === "reset" ? (
-        <View className="mt-9 gap-2.5">
-          <Text className="font-sans text-[14px] text-mute">
-            Reset your password with a code sent to your email.
-          </Text>
-          <SignInField
-            label="EMAIL"
-            value={email}
-            onChangeText={setEmail}
-            placeholder="you@example.com"
-            autoCapitalize="none"
-            autoCorrect={false}
-            autoComplete="email"
-            keyboardType="email-address"
-            textContentType="emailAddress"
-            accessibilityLabel="Email address"
-          />
-          <Button
-            label={busy ? "Sending code…" : "Send reset code"}
-            disabled={busy || !email.trim()}
-            onPress={() => void sendPasswordResetCode(email)}
-          />
-        </View>
       ) : step.kind === "email" ? (
         <View className="mt-9 gap-2.5">
           <SignInField
@@ -317,48 +310,16 @@ export function SignInView() {
           <Pressable
             accessibilityRole="button"
             disabled={busy}
-            onPress={() => void chooseEmailMethod("reset")}
-            className="min-h-11 items-center justify-center"
-          >
-            <Text className="font-sans text-[13px] text-silver">Forgot password?</Text>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            disabled={busy}
             onPress={() => void chooseEmailMethod("code")}
             className="items-center py-2"
           >
             <Text className="font-sans text-[13px] text-mute">Use an email code instead</Text>
           </Pressable>
         </View>
-      ) : step.kind === "newPassword" ? (
-        <View className="mt-9 gap-2.5">
-          <Text className="font-sans text-[14px] text-mute">
-            Choose a new password. This will sign you out on other devices.
-          </Text>
-          <SignInField
-            label="NEW PASSWORD"
-            value={password}
-            onChangeText={setPassword}
-            placeholder="New password"
-            autoCapitalize="none"
-            autoCorrect={false}
-            autoComplete="new-password"
-            textContentType="newPassword"
-            secureTextEntry
-            accessibilityLabel="New password"
-          />
-          <Button
-            label={busy ? "Updating password…" : "Update password and sign in"}
-            disabled={busy || password.length === 0}
-            onPress={() => void submitNewPassword(password)}
-          />
-        </View>
       ) : (
         <View className="mt-9 gap-2.5">
           <Text className="font-sans text-[14px] text-mute">
-            We emailed {step.mode === "passwordReset" ? "a password reset code" : "a code"} to{" "}
-            <Text className="text-ink">{step.emailAddress}</Text>.
+            We emailed a code to <Text className="text-ink">{step.emailAddress}</Text>.
           </Text>
           <SignInField
             label="CODE"
@@ -400,12 +361,6 @@ export function SignInView() {
         >
           <Text className="font-sans-medium text-[14px] text-silver">Back to sign in</Text>
         </Pressable>
-      ) : null}
-
-      {message ? (
-        <Text accessibilityRole="alert" className="mt-4 font-sans text-[13px] text-bust-high">
-          {message}
-        </Text>
       ) : null}
 
       {tabReset === "failed" ? (

@@ -324,25 +324,21 @@ export default function SpotDetailScreen() {
                 label="Report dead spot"
                 className="mt-4"
                 onPress={() =>
-                  isSignedIn
-                    ? router.push({
-                        pathname: "/spot/report/[id]",
-                        params: { id: spotId, kind: "dead" },
-                      })
-                    : router.push("/account")
+                  router.push({
+                    pathname: "/spot/report/[id]",
+                    params: { id: spotId, kind: "dead" },
+                  })
                 }
               />
               <Pressable
                 accessibilityRole="button"
                 onPress={() =>
-                  isSignedIn
-                    ? router.push({ pathname: "/spot/report/[id]", params: { id: spotId } })
-                    : router.push("/account")
+                  router.push({ pathname: "/spot/report/[id]", params: { id: spotId } })
                 }
                 className="mt-3 self-start py-1 active:opacity-80"
               >
                 <Text className="font-sans-semibold text-[13px] text-silver">
-                  {isSignedIn ? "Report another problem" : "Sign in to report"}
+                  Report another problem
                 </Text>
               </Pressable>
             </Card>
