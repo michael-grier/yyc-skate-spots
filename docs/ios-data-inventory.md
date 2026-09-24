@@ -1,7 +1,7 @@
 # iOS data inventory
 
 This documents the version 1.0 privacy policy and App Store Connect answer set for the production
-iOS app and public site. Android is deferred. Re-check the final archive's merged privacy manifest
+iOS app and public site. Android is deferred. Re-check all privacy manifests in the final archive
 before each submission because native SDK updates can change its declarations. Follow the
 [iOS release runbook](ios-release-runbook.md) and [native privacy checks](development.md#native-privacy-checks).
 Historical archive and submission evidence is in [the release record](releases/1.0.md).
@@ -20,7 +20,7 @@ Historical archive and submission evidence is in [the release record](releases/1
 | Moderation and standards records | Standards acceptance, review decisions, confirmed removals, bans, administrator identifiers | Yes: Convex | Yes | Enforce the community standards and explain restrictions | Private to the affected user and administrators as applicable. A user's own records and removal notices are deleted with their account. If an administrator deletes their account, decisions about other users remain but the administrator identifier is removed. |
 | Temporary Apple deletion token | A fresh Apple authorization code exchanged during account deletion | Yes: Apple and Convex | Yes | Revoke Sign in with Apple before deleting the account | Private. Removed immediately after successful revocation. An abandoned retry record expires within seven days. |
 | Current precise location | iOS location permission and Core Location | Yes: the Google map SDK processes it; Convex receives it only when the user deliberately uses it as a submitted spot coordinate | A submitted spot coordinate is linked; ordinary map use is not linked by YYC Skate Spots | Blue dot, distances, nearby filtering, map centring, and optional spot placement | Held in app memory for the current session; YYC Skate Spots does not store location history. A submitted spot coordinate follows the spot-content rules above. |
-| Map and SDK service data | Google Maps SDK requests and interactions | Yes: Google Maps Platform | Google's bundled manifest marks its service user ID as linked; device ID, product interaction, crash, and performance data are marked unlinked | Map functionality, service analytics, security, reliability, support, and capacity | Google's bundled privacy manifest declares no tracking. Google controls its service-log retention under its published policies. |
+| Map and SDK service data | Google Maps SDK requests and interactions | Yes: Google Maps Platform | Google Maps 9.4.0 declares Device ID and Other Data Types linked; the additional react-native-maps manifest declares User ID linked. Product interaction, crash, and performance data are unlinked in both manifests | Map functionality, service analytics, security, reliability, support, and capacity | Both bundled declarations mark the collected data as not used for tracking. Google controls its service-log retention under its published policies. See the archive reconciliation below. |
 | Search and filter text | Map search and filters | No app-backend transmission | No | Filter the already-loaded spot list | Held in app memory only. Map camera interactions can still form part of Google Maps' unlinked product-interaction data. |
 | Reverse-geocoded address | A spot coordinate sent through the iOS geocoder | Processed by Apple operating-system services | No app account linkage | Display a readable address for a spot | Held in memory for display; YYC Skate Spots does not write the result to Convex. |
 | Directions request | Spot name and coordinates passed to Apple Maps or Google Maps after a tap | Yes: the maps app selected by the user | Governed by that maps app | Open turn-by-turn directions | YYC Skate Spots does not retain the request. |
@@ -51,7 +51,7 @@ and notification state are deleted with the spot. Push delivery is deferred to i
 | --- | --- | --- |
 | Clerk | Authentication, user profile, sessions, role claim | Email, name, sign-in method, user/provider identifiers, sessions, administrator role |
 | Convex | Database, authenticated functions, and photo storage | User identifier, spot content, photos, favourites, reports, moderation, standards acceptance, temporary account-deletion state |
-| Google Maps Platform | In-app Google map | Precise location for functionality; SDK-declared device ID, product interaction, crash, performance, and service user ID; request metadata including IP address, time, app, and SDK version |
+| Google Maps Platform | In-app Google map | Precise location for functionality; SDK-declared device ID, Other Data Types, product interaction, crash, and performance data; User ID declared by the Maps wrapper; request metadata including IP address, time, app, and SDK version |
 | Apple | Sign in with Apple, Core Location/geocoder, SecureStore, Maps handoff, share sheet | Data chosen for Apple sign-in, current location and geocoding inputs, encrypted local session material, and data passed to Apple features at the user's request |
 | Google Identity | Optional Google sign-in through Clerk | Google account identity and OAuth session data |
 | Cloudflare | Static public pages and inbound support-email routing | Web request metadata and support messages |
@@ -72,11 +72,12 @@ submission, and enter any changes separately in App Store Connect.
 | Location → Precise Location | Yes | Yes when saved as a submitted spot; otherwise unlinked | No | App Functionality |
 | User Content → Photos or Videos | Yes | Yes | No | App Functionality |
 | User Content → Other User Content | Yes | Yes | No | App Functionality |
-| Identifiers → User ID | Yes | Yes | No | App Functionality; Analytics for the Google Maps service identifier |
-| Identifiers → Device ID | Yes, by Google Maps SDK, including its device identifier and logged device IP address | No | No | App Functionality; Analytics |
+| Identifiers → User ID | Yes | Yes | No | App Functionality; Analytics declared by the Maps wrapper |
+| Identifiers → Device ID | Yes, by Google Maps SDK, including its device identifier and logged device IP address | Yes | No | App Functionality; Analytics |
 | Usage Data → Product Interaction | Yes: linked favourites/standards activity and unlinked Google Maps interaction data | Yes | No | App Functionality; Analytics |
 | Diagnostics → Crash Data | Yes, by Google Maps SDK | No | No | Analytics |
 | Diagnostics → Performance Data | Yes, by Google Maps SDK | No | No | Analytics |
+| Other Data → Other Data Types | Yes, declared by Google Maps 9.4.0 | Yes | No | Analytics |
 
 Overall tracking answer: **No**. Data is not used for third-party advertising, the developer's
 advertising or marketing, or tracking across other companies' apps and websites.
@@ -85,6 +86,46 @@ App Store Connect has no standalone IP-address data type. Following Apple's guid
 addresses, Google's logged device IP is conservatively included under **Identifiers → Device ID**.
 The purposes reflect Google's stated use of Maps Platform logs and the SDK manifest: Analytics for
 product improvement, and App Functionality for support, operations, security, and capacity.
+
+## Google Maps archive reconciliation
+
+Checked against TestFlight 1.0.0 (7), EAS build
+`d49094f4-1072-496a-a226-8a1d5faa44c2`, on September 23, 2026.
+
+The archive contains two distinct Maps declarations:
+
+| Source | Archive path below `Payload/YYCSkateSpots.app/` | Relevant declarations |
+| --- | --- | --- |
+| Google Maps SDK 9.4.0 | `GoogleMapsResources.bundle/GoogleMaps.bundle/PrivacyInfo.xcprivacy` | Device ID: linked, Analytics and App Functionality. Other Data Types: linked, Analytics. Neither is used for tracking. |
+| react-native-maps 1.27.2 wrapper | `GoogleMapsPrivacy.bundle/GoogleMapsPrivacy.bundle/PrivacyInfo.xcprivacy` | Device ID: unlinked, Analytics and App Functionality. User ID: linked, Analytics. No Other Data Types entry. None is used for tracking. |
+
+The wrapper's copy matches the installed npm package. The SDK's copy matches the parsed manifest
+in [Google's published 9.4.0 archive](https://dl.google.com/dl/cpdc/006c69f02623edc7/GoogleMaps-9.4.0.tar.gz),
+at `Maps/Resources/GoogleMapsResources/GoogleMaps.bundle/PrivacyInfo.xcprivacy`.
+That vendor manifest's SHA-256 is
+`47734417f3f8617743fdfa6efdda9df04664f8a91519ff22208df9f022598501`.
+The build log confirms CocoaPods installed GoogleMaps 9.4.0; the wrapper's podspec pins that version.
+
+The earlier answer set relied on the wrapper copy. It missed the SDK's linked Device ID and
+Other Data Types declarations. The corrected answer set includes both manifests' declarations;
+an unlinked declaration in the wrapper does not override linked collection declared by the SDK.
+User ID retains Analytics because the shipped wrapper still declares that use. The Google SDK
+manifest does not describe the individual fields within Other Data Types, so this inventory does
+not infer them from the category name.
+
+Apple's linked-data classification includes linkage through a device, even when the user has no
+YYC Skate Spots account. It is separate from tracking. Google says its SDK manifests cover data
+collected always or by default and recommends inspecting the built archive. Do not edit or remove
+either vendor manifest to make it agree with a previous checklist.
+
+For App Store Connect, set Device ID to linked for both Analytics and App Functionality, and add
+Other Data Types for Analytics, linked, not used for tracking. No binary rebuild is needed for
+these answer changes. Repository edits do not publish App Store Connect answers; record the
+dashboard verification separately in the candidate record.
+
+These two corrections were published in App Store Connect on September 23, 2026. Reloading the
+App Privacy page confirmed 11 collected data types, linked Device ID and Other Data Types, the
+purposes above, and no tracking disclosure. The remaining nine data-type answers were unchanged.
 
 ## Evidence
 
@@ -97,6 +138,9 @@ product improvement, and App Functionality for support, operations, security, an
 - Installed SDK declarations:
   `node_modules/react-native-maps/ios/PrivacyInfo.xcprivacy` and
   `node_modules/react-native-maps/ios/AirGoogleMaps/Resources/GoogleMapsPrivacy.bundle/PrivacyInfo.xcprivacy`
+- Google Maps 9.4.0 resource manifest from the archived binary and the matching vendor download,
+  as documented above. The npm wrapper's manifest alone is not a complete SDK inventory.
+- [Apple's definitions of linked data and tracking](https://developer.apple.com/app-store/app-privacy-details/)
 - [Apple App Privacy reference](https://developer.apple.com/help/app-store-connect/reference/app-information/app-privacy)
 - [Apple App Review Guidelines 5.1.1](https://developer.apple.com/app-store/review/guidelines/#privacy)
 - [Google Maps Platform data collection, use, and retention](https://developers.google.com/maps/security/compliance/security-compliance#data-collection-usage-and-retention)

@@ -165,8 +165,12 @@ bun x eas-cli build \
 command says credentials are missing, stop and configure them interactively with
 `bun x eas-cli credentials --platform ios`, then run the frozen build again.
 
-Record the EAS build ID. Compare the final archive privacy report with the
-[data inventory](ios-data-inventory.md). Inspect the build before upload:
+Record the EAS build ID. Compare every bundled privacy manifest and the final archive privacy
+report with the [data inventory](ios-data-inventory.md). The app-level manifest and npm wrapper
+manifests alone do not cover every SDK's collection. In particular, check Google Maps' own resource
+manifest against the [documented reconciliation](ios-data-inventory.md#google-maps-archive-reconciliation).
+Reconcile data types, purposes, linkage, and tracking with App Store Connect before App Review.
+Inspect the build before upload:
 
 ```sh
 bun x eas-cli build:view <build-id>
