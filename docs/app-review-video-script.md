@@ -7,9 +7,9 @@ and its result together in the recording.
 
 ## Before recording
 
-Record the **new production TestFlight candidate**, after its fixes reach `main` and it passes
-device QA. Fill in `[BUILD NUMBER]` from TestFlight; do not assume the next number. The rejected
-1.0.0 (5) and the development client also labelled 1.0.0 (5) are not the recording target.
+Record **TestFlight 1.0.0 (8)**, the [current candidate](releases/yyc-testflight-1.0.0-8.md), after it
+passes device QA. The rejected 1.0.0 (5), the superseded builds 6 and 7, and the development client
+also labelled 1.0.0 (5) are not the recording target.
 Use the same candidate for every clip and select that build in App Store Connect.
 
 Use your physical iPhone 17 with the latest public iOS available to it. The previous script listed
@@ -34,7 +34,7 @@ the disposable account.**
 
 Start screen recording on the iPhone Home Screen, then tap YYC Skate Spots.
 
-> This is YYC Skate Spots version 1.0.0, build [BUILD NUMBER], running on a physical iPhone 17
+> This is YYC Skate Spots version 1.0.0, build 8, running on a physical iPhone 17
 > with iOS [IOS VERSION]. It helps skateboarders find and share skate spots in Calgary.
 
 Let the map finish loading.

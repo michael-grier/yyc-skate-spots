@@ -47,7 +47,7 @@ Connect after filling in the recording link and account details.
 ```text
 1. PHYSICAL-DEVICE WALKTHROUGH
 Recording: [REVIEWER-ACCESSIBLE VIDEO URL]
-Device: [IPHONE MODEL]; iOS: [VERSION]; app: 1.0.0 ([BUILD NUMBER]); tested: [DATE].
+Device: [IPHONE MODEL]; iOS: [VERSION]; app: 1.0.0 (8); tested: [DATE].
 Shows launch, main features, registration/login, reporting, moderation, contribution blocking, and deletion.
 
 2. PURPOSE AND AUDIENCE

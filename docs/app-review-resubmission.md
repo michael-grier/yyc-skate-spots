@@ -22,25 +22,21 @@ September 25, 2026 found that contributors without a saved display name had blan
 and raw Clerk identifiers in the admin queue. Production Clerk tokens carry no name or email claim,
 so the provider-name and email fallbacks never applied.
 
-The next candidate asks each account to choose a display name after first sign-in, offering an
-anonymous name, and shows that anonymous name for accounts that never chose one. The owner
-confirmed this flow on the physical iPhone using development build
-`9b09903a-8716-429e-a9b5-a58e9e84d62c` and Metro. That development client does not replace
-device QA of the production TestFlight candidate.
+[TestFlight 1.0.0 (8)](releases/yyc-testflight-1.0.0-8.md) is the current candidate. It asks each
+account to choose a display name after first sign-in, offering an anonymous name, and shows that
+anonymous name for accounts that never chose one. The owner confirmed the first version of this
+flow on the physical iPhone using development build `9b09903a-8716-429e-a9b5-a58e9e84d62c` and
+Metro. That development client does not replace device QA of build 8.
 
-1. Review and merge the fixes and updated guidance into `main`.
-2. Follow the [release runbook](ios-release-runbook.md) from a clean, current `main` checkout:
-   verify configuration, deploy the matching production backend, build, and upload by EAS build ID.
-3. Record the release commit, EAS build ID, TestFlight version/build, device/iOS, and test date.
-4. Run the candidate checks below, then freeze that build and re-film all six sections of the
-   [video script](app-review-video-script.md).
+1. Run the candidate checks below on build 8 and record the device, iOS version, and test date.
+2. Freeze build 8 and re-film all six sections of the [video script](app-review-video-script.md).
 
 The old clips are rehearsal references. Do not mix them into a walkthrough presented as the
 replacement build. App Store Connect has not been updated by preparing these documents.
 
 ## Before recording
 
-- Install **1.0.0 ([BUILD NUMBER])**, the new candidate, from TestFlight on a physical iPhone running the latest publicly released
+- Install **1.0.0 (8)**, the new candidate, from TestFlight on a physical iPhone running the latest publicly released
   iOS available when recording. Record the model, exact iOS version, and test date. Check Software
   Update rather than relying on a version number in this document.
 - Confirm the TestFlight build matches the build selected in App Store Connect. Use the installed
@@ -150,7 +146,7 @@ numbered text when replying to Apple:
 ```text
 Hello App Review team,
 
-Here is the requested information for YYC Skate Spots 1.0.0 ([BUILD NUMBER]), including a physical-iPhone walkthrough of that build. I have also added it to App Review Information > Notes.
+Here is the requested information for YYC Skate Spots 1.0.0 (8), including a physical-iPhone walkthrough of that build. I have also added it to App Review Information > Notes.
 ```
 
 Do not send the introduction until its statements are true. Check both fields' displayed character
@@ -164,7 +160,7 @@ This resubmission includes app changes, so select the new tested binary from the
 
 1. Open YYC Skate Spots, app ID `6807476193`, in App Store Connect. Review the live rejection and
    status and any additional issues. Replace build 5 with the exact tested and recorded
-   **1.0.0 ([BUILD NUMBER])** candidate.
+   **1.0.0 (8)** candidate.
 2. Open the rejected version's App Review Information. Verify the contact and demo credentials,
    replace Notes with the completed six-part response, and save. Preserve Canada-only availability
    and the existing manual release option.
