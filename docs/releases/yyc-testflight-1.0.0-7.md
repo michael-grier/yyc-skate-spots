@@ -4,8 +4,8 @@ This records the candidate state on September 23, 2026. This candidate supersede
 [build 6](yyc-testflight-1.0.0-6.md).
 
 Superseded on September 25, 2026. Device QA found that contributors without a saved display name
-had blank public bylines and raw Clerk identifiers in the admin queue. The next production
-candidate adds a display-name prompt and anonymous names. The results below remain a historical
+had blank public bylines and raw Clerk identifiers in the admin queue.
+[Candidate 1.0.0 (8)](yyc-testflight-1.0.0-8.md) adds a display-name prompt and anonymous names. The results below remain a historical
 record of build 7; do not record or submit it for App Review.
 
 - Release commit: `d3c17ed3f278b8cef283b2225d897d31acc81a39`, merged PR #109.
