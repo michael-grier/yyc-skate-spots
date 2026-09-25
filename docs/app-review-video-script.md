@@ -73,7 +73,7 @@ code, and tap **Verify**.
 
 ### Choose a display name
 
-Profile opens with **Choose a display name**. Show the **Use Anonymous Skater …** option, then
+After verification, **Choose a display name** appears. Show the **Use Anonymous Skater …** option, then
 enter a non-personal demonstration name, tap **Save name**, and leave the updated Profile visible.
 Use this name to identify the account's submissions later in the admin queue.
 

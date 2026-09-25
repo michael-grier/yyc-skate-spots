@@ -259,22 +259,6 @@ describe("display name editor", () => {
     expect(screen.getByLabelText("Display name")).toHaveDisplayValue("Michael Grier");
   });
 
-  test("asks a new account to choose its provider name or stay anonymous", async () => {
-    mockQueryResults["profiles:me"] = {
-      displayName: "Anonymous Skater 123456",
-      anonymousName: "Anonymous Skater 123456",
-      hasChosenName: false,
-    };
-    await render(<ProfileView />);
-    expect(screen.getByRole("header", { name: "Choose a display name" })).toBeOnTheScreen();
-    expect(screen.getByLabelText("Display name")).toHaveDisplayValue("Michael Grier");
-    expect(screen.queryByRole("button", { name: /^Cancel$/ })).toBeNull();
-    await fireEvent.press(screen.getByRole("button", { name: "Use Anonymous Skater 123456" }));
-    expect(screen.getByLabelText("Display name")).toHaveDisplayValue("Anonymous Skater 123456");
-    await fireEvent.press(screen.getByRole("button", { name: "Save name" }));
-    expect(mockSetDisplayName).toHaveBeenCalledWith({ displayName: "Anonymous Skater 123456" });
-  });
-
   test("keeps invalid drafts open and allows retry after a save failure", async () => {
     mockSetDisplayName.mockRejectedValueOnce(new Error("offline"));
     await render(<ProfileView />);

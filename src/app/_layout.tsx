@@ -15,6 +15,7 @@ import { StatusBar } from "expo-status-bar";
 import { ScrollView, Text } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
+import { FirstDisplayNameChoice } from "@/components/first-display-name-choice";
 import { getEnvProblems } from "@/lib/env";
 import { colors } from "@/theme/colors";
 import "../global.css";
@@ -89,6 +90,7 @@ export default function RootLayout() {
             >
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             </Stack>
+            <FirstDisplayNameChoice />
           </BottomSheetModalProvider>
         </GestureHandlerRootView>
       </ConvexProviderWithClerk>

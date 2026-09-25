@@ -116,7 +116,8 @@ checks are already confirmed, but they do not replace testing this production bi
 - [ ] Signed-out Report dead spot and Report another problem open sign-in, then resume the selected
       report after authentication. Back cancels; signing in as the owner does not allow reporting.
 - [ ] New accounts, including Apple and Google, are asked to choose a display name with an anonymous
-      option. Favourites, creation, editing, and current display-name labels work.
+      option, also when sign-in resumes a report. Favourites, creation, editing, and current
+      display-name labels work.
 - [ ] Admin queue/detail labels show contributor names; unnamed accounts show the same anonymous
       name publicly and to admins.
 - [ ] Approval publishes contributor content; admin-created content is immediately published.
