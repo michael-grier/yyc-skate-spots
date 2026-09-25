@@ -23,18 +23,22 @@ import { colors } from "@/theme/colors";
 type DisplayNameSheetProps = {
   initialName: string;
   anonymousName: string;
-  /** First choice after sign-up: no Cancel, so every account leaves with a chosen name. */
-  required?: boolean;
   onClose: () => void;
+  /**
+   * Makes this the required first choice: Sign out replaces Cancel, so the account either picks a
+   * name or leaves, and is never trapped if saving keeps failing.
+   */
+  onSignOut?: () => void;
 };
 
 /** Mounted for each edit so Cancel discards the draft and reopening uses the saved name. */
 export function DisplayNameSheet({
   initialName,
   anonymousName,
-  required = false,
   onClose,
+  onSignOut,
 }: DisplayNameSheetProps) {
+  const required = onSignOut !== undefined;
   const insets = useSafeAreaInsets();
   const inputRef = useRef<TextInput>(null);
   const saving = useRef(false);
@@ -172,14 +176,12 @@ export function DisplayNameSheet({
             className="flex-row gap-3 px-5 pt-2"
             style={{ paddingBottom: Math.max(insets.bottom, 12) }}
           >
-            {required ? null : (
-              <Button
-                label="Cancel"
-                onPress={close}
-                disabled={isSaving}
-                className="flex-1 bg-card"
-              />
-            )}
+            <Button
+              label={required ? "Sign out" : "Cancel"}
+              onPress={onSignOut ?? close}
+              disabled={isSaving}
+              className="flex-1 bg-card"
+            />
             <Button
               label={isSaving ? "Saving…" : "Save name"}
               onPress={() => void save()}
