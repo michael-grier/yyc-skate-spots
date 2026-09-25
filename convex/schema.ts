@@ -39,7 +39,7 @@ export const reportReason = v.union(
 const reviewReason = v.union(v.literal("new"), v.literal("edited"), v.literal("reported"));
 
 export default defineSchema({
-  // Public display names are separate from private moderation identity fallbacks.
+  // Saved display names. Accounts without a row show a derived anonymous name.
   profiles: defineTable({
     userIdentifier: v.string(),
     displayName: v.string(),
