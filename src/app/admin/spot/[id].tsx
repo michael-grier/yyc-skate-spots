@@ -246,9 +246,7 @@ export default function AdminSpotReviewScreen() {
           <Card className="p-4">
             <View className="flex-row items-start gap-3">
               <View className="flex-1">
-                <Text className="font-sans-semibold text-[15px] text-ink">
-                  {spot.creator.name ?? "Unknown contributor"}
-                </Text>
+                <Text className="font-sans-semibold text-[15px] text-ink">{spot.creator.name}</Text>
                 <Text className="mt-1 font-sans text-[12px] text-mute">
                   {spot.creator.confirmedRemovalCount} confirmed removal
                   {spot.creator.confirmedRemovalCount === 1 ? "" : "s"}

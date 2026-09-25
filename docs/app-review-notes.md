@@ -56,7 +56,7 @@ YYC Skate Spots helps skateboarders living in or visiting Calgary find and asses
 3. ACCESS AND MAIN FEATURES
 Internet required; browsing needs no account or sample files. Map > marker > details shows photos, notes, directions, and sharing. Search/filter by type, bust factor, or distance. Location is optional; outside Calgary select Any distance.
 
-Contributor demo: Sign in > enter the supplied email > Sign in with a password > enter supplied password > Sign in. A spot's heart saves it in Profile > Favourites. Add spot guides name, type, location, optional photos/notes, and bust factor; save and accept the standards. Find submissions in Profile > Your spots; edit your display name on Profile.
+Contributor demo: Sign in > enter the supplied email > Sign in with a password > enter supplied password > Sign in. A spot's heart saves it in Profile > Favourites. Add spot guides name, type, location, optional photos/notes, and bust factor; save and accept the standards. Find submissions in Profile > Your spots. After first sign-in, the app asks for a display name or an anonymous one; edit it on Profile.
 
 Registration: Sign in > new email > Continue > emailed code > Verify. Apple/Google sign-in are also available. Back to sign in or switching app tabs resets the form, retaining email. Opening Mail preserves verification. Passwords for demo accounts are managed by the app operator.
 

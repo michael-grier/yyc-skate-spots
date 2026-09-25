@@ -336,8 +336,12 @@ export function ProfileView() {
           </View>
         }
       />
-      {editingName ? (
-        <DisplayNameSheet initialName={displayName ?? ""} onClose={() => setEditingName(false)} />
+      {profile && editingName ? (
+        <DisplayNameSheet
+          initialName={profile.displayName}
+          anonymousName={profile.anonymousName}
+          onClose={() => setEditingName(false)}
+        />
       ) : null}
     </>
   );

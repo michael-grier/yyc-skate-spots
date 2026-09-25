@@ -158,7 +158,6 @@ describe("spots authz", () => {
     if (spot?.status !== "active") throw new Error("Expected an active spot.");
     expect(spot.notes).toBeUndefined();
     expect(spot.surface).toBeUndefined();
-    expect(spot.createdByName).toBeUndefined();
   });
 
   test("a different user cannot update or delete someone else's spot", async () => {

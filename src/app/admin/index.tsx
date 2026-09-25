@@ -73,7 +73,7 @@ function QueueSpotCard({ spot, onPress }: { spot: QueueSpot; onPress: () => void
             {spot.name}
           </Text>
           <Text numberOfLines={1} className="mt-1 font-sans text-[12px] text-mute">
-            {formatSpotTypes(spot.types)} · {spot.creatorName ?? "Unknown contributor"}
+            {formatSpotTypes(spot.types)} · {spot.creatorName}
           </Text>
           <Text className="mt-1 font-sans text-[11px] text-mute">
             {spot.canAddAdminPhotos

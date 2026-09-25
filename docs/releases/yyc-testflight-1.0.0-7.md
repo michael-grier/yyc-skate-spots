@@ -1,7 +1,12 @@
 # YYC Skate Spots 1.0.0 (7) candidate record
 
-This records the candidate state on September 23, 2026. Recheck App Store Connect and PR status
-before acting. This candidate supersedes [build 6](yyc-testflight-1.0.0-6.md).
+This records the candidate state on September 23, 2026. This candidate supersedes
+[build 6](yyc-testflight-1.0.0-6.md).
+
+Superseded on September 25, 2026. Device QA found that contributors without a saved display name
+had blank public bylines and raw Clerk identifiers in the admin queue. The next production
+candidate adds a display-name prompt and anonymous names. The results below remain a historical
+record of build 7; do not record or submit it for App Review.
 
 - Release commit: `d3c17ed3f278b8cef283b2225d897d31acc81a39`, merged PR #109.
 - Build: `d49094f4-1072-496a-a226-8a1d5faa44c2`, production profile, store distribution, finished September 23, 2026.
@@ -11,7 +16,7 @@ before acting. This candidate supersedes [build 6](yyc-testflight-1.0.0-6.md).
 - TestFlight upload and Apple processing: completed. Apple reports `VALID` and internal `IN_BETA_TESTING`.
 - App Store Connect build ID: `e150d1f3-d487-4afd-b47f-45a800dcda54`.
 - Assigned to the existing internal group `Release Candidate Testers`; membership verified. Automatic access to all builds remains off. No processing or compliance blocker reported.
-- Physical-device QA: pending for build 7.
+- Physical-device QA: stopped September 25, 2026 by the display-name finding above.
 - App Review: not resubmitted.
 
 ## Changes from build 6
@@ -60,6 +65,4 @@ The owner signed in to App Store Connect, and the following corrections were pub
 
 App Store Connect now lists 11 collected data types. The other nine answers remain unchanged. The product-page preview places Identifiers and Other Data under Data Linked to You, and only Diagnostics under Data Not Linked to You. No Data Used to Track You section appears.
 
-The data inventory, release runbook, and public privacy-policy wording are updated in [PR #110](https://github.com/michael-grier/yyc-skate-spots/pull/110), commit `0228d4f`. Repository publication is pending review and merge; the public website will deploy after merge. The App Store Connect corrections above are already published. These changes do not require a new app binary.
-
-After device checks pass, re-film the six sections using this exact build and update reviewer notes before resubmitting.
+The data inventory, release runbook, and public privacy-policy wording were merged in [PR #110](https://github.com/michael-grier/yyc-skate-spots/pull/110) as `2313aeb` on September 25, 2026, and the public privacy policy was published with a September 23 effective date. The App Store Connect corrections above were already published. These changes did not require a new app binary.

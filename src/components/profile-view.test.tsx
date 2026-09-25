@@ -51,7 +51,11 @@ const spot = (id: string, name: string) => ({
 beforeEach(() => {
   jest.clearAllMocks();
   mockSetDisplayName.mockReset().mockResolvedValue(null);
-  mockQueryResults["profiles:me"] = { displayName: "Michael Grier" };
+  mockQueryResults["profiles:me"] = {
+    displayName: "Michael Grier",
+    anonymousName: "Anonymous Skater 123456",
+    hasChosenName: true,
+  };
   mockDeleteAccount.mockResolvedValue({ status: "complete" });
   mockSetActive.mockResolvedValue(undefined);
   mockSignOut.mockResolvedValue(undefined);
@@ -255,17 +259,6 @@ describe("display name editor", () => {
     expect(screen.getByLabelText("Display name")).toHaveDisplayValue("Michael Grier");
   });
 
-  test("lets an email-code account choose a name without using its email", async () => {
-    mockQueryResults["profiles:me"] = { displayName: null };
-    await render(<ProfileView />);
-    await fireEvent.press(screen.getByRole("button", { name: "Edit display name" }));
-    expect(screen.getByLabelText("Display name")).toHaveDisplayValue("");
-    await fireEvent.changeText(screen.getByLabelText("Display name"), "  Skater  ");
-    await fireEvent.press(screen.getByRole("button", { name: "Save name" }));
-    expect(mockSetDisplayName).toHaveBeenCalledWith({ displayName: "Skater" });
-    await waitFor(() => expect(screen.queryByLabelText("Display name")).toBeNull());
-  });
-
   test("keeps invalid drafts open and allows retry after a save failure", async () => {
     mockSetDisplayName.mockRejectedValueOnce(new Error("offline"));
     await render(<ProfileView />);
@@ -303,7 +296,10 @@ describe("display name editor", () => {
 
   test("reflects a reactive name change on Profile", async () => {
     const view = await render(<ProfileView />);
-    mockQueryResults["profiles:me"] = { displayName: "Renamed Skater" };
+    mockQueryResults["profiles:me"] = {
+      ...(mockQueryResults["profiles:me"] as object),
+      displayName: "Renamed Skater",
+    };
     await view.rerender(<ProfileView />);
     expect(screen.getByText("Renamed Skater")).toBeOnTheScreen();
     expect(screen.queryByText("Michael Grier")).toBeNull();

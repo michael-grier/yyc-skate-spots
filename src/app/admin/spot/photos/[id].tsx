@@ -121,9 +121,7 @@ export default function AdminSpotPhotosScreen() {
           <>
             <Card className="mt-5 p-4">
               <Text className="font-sans-semibold text-[17px] text-ink">{spot.name}</Text>
-              <Text className="mt-1 font-sans text-[13px] text-mute">
-                {spot.creator.name ?? "Contributor"}
-              </Text>
+              <Text className="mt-1 font-sans text-[13px] text-mute">{spot.creator.name}</Text>
               <Text className="mt-3 font-sans-medium text-[12px] text-bust-low">
                 Contributor permission granted
               </Text>

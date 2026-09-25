@@ -236,11 +236,7 @@ export default function SpotDetailScreen() {
   }
 
   const added = `Added ${formatMonthYear(spot._creationTime)}`;
-  const byline = spot.isOwner
-    ? `${added} by you`
-    : spot.createdByName
-      ? `${added} by ${spot.createdByName}`
-      : added;
+  const byline = `${added} by ${spot.isOwner ? "you" : spot.createdByName}`;
 
   return (
     <View className="flex-1 bg-base">
