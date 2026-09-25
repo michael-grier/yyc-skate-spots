@@ -336,8 +336,18 @@ export function ProfileView() {
           </View>
         }
       />
-      {editingName ? (
-        <DisplayNameSheet initialName={displayName ?? ""} onClose={() => setEditingName(false)} />
+      {profile && (editingName || !profile.hasChosenName) ? (
+        <DisplayNameSheet
+          // The first choice suggests an Apple or Google name, which production tokens omit.
+          initialName={
+            profile.hasChosenName
+              ? profile.displayName
+              : (publicDisplayName(user?.fullName) ?? profile.displayName)
+          }
+          anonymousName={profile.anonymousName}
+          required={!profile.hasChosenName}
+          onClose={() => setEditingName(false)}
+        />
       ) : null}
     </>
   );

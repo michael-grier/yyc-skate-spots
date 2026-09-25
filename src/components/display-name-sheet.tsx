@@ -22,11 +22,19 @@ import { colors } from "@/theme/colors";
 
 type DisplayNameSheetProps = {
   initialName: string;
+  anonymousName: string;
+  /** First choice after sign-up: no Cancel, so every account leaves with a chosen name. */
+  required?: boolean;
   onClose: () => void;
 };
 
 /** Mounted for each edit so Cancel discards the draft and reopening uses the saved name. */
-export function DisplayNameSheet({ initialName, onClose }: DisplayNameSheetProps) {
+export function DisplayNameSheet({
+  initialName,
+  anonymousName,
+  required = false,
+  onClose,
+}: DisplayNameSheetProps) {
   const insets = useSafeAreaInsets();
   const inputRef = useRef<TextInput>(null);
   const saving = useRef(false);
@@ -36,7 +44,7 @@ export function DisplayNameSheet({ initialName, onClose }: DisplayNameSheetProps
   const setDisplayName = useMutation(api.profiles.setDisplayName);
 
   function close() {
-    if (saving.current) return;
+    if (required || saving.current) return;
     Keyboard.dismiss();
     onClose();
   }
@@ -76,13 +84,15 @@ export function DisplayNameSheet({ initialName, onClose }: DisplayNameSheetProps
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         className="flex-1 justify-end bg-black/65"
       >
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Cancel display name edit"
-          onPress={close}
-          disabled={isSaving}
-          className="absolute inset-0"
-        />
+        {required ? null : (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Cancel display name edit"
+            onPress={close}
+            disabled={isSaving}
+            className="absolute inset-0"
+          />
+        )}
         <View
           accessibilityViewIsModal
           onAccessibilityEscape={close}
@@ -95,7 +105,7 @@ export function DisplayNameSheet({ initialName, onClose }: DisplayNameSheetProps
               accessibilityRole="header"
               className="mb-3 mt-5 font-sans-semibold text-[20px] text-ink"
             >
-              Edit display name
+              {required ? "Choose a display name" : "Edit display name"}
             </Text>
           </View>
           <ScrollView
@@ -104,8 +114,9 @@ export function DisplayNameSheet({ initialName, onClose }: DisplayNameSheetProps
             contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 16 }}
           >
             <Text className="mb-5 font-sans text-[13px] leading-relaxed text-mute">
-              Shown beside the spots you contribute. Changing it updates your name on existing spots
-              too.
+              {required
+                ? "Shown beside the spots you contribute. Use any name, or stay anonymous. You can change it later in Profile."
+                : "Shown beside the spots you contribute. Changing it updates your name on existing spots too."}
             </Text>
             <Text className="mb-2 font-sans-medium text-[13px] text-silver">Display name</Text>
             <TextInput
@@ -134,6 +145,22 @@ export function DisplayNameSheet({ initialName, onClose }: DisplayNameSheetProps
             <Text className="mt-2 font-sans text-[11px] leading-relaxed text-mute">
               {DISPLAY_NAME_HINT}
             </Text>
+            {name.trim() === anonymousName ? null : (
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => {
+                  setName(anonymousName);
+                  setError(null);
+                }}
+                disabled={isSaving}
+                hitSlop={8}
+                className="mt-4 self-start py-1 active:opacity-80"
+              >
+                <Text className="font-sans-semibold text-[13px] text-silver">
+                  {`Use ${anonymousName}`}
+                </Text>
+              </Pressable>
+            )}
             {error ? (
               <Text accessibilityRole="alert" className="mt-2 font-sans text-[13px] text-bust-high">
                 {error}
@@ -145,7 +172,14 @@ export function DisplayNameSheet({ initialName, onClose }: DisplayNameSheetProps
             className="flex-row gap-3 px-5 pt-2"
             style={{ paddingBottom: Math.max(insets.bottom, 12) }}
           >
-            <Button label="Cancel" onPress={close} disabled={isSaving} className="flex-1 bg-card" />
+            {required ? null : (
+              <Button
+                label="Cancel"
+                onPress={close}
+                disabled={isSaving}
+                className="flex-1 bg-card"
+              />
+            )}
             <Button
               label={isSaving ? "Saving…" : "Save name"}
               onPress={() => void save()}
