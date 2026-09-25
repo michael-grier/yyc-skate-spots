@@ -10,6 +10,12 @@ export const me = query({
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return null;
+    // Deletion removes the profile before sign-out; that must not look like an unnamed account.
+    const deletion = await ctx.db
+      .query("accountDeletionRequests")
+      .withIndex("by_userIdentifier", (q) => q.eq("userIdentifier", identity.tokenIdentifier))
+      .unique();
+    if (deletion) return null;
     const profile = await profileFor(ctx, identity.tokenIdentifier);
     const anonymousName = anonymousDisplayName(identity.tokenIdentifier);
     return {

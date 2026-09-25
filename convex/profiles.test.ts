@@ -173,6 +173,7 @@ describe("display names", () => {
     await expect(
       alice.mutation(api.profiles.setDisplayName, { displayName: "Recreated" }),
     ).rejects.toThrow(/deleting/);
+    expect(await alice.query(api.profiles.me, {})).toBeNull();
     await t.mutation(internal.accountDeletion.cleanupBatch, { requestId });
     expect(await t.run((ctx) => ctx.db.query("profiles").collect())).toEqual([]);
   });
