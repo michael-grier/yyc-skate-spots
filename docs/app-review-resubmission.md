@@ -114,8 +114,10 @@ checks are already confirmed, but they do not replace testing this production bi
       become visible without manually closing the keyboard, and allow a retry.
 - [ ] Signed-out Report dead spot and Report another problem open sign-in, then resume the selected
       report after authentication. Back cancels; signing in as the owner does not allow reporting.
-- [ ] Registration, favourites, creation, editing, and current display-name labels work.
-- [ ] Admin queue/detail labels identify contributors; unnamed legacy accounts have stable private labels.
+- [ ] New accounts, including Apple and Google, are asked to choose a display name with an anonymous
+      option. Favourites, creation, editing, and current display-name labels work.
+- [ ] Admin queue/detail labels show contributor names; unnamed accounts show the same anonymous
+      name publicly and to admins.
 - [ ] Approval publishes contributor content; admin-created content is immediately published.
 - [ ] Photo permission can be declined, granted, and withdrawn. Admin photos require permission and
       an empty gallery, preserve spot details/review state, and notify the owner in Your spots.

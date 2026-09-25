@@ -66,16 +66,19 @@ Stop recording after returning to the app. Remain signed out for the next clip.
 ### Register a new account
 
 Open **Sign in**. Enter the unused disposable email address, tap **Continue**, enter the emailed
-code, and tap **Verify**. Show the resulting Profile.
+code, and tap **Verify**.
 
 > A new user registers by verifying their email address. Existing users can also sign in with
 > email codes. Apple and Google sign-in are available.
 
-### Set a display name
+### Choose a display name
 
-On Profile, tap the display-name edit control. Enter a non-personal demonstration name, tap
-**Save name**, and leave the updated Profile visible. Use this name to identify the account's
-submissions later in the admin queue.
+Profile opens with **Choose a display name**. Show the **Use Anonymous Skater …** option, then
+enter a non-personal demonstration name, tap **Save name**, and leave the updated Profile visible.
+Use this name to identify the account's submissions later in the admin queue.
+
+> New accounts choose the name shown beside their spots. They can use an anonymous name instead,
+> and change it later on Profile.
 
 ### Save a favourite
 
