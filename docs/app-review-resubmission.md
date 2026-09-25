@@ -12,20 +12,21 @@ Connect has not been updated or resubmitted as part of preparing this document.
 
 ## Candidate preparation
 
-The rejected submission used 1.0.0 (5). Prepare a replacement binary containing the merged
-features and fixes for #90, #104, and #105. Keep the app version at 1.0.0 unless App Store Connect
-requires otherwise; EAS assigns the next production build number. Do not reuse build 5.
+The rejected submission used 1.0.0 (5). Keep the app version at 1.0.0 unless App Store Connect
+requires otherwise; EAS assigns the next production build number. Do not reuse an earlier build.
 
-TestFlight 1.0.0 (6) passed the owner's initial browsing and account checks on September 23, 2026,
-using an iPhone 17 running iOS 26.6.2. It is being replaced to remove in-app password reset and fix
-report sign-in continuation and error visibility, issues #107 and #108. Repeat the affected checks
-on the replacement candidate; build 6 has not completed the full moderation/deletion walkthrough.
+[TestFlight 1.0.0 (6)](releases/yyc-testflight-1.0.0-6.md) was replaced to remove in-app password
+reset and fix report sign-in continuation and error visibility, issues #107 and #108.
+[TestFlight 1.0.0 (7)](releases/yyc-testflight-1.0.0-7.md) shipped those fixes. Its device QA on
+September 25, 2026 found that contributors without a saved display name had blank public bylines
+and raw Clerk identifiers in the admin queue. Production Clerk tokens carry no name or email claim,
+so the provider-name and email fallbacks never applied.
 
-The owner confirmed the sign-in focus, recovery controls, and tab-reset behavior on the physical
-iPhone using the development client and Metro. Development build
-`9b09903a-8716-429e-a9b5-a58e9e84d62c` was internally distributed with the label 1.0.0 (5).
-That label does not identify the rejected App Store binary or prove a new TestFlight candidate
-has passed QA. SDK 57 patch alignment after this check also requires candidate device QA.
+The next candidate asks each account to choose a display name after first sign-in, offering an
+anonymous name, and shows that anonymous name for accounts that never chose one. The owner
+confirmed this flow on the physical iPhone using development build
+`9b09903a-8716-429e-a9b5-a58e9e84d62c` and Metro. That development client does not replace
+device QA of the production TestFlight candidate.
 
 1. Review and merge the fixes and updated guidance into `main`.
 2. Follow the [release runbook](ios-release-runbook.md) from a clean, current `main` checkout:
@@ -39,7 +40,7 @@ replacement build. App Store Connect has not been updated by preparing these doc
 
 ## Before recording
 
-- Install **1.0.0 ([BUILD NUMBER])**, the replacement candidate, from TestFlight on a physical iPhone running the latest publicly released
+- Install **1.0.0 ([BUILD NUMBER])**, the new candidate, from TestFlight on a physical iPhone running the latest publicly released
   iOS available when recording. Record the model, exact iOS version, and test date. Check Software
   Update rather than relying on a version number in this document.
 - Confirm the TestFlight build matches the build selected in App Store Connect. Use the installed
