@@ -14,6 +14,18 @@ export function displayNameError(value: string) {
   return null;
 }
 
+/**
+ * A stable public name for accounts that never chose one. Deriving it from the identity lets
+ * existing spots show it without a backfill. FNV-1a keeps it synchronous in Convex queries.
+ */
+export function anonymousDisplayName(userIdentifier: string) {
+  let hash = 0x811c9dc5;
+  for (const char of userIdentifier) {
+    hash = Math.imul(hash ^ (char.codePointAt(0) ?? 0), 0x01000193) >>> 0;
+  }
+  return `Anonymous Skater ${100000 + (hash % 900000)}`;
+}
+
 /** Provider and legacy names must never turn an email fallback into a public byline. */
 export function publicDisplayName(value: string | undefined | null) {
   const name = value?.trim();

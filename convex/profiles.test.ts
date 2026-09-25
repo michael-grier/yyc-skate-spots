@@ -2,6 +2,7 @@
 import { convexTest } from "convex-test";
 import { describe, expect, test } from "vitest";
 import { api, internal } from "./_generated/api";
+import { anonymousDisplayName, displayNameError } from "./displayNames";
 import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
@@ -29,11 +30,18 @@ describe("display names", () => {
     await expect(
       t.mutation(api.profiles.setDisplayName, { displayName: "Intruder" }),
     ).rejects.toThrow(/signed in/);
-    expect(await alice.query(api.profiles.me, {})).toEqual({ displayName: "Alice Provider" });
-    expect(await bob.query(api.profiles.me, {})).toEqual({ displayName: null });
+    expect(await alice.query(api.profiles.me, {})).toEqual({
+      displayName: "Alice Provider",
+      anonymousName: anonymousDisplayName(aliceIdentity.tokenIdentifier),
+      hasChosenName: false,
+    });
+    expect(await bob.query(api.profiles.me, {})).toMatchObject({ hasChosenName: false });
     await alice.mutation(api.profiles.setDisplayName, { displayName: "  Rene\u0301e O’Neil-2.  " });
     await bob.mutation(api.profiles.setDisplayName, { displayName: "Renée O’Neil-2." });
-    expect(await alice.query(api.profiles.me, {})).toEqual({ displayName: "Renée O’Neil-2." });
+    expect(await alice.query(api.profiles.me, {})).toMatchObject({
+      displayName: "Renée O’Neil-2.",
+      hasChosenName: true,
+    });
     await bob.mutation(api.profiles.setDisplayName, { displayName: "Bob" });
     await expect(
       bob.mutation(api.profiles.setDisplayName, {
@@ -41,7 +49,9 @@ describe("display names", () => {
         ...{ userIdentifier: aliceIdentity.tokenIdentifier },
       }),
     ).rejects.toThrow();
-    expect(await alice.query(api.profiles.me, {})).toEqual({ displayName: "Renée O’Neil-2." });
+    expect(await alice.query(api.profiles.me, {})).toMatchObject({
+      displayName: "Renée O’Neil-2.",
+    });
     expect(await t.run((ctx) => ctx.db.query("profiles").collect())).toHaveLength(2);
   });
 
@@ -62,8 +72,16 @@ describe("display names", () => {
     }
     for (const displayName of ["A", "王小明", "𐐀".repeat(40)]) {
       await alice.mutation(api.profiles.setDisplayName, { displayName });
-      expect(await alice.query(api.profiles.me, {})).toEqual({ displayName });
+      expect(await alice.query(api.profiles.me, {})).toMatchObject({ displayName });
     }
+  });
+
+  test("anonymous names are stable, distinct, and valid display names", () => {
+    const name = anonymousDisplayName("clerk|alice");
+    expect(name).toMatch(/^Anonymous Skater \d{6}$/);
+    expect(anonymousDisplayName("clerk|alice")).toBe(name);
+    expect(anonymousDisplayName("clerk|bob")).not.toBe(name);
+    expect(displayNameError(name)).toBeNull();
   });
 
   test("renames reach old and new public spots and private admin labels", async () => {
@@ -128,7 +146,8 @@ describe("display names", () => {
       await admin.mutation(api.moderation.markMeetsStandards, { spotId: id });
       // Also cover old documents that already contain an email in the name field.
       await t.run((ctx) => ctx.db.patch("spots", id, { createdByName: "private@example.com" }));
-      expect(await owner.query(api.profiles.me, {})).toEqual({ displayName: null });
+      const anonymousName = anonymousDisplayName(`clerk|owner-${name}`);
+      expect(await owner.query(api.profiles.me, {})).toMatchObject({ displayName: anonymousName });
       expect(JSON.stringify(await t.query(api.spots.get, { id }))).not.toContain(
         "private@example.com",
       );
@@ -136,7 +155,7 @@ describe("display names", () => {
         "private@example.com",
       );
       expect(await admin.query(api.moderation.getSpot, { id })).toMatchObject({
-        creator: { name: "private@example.com" },
+        creator: { name: anonymousName },
       });
       await owner.mutation(api.profiles.setDisplayName, { displayName: "New Skater" });
       expect(await t.query(api.spots.get, { id })).toMatchObject({ createdByName: "New Skater" });

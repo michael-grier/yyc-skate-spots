@@ -1,5 +1,5 @@
 import type { MutationCtx, QueryCtx } from "./_generated/server";
-import { publicDisplayName } from "./displayNames";
+import { anonymousDisplayName, publicDisplayName } from "./displayNames";
 
 export async function profileFor(ctx: QueryCtx | MutationCtx, userIdentifier: string) {
   return await ctx.db
@@ -22,5 +22,7 @@ export async function contributorName(
   }
   // Cache the lookup, not the resolved name: legacy names can differ between spots.
   const profile = await pending;
-  return publicDisplayName(profile?.displayName ?? legacyName);
+  return (
+    publicDisplayName(profile?.displayName ?? legacyName) ?? anonymousDisplayName(userIdentifier)
+  );
 }

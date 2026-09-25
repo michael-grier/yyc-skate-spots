@@ -1,17 +1,22 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { requireIdentity } from "./auth";
-import { displayNameError, publicDisplayName } from "./displayNames";
+import { anonymousDisplayName, displayNameError, publicDisplayName } from "./displayNames";
 import { profileFor } from "./profileModel";
 
-/** The editor uses a provider name until the caller saves an app-specific name. */
+/** The name bylines show, plus what the app needs to prompt for a first choice. */
 export const me = query({
   args: {},
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return null;
     const profile = await profileFor(ctx, identity.tokenIdentifier);
-    return { displayName: publicDisplayName(profile?.displayName ?? identity.name) ?? null };
+    const anonymousName = anonymousDisplayName(identity.tokenIdentifier);
+    return {
+      displayName: publicDisplayName(profile?.displayName ?? identity.name) ?? anonymousName,
+      anonymousName,
+      hasChosenName: profile !== null,
+    };
   },
 });
 
