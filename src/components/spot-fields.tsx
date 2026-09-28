@@ -146,6 +146,9 @@ export function TypeCarousel({
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
+      // Every nested ScrollView needs this too, or the first chip tap after typing a
+      // name only closes the keyboard.
+      keyboardShouldPersistTaps="handled"
       contentContainerStyle={{ gap: 8, paddingRight: 16 }}
     >
       {order.map((type) => (

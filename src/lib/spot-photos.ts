@@ -4,6 +4,7 @@ import { File } from "expo-file-system";
 import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
 
+import { ensurePermission } from "@/lib/permissions";
 import type { FormPhoto } from "@/lib/spot-form";
 
 // Phone photos are 12MP+; a 1600px long edge is plenty for a detail screen
@@ -13,8 +14,15 @@ const JPEG_QUALITY = 0.8;
 
 /** Opens the photo library; resolves to [] if the user cancels or declines permission. */
 export async function pickPhotos(limit: number): Promise<FormPhoto[]> {
-  const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-  if (!permission.granted) {
+  const granted = await ensurePermission(
+    ImagePicker.getMediaLibraryPermissionsAsync,
+    ImagePicker.requestMediaLibraryPermissionsAsync,
+    {
+      title: "Photo access is off",
+      message: "To add photos, allow YYC Skate Spots to access your photos in Settings.",
+    },
+  );
+  if (!granted) {
     return [];
   }
   const result = await ImagePicker.launchImageLibraryAsync({
