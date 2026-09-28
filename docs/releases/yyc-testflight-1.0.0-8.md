@@ -38,6 +38,9 @@ All 14 bundled privacy manifests declare no tracking. Google Maps' resource mani
 
 ## Device checks before recording
 
+This was the pre-QA plan. The owner reported completing these checks on September 28, 2026, with
+findings filed as #113 to #120; results for individual items were not recorded.
+
 - [ ] Install build 8 and cold-launch the map; open a spot.
 - [ ] Register a new email account. Confirm **Choose a display name** appears, the anonymous option fills in the name, and saving closes the sheet.
 - [ ] Sign in with Apple and Google on unnamed accounts. Confirm the provider name is suggested.
