@@ -5,6 +5,7 @@ import { useState } from "react";
 import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { EvidencePhotos } from "@/components/evidence-photos";
 import { BackIcon } from "@/components/icons";
 import { PhotoCarousel } from "@/components/photo-carousel";
 import { Button } from "@/components/ui/button";
@@ -222,7 +223,7 @@ export default function AdminSpotReviewScreen() {
                   ) : null}
                   {report.photoUrls.length > 0 ? (
                     <View className="mt-3">
-                      <PhotoCarousel urls={report.photoUrls} spotName="Private report evidence" />
+                      <EvidencePhotos urls={report.photoUrls} />
                     </View>
                   ) : null}
                   <Text className="mt-2 font-sans text-[11px] text-mute">
