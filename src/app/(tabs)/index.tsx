@@ -25,6 +25,7 @@ import {
   hasActiveFilters,
   rankSuggestions,
 } from "@/lib/spot-filters";
+import { useAccountGeneration } from "@/lib/use-account-generation";
 import { useClusters } from "@/lib/use-clusters";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
 import { useUserLocation } from "@/lib/use-user-location";
@@ -54,7 +55,12 @@ const NO_SPOTS: never[] = [];
  * The map is the app's landing screen and is browsable signed out. Sign-in is
  * only required for actions that write.
  */
+/** A different account starts from a fresh map, as after a cold start. */
 export default function MapScreen() {
+  return <MapContent key={useAccountGeneration()} />;
+}
+
+function MapContent() {
   const router = useRouter();
   const mapRef = useRef<MapView>(null);
   const sheetRef = useRef<BottomSheetModal>(null);

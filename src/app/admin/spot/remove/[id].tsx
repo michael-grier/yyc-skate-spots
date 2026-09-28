@@ -21,6 +21,7 @@ import { ModerationReasonPicker } from "@/components/moderation-reason-picker";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import type { ReportReason } from "@/lib/spot-standards";
+import { useRevealFieldOnKeyboard } from "@/lib/use-reveal-field-on-keyboard";
 import { colors } from "@/theme/colors";
 
 const MAX_DETAILS_LENGTH = 500;
@@ -38,6 +39,7 @@ export default function AdminRemoveSpotScreen() {
   const banContributor = useMutation(api.moderation.banContributor);
   const [reason, setReason] = useState<ReportReason | null>(null);
   const [details, setDetails] = useState("");
+  const { scrollRef, onFieldLayout } = useRevealFieldOnKeyboard();
   const [working, setWorking] = useState(false);
   const [result, setResult] = useState<RemovalResult | null>(null);
   const [banApplied, setBanApplied] = useState(false);
@@ -237,6 +239,7 @@ export default function AdminRemoveSpotScreen() {
         className="flex-1"
       >
         <ScrollView
+          ref={scrollRef}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
           automaticallyAdjustKeyboardInsets
@@ -271,26 +274,28 @@ export default function AdminRemoveSpotScreen() {
               No contributor strike will be added for a dead spot.
             </Text>
           ) : null}
-          <Text className="mt-5 mb-2 px-1 font-sans-medium text-[11px] text-mute">
-            INTERNAL DETAILS (OPTIONAL)
-          </Text>
-          <Card className="px-4 py-3">
-            <TextInput
-              value={details}
-              onChangeText={setDetails}
-              maxLength={MAX_DETAILS_LENGTH}
-              placeholder="Notes for the moderation record"
-              placeholderTextColor={colors.mute}
-              multiline
-              textAlignVertical="top"
-              accessibilityLabel="Internal removal details"
-              className="min-h-[96px] font-sans text-[14px] leading-relaxed text-ink"
-              style={{ paddingVertical: 0 }}
-            />
-          </Card>
-          <Text className="mt-1.5 px-1 text-right font-sans text-[11px] text-mute">
-            {details.length}/{MAX_DETAILS_LENGTH}
-          </Text>
+          <View onLayout={onFieldLayout}>
+            <Text className="mt-5 mb-2 px-1 font-sans-medium text-[11px] text-mute">
+              INTERNAL DETAILS (OPTIONAL)
+            </Text>
+            <Card className="px-4 py-3">
+              <TextInput
+                value={details}
+                onChangeText={setDetails}
+                maxLength={MAX_DETAILS_LENGTH}
+                placeholder="Notes for the moderation record"
+                placeholderTextColor={colors.mute}
+                multiline
+                textAlignVertical="top"
+                accessibilityLabel="Internal removal details"
+                className="min-h-[96px] max-h-[160px] font-sans text-[14px] leading-relaxed text-ink"
+                style={{ paddingVertical: 0 }}
+              />
+            </Card>
+            <Text className="mt-1.5 px-1 text-right font-sans text-[11px] text-mute">
+              {details.length}/{MAX_DETAILS_LENGTH}
+            </Text>
+          </View>
 
           {error ? (
             <Text className="mt-3 font-sans text-[13px] text-bust-high">{error}</Text>

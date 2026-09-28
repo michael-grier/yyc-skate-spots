@@ -21,6 +21,7 @@ import { PhotoStrip } from "@/components/spot-fields";
 import { SignInView } from "@/components/sign-in-view";
 import type { FormPhoto } from "@/lib/spot-form";
 import { pickPhotos, uploadPhoto } from "@/lib/spot-photos";
+import { useRevealFieldOnKeyboard } from "@/lib/use-reveal-field-on-keyboard";
 import { resolveConvexSiteUrl } from "@/lib/convex-site";
 import { BackIcon } from "@/components/icons";
 import { ModerationReasonPicker } from "@/components/moderation-reason-picker";
@@ -52,6 +53,7 @@ export default function ReportSpotScreen() {
   const busy = useRef(false);
   const discardUpload = useMutation(api.reportPhotos.discardUpload);
   const [details, setDetails] = useState("");
+  const { scrollRef, onFieldLayout } = useRevealFieldOnKeyboard();
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -209,6 +211,7 @@ export default function ReportSpotScreen() {
         className="flex-1"
       >
         <ScrollView
+          ref={scrollRef}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
           automaticallyAdjustKeyboardInsets
@@ -276,27 +279,29 @@ export default function ReportSpotScreen() {
             </View>
           ) : null}
 
-          <Text className="mt-5 mb-2 px-1 font-sans-medium text-[11px] text-mute">
-            DETAILS (OPTIONAL)
-          </Text>
-          <Card className="px-4 py-3">
-            <TextInput
-              value={details}
-              editable={!submitting}
-              onChangeText={setDetails}
-              maxLength={MAX_DETAILS_LENGTH}
-              placeholder="What should the admin know?"
-              placeholderTextColor={colors.mute}
-              multiline
-              textAlignVertical="top"
-              accessibilityLabel="Report details"
-              className="min-h-[96px] font-sans text-[14px] leading-relaxed text-ink"
-              style={{ paddingVertical: 0 }}
-            />
-          </Card>
-          <Text className="mt-1.5 px-1 text-right font-sans text-[11px] text-mute">
-            {details.length}/{MAX_DETAILS_LENGTH}
-          </Text>
+          <View onLayout={onFieldLayout}>
+            <Text className="mt-5 mb-2 px-1 font-sans-medium text-[11px] text-mute">
+              DETAILS (OPTIONAL)
+            </Text>
+            <Card className="px-4 py-3">
+              <TextInput
+                value={details}
+                editable={!submitting}
+                onChangeText={setDetails}
+                maxLength={MAX_DETAILS_LENGTH}
+                placeholder="What should the admin know?"
+                placeholderTextColor={colors.mute}
+                multiline
+                textAlignVertical="top"
+                accessibilityLabel="Report details"
+                className="min-h-[96px] max-h-[160px] font-sans text-[14px] leading-relaxed text-ink"
+                style={{ paddingVertical: 0 }}
+              />
+            </Card>
+            <Text className="mt-1.5 px-1 text-right font-sans text-[11px] text-mute">
+              {details.length}/{MAX_DETAILS_LENGTH}
+            </Text>
+          </View>
 
           {error ? (
             <Text className="mt-3 font-sans text-[13px] text-bust-high">{error}</Text>

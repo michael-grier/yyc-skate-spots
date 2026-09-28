@@ -1,7 +1,9 @@
 import * as Location from "expo-location";
 import { useCallback, useEffect, useState } from "react";
+import { Alert } from "react-native";
 
 import type { LatLng } from "@/lib/geo";
+import { ensurePermission } from "@/lib/permissions";
 
 /**
  * The user's position for distances and the locate button. Reads silently
@@ -38,16 +40,32 @@ export function useUserLocation() {
     };
   }, [readPosition]);
 
-  /** Prompts if needed, then resolves the position (null if denied). */
+  /**
+   * Prompts if needed, then resolves the position. Resolves null after explaining a denial or a
+   * failed reading; every caller is a user tap, so each failure gets feedback.
+   */
   const locate = useCallback(async () => {
-    const permission = await Location.requestForegroundPermissionsAsync();
-    setGranted(permission.granted);
-    if (!permission.granted) {
+    try {
+      const allowed = await ensurePermission(
+        Location.getForegroundPermissionsAsync,
+        Location.requestForegroundPermissionsAsync,
+        {
+          title: "Location access is off",
+          message:
+            "To use your current location, allow YYC Skate Spots to access your location in Settings.",
+        },
+      );
+      setGranted(allowed);
+      if (!allowed) {
+        return null;
+      }
+      // A deliberate locate action needs tighter accuracy than the silent read
+      // used for distance labels and the browsing map's blue dot.
+      return await readPosition(Location.Accuracy.High);
+    } catch {
+      Alert.alert("Location unavailable", "Check location services and try again.");
       return null;
     }
-    // A deliberate locate action needs tighter accuracy than the silent read
-    // used for distance labels and the browsing map's blue dot.
-    return await readPosition(Location.Accuracy.High).catch(() => null);
   }, [readPosition]);
 
   return { coords, granted, locate };
