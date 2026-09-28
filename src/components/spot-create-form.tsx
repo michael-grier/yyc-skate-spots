@@ -14,7 +14,6 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { LocationPicker } from "@/components/location-picker";
-import { NearbySpotsNotice } from "@/components/nearby-spots-notice";
 import { PhotoPermissionSheet } from "@/components/photo-permission-sheet";
 import { StandardsAcceptanceSheet } from "@/components/standards-acceptance-sheet";
 import {
@@ -39,6 +38,7 @@ import {
   validateSpotStep,
 } from "@/lib/spot-form";
 import { useKeyboardVisible } from "@/lib/use-keyboard-visible";
+import { useDuplicateCheck } from "@/lib/use-duplicate-check";
 import { type SpotFormSave, type StandardsAcknowledge, useSpotForm } from "@/lib/use-spot-form";
 import { colors } from "@/theme/colors";
 
@@ -86,6 +86,7 @@ export function SpotCreateForm({ onCancel, onSave, onAcknowledgeStandards }: Spo
     closeStandards,
     acknowledgeStandardsAndSave,
   } = useSpotForm(EMPTY_SPOT_FORM, onSave, onAcknowledgeStandards);
+  const confirmNotDuplicate = useDuplicateCheck();
 
   const stepIndex = SPOT_FORM_STEPS.indexOf(step);
   const isLastStep = stepIndex === SPOT_FORM_STEPS.length - 1;
@@ -95,10 +96,13 @@ export function SpotCreateForm({ onCancel, onSave, onAcknowledgeStandards }: Spo
   // reliably fires onBlur — from stranding the form with no Save button.
   const editingNotes = keyboardVisible && step === "details";
 
-  function goNext() {
+  async function goNext() {
     const stepErrors = validateSpotStep(values, step);
     setErrors(stepErrors);
     if (Object.keys(stepErrors).length > 0) {
+      return;
+    }
+    if (step === "place" && location && !(await confirmNotDuplicate(location))) {
       return;
     }
     setStep(SPOT_FORM_STEPS[stepIndex + 1]);
@@ -198,7 +202,6 @@ export function SpotCreateForm({ onCancel, onSave, onAcknowledgeStandards }: Spo
                     setValues((current) => ({ ...current, latitude, longitude }))
                   }
                 />
-                <NearbySpotsNotice location={location} />
               </Field>
               <Field
                 label="PHOTOS"
@@ -274,7 +277,7 @@ export function SpotCreateForm({ onCancel, onSave, onAcknowledgeStandards }: Spo
               label={saving ? "Saving…" : STEP_COPY[step].action}
               variant="light"
               disabled={saving}
-              onPress={isLastStep ? () => void handleSave() : goNext}
+              onPress={isLastStep ? () => void handleSave() : () => void goNext()}
             />
           </View>
         )}

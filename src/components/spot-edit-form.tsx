@@ -14,7 +14,6 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { LocationPicker } from "@/components/location-picker";
-import { NearbySpotsNotice } from "@/components/nearby-spots-notice";
 import { PhotoPermissionSheet } from "@/components/photo-permission-sheet";
 import { StandardsAcceptanceSheet } from "@/components/standards-acceptance-sheet";
 import {
@@ -29,6 +28,7 @@ import { StandardsLine, StandardsSheet } from "@/components/standards-sheet";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { MAX_NOTES_LENGTH, MAX_PHOTOS, type SpotFormValues } from "@/lib/spot-form";
+import { useDuplicateCheck } from "@/lib/use-duplicate-check";
 import { type SpotFormSave, type StandardsAcknowledge, useSpotForm } from "@/lib/use-spot-form";
 import { colors } from "@/theme/colors";
 
@@ -153,6 +153,18 @@ export function SpotEditForm({
     closeStandards,
     acknowledgeStandardsAndSave,
   } = useSpotForm(initialValues, onSave, onAcknowledgeStandards);
+  const confirmNotDuplicate = useDuplicateCheck(spotId);
+
+  async function saveChanges() {
+    const moved =
+      location !== null &&
+      (location.latitude !== initialValues.latitude ||
+        location.longitude !== initialValues.longitude);
+    if (moved && !(await confirmNotDuplicate(location))) {
+      return;
+    }
+    await save();
+  }
 
   return (
     <View className="flex-1 bg-base">
@@ -227,7 +239,6 @@ export function SpotEditForm({
                 setValues((current) => ({ ...current, latitude, longitude }))
               }
             />
-            <NearbySpotsNotice location={location} excludeId={spotId} />
           </Field>
 
           <Field label="NOTES" error={errors.notes}>
@@ -264,7 +275,7 @@ export function SpotEditForm({
             label={saving ? "Saving…" : "Save changes"}
             variant="light"
             disabled={saving}
-            onPress={() => void save()}
+            onPress={() => void saveChanges()}
           />
         </View>
       </KeyboardAvoidingView>

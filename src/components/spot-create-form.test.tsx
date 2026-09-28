@@ -14,7 +14,7 @@ jest.mock("@clerk/expo", () => ({
   useAuth: () => ({ getToken: jest.fn().mockResolvedValue("token") }),
 }));
 jest.mock("convex/react", () => ({ useMutation: () => mockDiscardUpload }));
-jest.mock("@/components/nearby-spots-notice", () => ({ NearbySpotsNotice: () => null }));
+jest.mock("@/lib/use-duplicate-check", () => ({ useDuplicateCheck: () => async () => true }));
 jest.mock("expo-router", () => ({ useRouter: () => ({ push: jest.fn() }) }));
 jest.mock("@/lib/use-keyboard-visible", () => ({
   useKeyboardVisible: () => mockKeyboardVisible,
