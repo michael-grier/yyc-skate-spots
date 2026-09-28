@@ -28,10 +28,12 @@ import { StandardsLine, StandardsSheet } from "@/components/standards-sheet";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { MAX_NOTES_LENGTH, MAX_PHOTOS, type SpotFormValues } from "@/lib/spot-form";
+import { useDuplicateCheck } from "@/lib/use-duplicate-check";
 import { type SpotFormSave, type StandardsAcknowledge, useSpotForm } from "@/lib/use-spot-form";
 import { colors } from "@/theme/colors";
 
 type SpotEditFormProps = {
+  spotId: string;
   initialValues: SpotFormValues;
   onCancel: () => void;
   onSave: SpotFormSave;
@@ -122,6 +124,7 @@ function NotesFocusEditor({
  * pills.
  */
 export function SpotEditForm({
+  spotId,
   initialValues,
   onCancel,
   onSave,
@@ -150,6 +153,18 @@ export function SpotEditForm({
     closeStandards,
     acknowledgeStandardsAndSave,
   } = useSpotForm(initialValues, onSave, onAcknowledgeStandards);
+  const { confirmNotDuplicate, duplicateSheet } = useDuplicateCheck(spotId);
+
+  async function saveChanges() {
+    const moved =
+      location !== null &&
+      (location.latitude !== initialValues.latitude ||
+        location.longitude !== initialValues.longitude);
+    if (moved && !(await confirmNotDuplicate(location))) {
+      return;
+    }
+    await save();
+  }
 
   return (
     <View className="flex-1 bg-base">
@@ -260,7 +275,7 @@ export function SpotEditForm({
             label={saving ? "Saving…" : "Save changes"}
             variant="light"
             disabled={saving}
-            onPress={() => void save()}
+            onPress={() => void saveChanges()}
           />
         </View>
       </KeyboardAvoidingView>
@@ -279,6 +294,7 @@ export function SpotEditForm({
           router.push("/standards");
         }}
       />
+      {duplicateSheet}
       <PhotoPermissionSheet
         visible={photoPermissionOpen}
         onChoose={choosePhotoPermission}

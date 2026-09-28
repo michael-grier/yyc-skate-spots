@@ -87,6 +87,7 @@ export function ProfileView() {
   const [activeList, setActiveList] = useState<ProfileList>("favorites");
   const [isDeleting, setIsDeleting] = useState(false);
   const moderation = useQuery(api.moderation.viewer);
+  const reviewCount = useQuery(api.moderation.reviewCount, moderation?.isAdmin ? {} : "skip");
   const email = user?.primaryEmailAddress?.emailAddress;
   const activeSpots: ProfileSpot[] | undefined =
     activeList === "favorites"
@@ -207,10 +208,26 @@ export function ProfileView() {
                 <Card className="flex-row items-center gap-3 p-4">
                   <View className="flex-1">
                     <Text className="font-sans-semibold text-[15px] text-ink">Review spots</Text>
-                    <Text className="mt-1 font-sans text-[12px] text-mute">
-                      Check recent submissions, reports, and ban eligibility.
-                    </Text>
+                    {reviewCount ? (
+                      <Text className="mt-1 font-sans-medium text-[12px] text-bust-low">
+                        {reviewCount} {reviewCount === 1 ? "spot needs" : "spots need"} review
+                      </Text>
+                    ) : (
+                      <Text className="mt-1 font-sans text-[12px] text-mute">
+                        Check recent submissions, reports, and ban eligibility.
+                      </Text>
+                    )}
                   </View>
+                  {reviewCount ? (
+                    <View className="min-w-6 items-center rounded-full bg-bust-low px-2 py-0.5">
+                      <Text
+                        className="font-sans-semibold text-[12px]"
+                        style={{ color: colors.base }}
+                      >
+                        {reviewCount}
+                      </Text>
+                    </View>
+                  ) : null}
                   <ChevronRightIcon size={18} color={colors.mute} />
                 </Card>
               </Pressable>

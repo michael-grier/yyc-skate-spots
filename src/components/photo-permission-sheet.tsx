@@ -47,14 +47,20 @@ export function PhotoPermissionSheet({
             <Text className="font-sans text-[14px] text-silver">Cancel</Text>
           </Pressable>
           <Text className="mt-2 font-sans-semibold text-[23px] tracking-tight text-ink">
-            No photos yet. Can the admin help?
+            No photos yet. Can we help?
           </Text>
           <Text className="mt-3 font-sans text-[14px] leading-relaxed text-mute">
-            Allow the admin to add photos to this spot when they can. This gives permission, but
-            does not guarantee photos.
+            Photos help other skaters decide which spots are worth visiting, but we know that not
+            everyone is always in the position to add them.
           </Text>
           <Text className="mt-3 font-sans text-[14px] leading-relaxed text-mute">
-            The admin cannot change your spot details. You can withdraw permission from your spot.
+            If you have no photos to add for this spot, consider granting us permission to add some
+            for you. If/when we are able, we will travel to this spot, take photos, and upload them
+            on your behalf.
+          </Text>
+          <Text className="mt-3 font-sans text-[14px] leading-relaxed text-mute">
+            We cannot add/change anything else about the spot, and you can withdraw photo upload
+            permission at any time.
           </Text>
           <Button
             label="Allow and save spot"

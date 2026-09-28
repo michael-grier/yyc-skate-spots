@@ -13,6 +13,9 @@ jest.mock("@clerk/expo", () => ({
   useAuth: () => ({ getToken: jest.fn().mockResolvedValue("token") }),
 }));
 jest.mock("convex/react", () => ({ useMutation: () => mockDiscardUpload }));
+jest.mock("@/lib/use-duplicate-check", () => ({
+  useDuplicateCheck: () => ({ confirmNotDuplicate: async () => true, duplicateSheet: null }),
+}));
 jest.mock("expo-router", () => ({ useRouter: () => ({ push: jest.fn() }) }));
 jest.mock("@/lib/spot-photos", () => ({
   pickPhotos: (...args: unknown[]) => mockPickPhotos(...args),
@@ -71,7 +74,14 @@ beforeEach(() => {
 
 describe("SpotEditForm", () => {
   test("notes are edited in their own overlay and land back on the form", async () => {
-    await render(<SpotEditForm initialValues={EXISTING} onCancel={jest.fn()} onSave={jest.fn()} />);
+    await render(
+      <SpotEditForm
+        spotId="spot-1"
+        initialValues={EXISTING}
+        onCancel={jest.fn()}
+        onSave={jest.fn()}
+      />,
+    );
 
     await fireEvent.press(screen.getByRole("button", { name: "Edit notes" }));
     await fireEvent.changeText(screen.getByLabelText("Notes"), "Security does laps at 5.");
@@ -85,6 +95,7 @@ describe("SpotEditForm", () => {
     const onSave = jest.fn().mockResolvedValue(undefined);
     await render(
       <SpotEditForm
+        spotId="spot-1"
         initialValues={{ ...EXISTING, surface: "smooth" }}
         onCancel={jest.fn()}
         onSave={onSave}
@@ -118,6 +129,7 @@ describe("SpotEditForm", () => {
     const onSave = jest.fn().mockResolvedValue(undefined);
     await render(
       <SpotEditForm
+        spotId="spot-1"
         initialValues={EXISTING}
         onCancel={jest.fn()}
         onSave={onSave}
@@ -140,7 +152,14 @@ describe("SpotEditForm", () => {
   test("picked photos and the add control use matching tile dimensions", async () => {
     mockPickPhotos.mockResolvedValueOnce([localPhoto("thumbnail")]);
 
-    await render(<SpotEditForm initialValues={EXISTING} onCancel={jest.fn()} onSave={jest.fn()} />);
+    await render(
+      <SpotEditForm
+        spotId="spot-1"
+        initialValues={EXISTING}
+        onCancel={jest.fn()}
+        onSave={jest.fn()}
+      />,
+    );
 
     await fireEvent.press(screen.getByRole("button", { name: "Add photos" }));
 
@@ -165,7 +184,14 @@ describe("SpotEditForm", () => {
       .mockResolvedValueOnce([localPhoto("asset-1")])
       .mockResolvedValueOnce([localPhoto("asset-1"), localPhoto("asset-2")]);
 
-    await render(<SpotEditForm initialValues={EXISTING} onCancel={jest.fn()} onSave={jest.fn()} />);
+    await render(
+      <SpotEditForm
+        spotId="spot-1"
+        initialValues={EXISTING}
+        onCancel={jest.fn()}
+        onSave={jest.fn()}
+      />,
+    );
 
     await fireEvent.press(screen.getByRole("button", { name: "Add photos" }));
     await screen.findByLabelText("Selected photo 1");
@@ -181,7 +207,12 @@ describe("SpotEditForm", () => {
   test("a save with required fields cleared shows errors and never calls onSave", async () => {
     const onSave = jest.fn();
     await render(
-      <SpotEditForm initialValues={EMPTY_SPOT_FORM} onCancel={jest.fn()} onSave={onSave} />,
+      <SpotEditForm
+        spotId="spot-1"
+        initialValues={EMPTY_SPOT_FORM}
+        onCancel={jest.fn()}
+        onSave={onSave}
+      />,
     );
 
     await fireEvent.press(screen.getByText("Save changes"));
@@ -200,6 +231,7 @@ describe("SpotEditForm", () => {
 
     await render(
       <SpotEditForm
+        spotId="spot-1"
         initialValues={{ ...EXISTING, photos: [localPhoto("a"), localPhoto("b")] }}
         onCancel={jest.fn()}
         onSave={onSave}
@@ -223,6 +255,7 @@ test("keeps the photo version from when the editor opened if a reactive update a
   const onCancel = jest.fn();
   await render(
     <SpotEditForm
+      spotId="spot-1"
       initialValues={{ ...EXISTING, adminPhotosAddedAt: 100 }}
       onCancel={onCancel}
       onSave={onSave}
@@ -230,6 +263,7 @@ test("keeps the photo version from when the editor opened if a reactive update a
   );
   await screen.rerender(
     <SpotEditForm
+      spotId="spot-1"
       initialValues={{ ...EXISTING, adminPhotosAddedAt: 200 }}
       onCancel={onCancel}
       onSave={onSave}
