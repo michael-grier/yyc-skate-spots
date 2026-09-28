@@ -1,4 +1,4 @@
-import { act, renderHook } from "@testing-library/react-native";
+import { renderHook, waitFor } from "@testing-library/react-native";
 import { Alert, type AlertButton } from "react-native";
 
 import { useDuplicateCheck } from "./use-duplicate-check";
@@ -10,15 +10,18 @@ jest.mock("expo-router", () => ({ useRouter: () => ({ push: mockPush }) }));
 jest.mock("convex/react", () => {
   const { getFunctionName } = jest.requireActual<typeof import("convex/server")>("convex/server");
   return {
-    useQuery: (reference: Parameters<typeof getFunctionName>[0]) =>
-      getFunctionName(reference) === "spots:list" ? mockPublished : [],
+    useConvex: () => ({
+      query: async (reference: Parameters<typeof getFunctionName>[0]) =>
+        getFunctionName(reference) === "spots:list" ? mockPublished : [],
+    }),
   };
 });
 const alert = jest.spyOn(Alert, "alert").mockImplementation(() => undefined);
 
 beforeEach(() => jest.clearAllMocks());
 
-function press(label: RegExp) {
+async function press(label: RegExp, alertCount: number) {
+  await waitFor(() => expect(alert).toHaveBeenCalledTimes(alertCount));
   const buttons: AlertButton[] = alert.mock.calls.at(-1)?.[2] ?? [];
   const button = buttons.find((candidate) => label.test(candidate.text ?? ""));
   if (!button?.onPress) throw new Error(`Missing ${label} button`);
@@ -28,19 +31,14 @@ function press(label: RegExp) {
 test("links each nearby spot and stops asking once the pin is confirmed", async () => {
   const { result } = await renderHook(() => useDuplicateCheck());
 
-  let viewing!: Promise<boolean>;
-  await act(async () => {
-    viewing = result.current(pin);
-  });
-  press(/^View Plaza Ledge \(0 m\)$/);
+  const viewing = result.current(pin);
+  await press(/^View Plaza Ledge$/, 1);
   await expect(viewing).resolves.toBe(false);
+  expect(alert.mock.calls[0]?.[1]).toContain("Plaza Ledge (0 m)");
   expect(mockPush).toHaveBeenCalledWith({ pathname: "/spot/[id]", params: { id: "existing" } });
 
-  let confirming!: Promise<boolean>;
-  await act(async () => {
-    confirming = result.current(pin);
-  });
-  press(/different spot/);
+  const confirming = result.current(pin);
+  await press(/different spot/, 2);
   await expect(confirming).resolves.toBe(true);
 
   await expect(result.current(pin)).resolves.toBe(true);
