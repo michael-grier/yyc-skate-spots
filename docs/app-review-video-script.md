@@ -101,7 +101,7 @@ note, save, and show the updated submission.
 
 ### Show optional admin photo permission
 
-For the second distinct spot, submit without photos. At **No photos yet. Can the admin help?**,
+For the second distinct spot, submit without photos. At **No photos yet. Can we help?**,
 show both choices and choose **Allow and save spot**. Leave this second spot pending. In clip 3,
 the admin can add a photo while the spot stays pending. This extra spot is deleted with the
 same disposable account in clip 6.

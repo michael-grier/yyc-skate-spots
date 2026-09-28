@@ -297,7 +297,7 @@ export default function SpotDetailScreen() {
             <Card className="mt-5 p-4">
               <Text className="font-sans-semibold text-[14px] text-ink">Admin photos allowed</Text>
               <Text className="mt-2 font-sans text-[13px] text-mute">
-                The admin may add photos when they can. Photos are not guaranteed.
+                YYC Skate Spots has permission to add photos to this spot if they are able to.
               </Text>
               <Button
                 label="Withdraw photo permission"
