@@ -80,7 +80,10 @@ export function DuplicateSpotSheet({
             </View>
             <Text className="mt-4 font-sans text-[14px] leading-relaxed text-mute">
               Duplicate spots make the map more confusing and harder to use, so they may be removed
-              by the admin team. Please confirm your spot is a unique one before proceeding.
+              by the admin team.
+            </Text>
+            <Text className="mt-3 font-sans text-[14px] leading-relaxed text-mute">
+              Please confirm your spot is a unique one before proceeding.
             </Text>
           </ScrollView>
           <View className="px-5">
