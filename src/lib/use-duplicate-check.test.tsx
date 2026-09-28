@@ -64,6 +64,14 @@ test("links each nearby spot and stops asking once the pin is confirmed unique",
   await expect((await ask(pin)).answer).resolves.toBe(true);
 });
 
+test("ignores a repeated tap while the sheet is open", async () => {
+  await render(<Harness check={checkRef} />);
+  const first = (await ask(pin)).answer;
+  await expect((await ask(pin)).answer).resolves.toBe(false);
+  await fireEvent.press(screen.getByRole("button", { name: "My spot is unique" }));
+  await expect(first).resolves.toBe(true);
+});
+
 test("stays on the step when the check cannot run", async () => {
   await render(<Harness check={checkRef} />);
   mockQueryError = new Error("server error");

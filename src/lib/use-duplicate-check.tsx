@@ -10,6 +10,17 @@ import { type NearbySpot, findNearbySpots } from "@/lib/nearby-spots";
 
 type Prompt = { nearby: NearbySpot[]; open: boolean; answer: (proceed: boolean) => void };
 
+// Convex waits out a lost connection instead of failing, so cap the wait for an answer.
+const CHECK_TIMEOUT_MS = 10_000;
+
+function withTimeout<T>(work: Promise<T>) {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error("Timed out")), CHECK_TIMEOUT_MS);
+  });
+  return Promise.race([work, timeout]).finally(() => clearTimeout(timer));
+}
+
 /**
  * Asks before a pin lands near an existing spot. `confirmNotDuplicate` resolves true to continue;
  * render `duplicateSheet` in the form. Spots rarely have one agreed name, so each nearby spot links
@@ -20,25 +31,35 @@ export function useDuplicateCheck(excludeId?: string) {
   const convex = useConvex();
   const router = useRouter();
   const confirmedPin = useRef<string | null>(null);
+  const checking = useRef(false);
   // Kept after closing so the sheet's content stays in place while it slides away.
   const [prompt, setPrompt] = useState<Prompt | null>(null);
 
   async function confirmNotDuplicate(location: LatLng) {
     const pin = `${location.latitude},${location.longitude}`;
     if (confirmedPin.current === pin) return true;
+    // A repeated tap while a check or its sheet is open is ignored; the open check still answers.
+    if (checking.current) return false;
+    checking.current = true;
+    try {
+      return await checkPin(location, pin);
+    } finally {
+      checking.current = false;
+    }
+  }
+
+  async function checkPin(location: LatLng, pin: string) {
     let nearby: NearbySpot[];
     try {
       // Fetched on demand so a subscription that is still loading cannot skip the check.
-      const [published, mine] = await Promise.all([
-        convex.query(api.spots.list, {}),
-        convex.query(api.spots.mine, {}),
-      ]);
+      const [published, mine] = await withTimeout(
+        Promise.all([convex.query(api.spots.list, {}), convex.query(api.spots.mine, {})]),
+      );
       const ownSpots = mine.filter((spot) => spot.status !== "removed");
       nearby = findNearbySpots(location, [...published, ...ownSpots], excludeId);
     } catch {
-      // Convex queries wait out a lost connection, so a failure is a server error. Stay put;
-      // tapping Next or Save again retries the check.
-      Alert.alert("Couldn't check for nearby spots", "Try again in a moment.");
+      // Stay put; tapping Next or Save again retries the check.
+      Alert.alert("Couldn't check for nearby spots", "Check your connection and try again.");
       return false;
     }
     if (nearby.length === 0) return true;
