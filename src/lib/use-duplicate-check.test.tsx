@@ -6,19 +6,25 @@ import { useDuplicateCheck } from "./use-duplicate-check";
 const mockPush = jest.fn();
 const pin = { latitude: 51.0447, longitude: -114.0719 };
 const mockPublished = [{ _id: "existing", name: "Plaza Ledge", ...pin }];
+let mockQueryError: Error | null = null;
 jest.mock("expo-router", () => ({ useRouter: () => ({ push: mockPush }) }));
 jest.mock("convex/react", () => {
   const { getFunctionName } = jest.requireActual<typeof import("convex/server")>("convex/server");
   return {
     useConvex: () => ({
-      query: async (reference: Parameters<typeof getFunctionName>[0]) =>
-        getFunctionName(reference) === "spots:list" ? mockPublished : [],
+      query: async (reference: Parameters<typeof getFunctionName>[0]) => {
+        if (mockQueryError) throw mockQueryError;
+        return getFunctionName(reference) === "spots:list" ? mockPublished : [];
+      },
     }),
   };
 });
 const alert = jest.spyOn(Alert, "alert").mockImplementation(() => undefined);
 
-beforeEach(() => jest.clearAllMocks());
+beforeEach(() => {
+  jest.clearAllMocks();
+  mockQueryError = null;
+});
 
 async function press(label: RegExp, alertCount: number) {
   await waitFor(() => expect(alert).toHaveBeenCalledTimes(alertCount));
@@ -43,6 +49,13 @@ test("links each nearby spot and stops asking once the pin is confirmed", async 
 
   await expect(result.current(pin)).resolves.toBe(true);
   expect(alert).toHaveBeenCalledTimes(2);
+});
+
+test("stays on the step when the check cannot run", async () => {
+  const { result } = await renderHook(() => useDuplicateCheck());
+  mockQueryError = new Error("server error");
+  await expect(result.current(pin)).resolves.toBe(false);
+  expect(alert).toHaveBeenCalledWith("Couldn't check for nearby spots", expect.any(String));
 });
 
 test("continues without asking when nothing is nearby", async () => {

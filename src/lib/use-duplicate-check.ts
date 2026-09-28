@@ -34,8 +34,10 @@ export function useDuplicateCheck(excludeId?: string) {
       const ownSpots = mine.filter((spot) => spot.status !== "removed");
       nearby = findNearbySpots(location, [...published, ...ownSpots], excludeId);
     } catch {
-      // Offline: the save that follows reports the connection problem.
-      return true;
+      // Convex queries wait out a lost connection, so a failure is a server error. Stay put;
+      // tapping Next or Save again retries the check.
+      Alert.alert("Couldn't check for nearby spots", "Try again in a moment.");
+      return false;
     }
     if (nearby.length === 0) return true;
 
