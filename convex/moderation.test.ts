@@ -157,6 +157,24 @@ describe("spot moderation", () => {
     expect(queue.every((spot) => spot.review.attentionReason === "new")).toBe(true);
   });
 
+  test("the review count matches the queue and is admin-only", async () => {
+    const t = convexTest(schema, modules);
+    const asAdmin = t.withIdentity({ subject: "admin", role: "admin" });
+    const [reviewedId] = await t.run((ctx) =>
+      Promise.all(
+        ["Reviewed", "Legacy"].map((name) =>
+          ctx.db.insert("spots", { ...SPOT, name, createdBy: "legacy" }),
+        ),
+      ),
+    );
+    expect(await asAdmin.query(api.moderation.reviewCount, {})).toBe(2);
+    await asAdmin.mutation(api.moderation.markMeetsStandards, { spotId: reviewedId });
+    expect(await asAdmin.query(api.moderation.reviewCount, {})).toBe(1);
+    await expect(
+      t.withIdentity({ subject: "contributor" }).query(api.moderation.reviewCount, {}),
+    ).rejects.toThrow();
+  });
+
   test("unnamed legacy contributors have consistent anonymous names without changing ownership", async () => {
     const t = convexTest(schema, modules);
     const admin = t.withIdentity({ subject: "admin", role: "admin" });

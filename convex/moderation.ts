@@ -95,16 +95,33 @@ export const acknowledgeStandards = mutation({
   },
 });
 
+/** The admin queue's spots: non-deleted, newest first. */
+async function queueSpots(ctx: QueryCtx) {
+  return await ctx.db
+    .query("spots")
+    .order("desc")
+    .filter((q) => q.neq(q.field("deletionRequested"), true))
+    .take(MAX_SPOTS_LISTED);
+}
+
+/** How many queued spots need review, matching the queue's Needs review filter. */
+export const reviewCount = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+    const spots = await queueSpots(ctx);
+    const rows = await Promise.all(spots.map((spot) => spotModerationFor(ctx, spot._id)));
+    // Spots from before moderation rows existed count as unreviewed, as in the queue.
+    return rows.filter((row) => row?.needsReview ?? true).length;
+  },
+});
+
 /** All non-deleted spots, newest first, with private review metadata for the admin list. */
 export const listSpots = query({
   args: {},
   handler: async (ctx) => {
     await requireAdmin(ctx);
-    const activeSpots = await ctx.db
-      .query("spots")
-      .order("desc")
-      .filter((q) => q.neq(q.field("deletionRequested"), true))
-      .take(MAX_SPOTS_LISTED);
+    const activeSpots = await queueSpots(ctx);
     const creatorIdentifiers = [...new Set(activeSpots.map((spot) => spot.createdBy))];
     const profiles = new Map<string, ReturnType<typeof profileFor>>();
     // Indexed lookups keep metadata aligned with the selected spots even after
