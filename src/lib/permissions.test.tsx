@@ -33,13 +33,17 @@ test("offers Settings when iOS no longer shows its prompt", async () => {
   expect(openSettings).toHaveBeenCalled();
 });
 
-test("adds no dialog after a decline on the system prompt", async () => {
-  expect(
-    await ensurePermission(
-      async () => response(PermissionStatus.UNDETERMINED, true),
-      async () => response(PermissionStatus.DENIED),
-      copy,
-    ),
-  ).toBe(false);
-  expect(alert).not.toHaveBeenCalled();
-});
+// Android can prompt again after a denial, unlike iOS.
+test.each([PermissionStatus.UNDETERMINED, PermissionStatus.DENIED])(
+  "adds no dialog after a decline on a system prompt shown from %s",
+  async (status) => {
+    expect(
+      await ensurePermission(
+        async () => response(status, true),
+        async () => response(PermissionStatus.DENIED),
+        copy,
+      ),
+    ).toBe(false);
+    expect(alert).not.toHaveBeenCalled();
+  },
+);
