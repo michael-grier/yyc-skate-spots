@@ -1,7 +1,6 @@
 import { StatusBar } from "expo-status-bar";
 import { useRef, useState, type ReactNode } from "react";
 import {
-  Alert,
   Keyboard,
   KeyboardAvoidingView,
   Modal,
@@ -154,14 +153,7 @@ export function LocationPicker({ value, onChange, variant = "expanded" }: Locati
   async function requestCurrentLocation() {
     setLocating(true);
     try {
-      const next = await locate();
-      if (!next) {
-        Alert.alert("Location unavailable", "Allow location access or choose the spot on the map.");
-      }
-      return next;
-    } catch {
-      Alert.alert("Location unavailable", "Check location services and try again.");
-      return null;
+      return await locate();
     } finally {
       setLocating(false);
     }
