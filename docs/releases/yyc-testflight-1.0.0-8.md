@@ -1,7 +1,12 @@
 # YYC Skate Spots 1.0.0 (8) candidate record
 
-This records the candidate state on September 25, 2026. Recheck App Store Connect before acting.
-This candidate supersedes [build 7](yyc-testflight-1.0.0-7.md).
+This records the candidate state on September 25, 2026. This candidate supersedes
+[build 7](yyc-testflight-1.0.0-7.md).
+
+Superseded on September 28, 2026 by [candidate 1.0.0 (9)](yyc-testflight-1.0.0-9.md). Device QA
+passed the core flows and found minor issues, #113 to #120, plus silent photo and location
+permission denials. The results below remain a historical record of build 8; do not record or
+submit it for App Review.
 
 - Release commit: `abc926d31f0a0b6b9e0d1c2da09307c6dbca3db0`, merged PR #111.
 - Build: `2c8ed354-b4b6-48d4-b993-eff8c2c7f98e`, production profile, store distribution, finished September 25, 2026.
@@ -11,7 +16,7 @@ This candidate supersedes [build 7](yyc-testflight-1.0.0-7.md).
 - TestFlight upload and Apple processing: completed. Apple reports `VALID` and internal `IN_BETA_TESTING`.
 - App Store Connect build ID: `f55498c9-ca2b-4c1a-9ee0-4b55179d206c`.
 - Assigned to the existing internal group `Release Candidate Testers`; membership verified. Automatic access to all builds remains off. No processing or compliance blocker reported.
-- Physical-device QA: pending for build 8.
+- Physical-device QA: completed September 28, 2026; core flows passed, with the minor issues above.
 - App Review: not resubmitted.
 
 ## Changes from build 7
