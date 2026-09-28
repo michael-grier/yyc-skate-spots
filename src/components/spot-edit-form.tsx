@@ -14,6 +14,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { LocationPicker } from "@/components/location-picker";
+import { NearbySpotsNotice } from "@/components/nearby-spots-notice";
 import { PhotoPermissionSheet } from "@/components/photo-permission-sheet";
 import { StandardsAcceptanceSheet } from "@/components/standards-acceptance-sheet";
 import {
@@ -32,6 +33,7 @@ import { type SpotFormSave, type StandardsAcknowledge, useSpotForm } from "@/lib
 import { colors } from "@/theme/colors";
 
 type SpotEditFormProps = {
+  spotId: string;
   initialValues: SpotFormValues;
   onCancel: () => void;
   onSave: SpotFormSave;
@@ -122,6 +124,7 @@ function NotesFocusEditor({
  * pills.
  */
 export function SpotEditForm({
+  spotId,
   initialValues,
   onCancel,
   onSave,
@@ -224,6 +227,7 @@ export function SpotEditForm({
                 setValues((current) => ({ ...current, latitude, longitude }))
               }
             />
+            <NearbySpotsNotice location={location} excludeId={spotId} />
           </Field>
 
           <Field label="NOTES" error={errors.notes}>

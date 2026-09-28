@@ -232,6 +232,9 @@ export const mine = query({
           name: spot.name,
           types: spot.types,
           bustFactor: spot.bustFactor,
+          // Owner-only, so the add form can warn about the owner's own pending duplicates.
+          latitude: spot.latitude,
+          longitude: spot.longitude,
           adminPhotosUnseen: spot.adminPhotosUnseen ?? false,
         })),
     );

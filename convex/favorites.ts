@@ -81,6 +81,9 @@ export const list = query({
       name: spot.name,
       types: spot.types,
       bustFactor: spot.bustFactor,
+      // Published coordinates; Profile lists favourites with the owner's spots, which carry them.
+      latitude: spot.latitude,
+      longitude: spot.longitude,
     }));
   },
 });

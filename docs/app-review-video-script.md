@@ -134,8 +134,9 @@ Stop recording with the original submission still pending.
 ### Setup between clips 2 and 3
 
 For the later blocking demonstration, also create three clearly labelled demonstration duplicates
-of this spot using the disposable account. Leave those duplicates pending. They should never be
-approved or appear on the public map. This repetitive setup can happen between recordings. Remain
+of this spot using the disposable account. Each shows **Already on the map?** for the nearby
+original; continue past it. Leave those duplicates pending. They should never be approved or
+appear on the public map. This repetitive setup can happen between recordings. Remain
 signed in to the disposable account for the start of clip 3.
 
 ## 3. Administrator login and approval

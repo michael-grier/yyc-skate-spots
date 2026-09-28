@@ -14,6 +14,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { LocationPicker } from "@/components/location-picker";
+import { NearbySpotsNotice } from "@/components/nearby-spots-notice";
 import { PhotoPermissionSheet } from "@/components/photo-permission-sheet";
 import { StandardsAcceptanceSheet } from "@/components/standards-acceptance-sheet";
 import {
@@ -197,6 +198,7 @@ export function SpotCreateForm({ onCancel, onSave, onAcknowledgeStandards }: Spo
                     setValues((current) => ({ ...current, latitude, longitude }))
                   }
                 />
+                <NearbySpotsNotice location={location} />
               </Field>
               <Field
                 label="PHOTOS"

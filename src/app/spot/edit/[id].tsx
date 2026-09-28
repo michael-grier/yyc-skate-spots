@@ -61,6 +61,7 @@ export default function EditSpotScreen() {
     <>
       <Stack.Screen options={{ headerShown: false }} />
       <SpotEditForm
+        spotId={spotId}
         initialValues={spotToFormValues({ ...spot, photoIds: spot.photoIds })}
         onCancel={() => router.back()}
         onSave={async (payload, photoIds, expectedAdminPhotosAddedAt) => {
