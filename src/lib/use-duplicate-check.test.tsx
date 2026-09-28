@@ -1,13 +1,18 @@
-import { renderHook, waitFor } from "@testing-library/react-native";
-import { Alert, type AlertButton } from "react-native";
+import { act, fireEvent, render, screen } from "@testing-library/react-native";
+import { createRef, type RefObject, useImperativeHandle } from "react";
+import { Alert } from "react-native";
 
+import type { LatLng } from "./geo";
 import { useDuplicateCheck } from "./use-duplicate-check";
 
 const mockPush = jest.fn();
 const pin = { latitude: 51.0447, longitude: -114.0719 };
-const mockPublished = [{ _id: "existing", name: "Plaza Ledge", ...pin }];
+const mockPublished = [{ _id: "existing", name: "Winter Club Hubba & Gap", ...pin }];
 let mockQueryError: Error | null = null;
 jest.mock("expo-router", () => ({ useRouter: () => ({ push: mockPush }) }));
+jest.mock("react-native-safe-area-context", () => ({
+  useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
+}));
 jest.mock("convex/react", () => {
   const { getFunctionName } = jest.requireActual<typeof import("convex/server")>("convex/server");
   return {
@@ -21,45 +26,53 @@ jest.mock("convex/react", () => {
 });
 const alert = jest.spyOn(Alert, "alert").mockImplementation(() => undefined);
 
+type Check = (location: LatLng) => Promise<boolean>;
+const checkRef = createRef<Check>();
+function Harness({ check }: { check: RefObject<Check | null> }) {
+  const { confirmNotDuplicate, duplicateSheet } = useDuplicateCheck();
+  useImperativeHandle(check, () => confirmNotDuplicate);
+  return duplicateSheet;
+}
+
+/** Starts a check and waits for its sheet to render. Wrapped so awaiting does not await the answer. */
+async function ask(location: LatLng) {
+  let answer!: Promise<boolean>;
+  await act(async () => {
+    answer = checkRef.current?.(location) ?? Promise.reject(new Error("Harness not rendered"));
+  });
+  return { answer };
+}
+
 beforeEach(() => {
   jest.clearAllMocks();
   mockQueryError = null;
 });
 
-async function press(label: RegExp, alertCount: number) {
-  await waitFor(() => expect(alert).toHaveBeenCalledTimes(alertCount));
-  const buttons: AlertButton[] = alert.mock.calls.at(-1)?.[2] ?? [];
-  const button = buttons.find((candidate) => label.test(candidate.text ?? ""));
-  if (!button?.onPress) throw new Error(`Missing ${label} button`);
-  button.onPress();
-}
+test("links each nearby spot and stops asking once the pin is confirmed unique", async () => {
+  await render(<Harness check={checkRef} />);
 
-test("links each nearby spot and stops asking once the pin is confirmed", async () => {
-  const { result } = await renderHook(() => useDuplicateCheck());
-
-  const viewing = result.current(pin);
-  await press(/^View Plaza Ledge$/, 1);
+  const viewing = (await ask(pin)).answer;
+  expect(screen.getByText("Potential duplicate spot detected")).toBeOnTheScreen();
+  await fireEvent.press(screen.getByRole("link", { name: /^View Winter Club Hubba & Gap/ }));
   await expect(viewing).resolves.toBe(false);
-  expect(alert.mock.calls[0]?.[1]).toContain("Plaza Ledge (0 m)");
   expect(mockPush).toHaveBeenCalledWith({ pathname: "/spot/[id]", params: { id: "existing" } });
 
-  const confirming = result.current(pin);
-  await press(/different spot/, 2);
+  const confirming = (await ask(pin)).answer;
+  await fireEvent.press(screen.getByRole("button", { name: "My spot is unique" }));
   await expect(confirming).resolves.toBe(true);
 
-  await expect(result.current(pin)).resolves.toBe(true);
-  expect(alert).toHaveBeenCalledTimes(2);
+  await expect((await ask(pin)).answer).resolves.toBe(true);
 });
 
 test("stays on the step when the check cannot run", async () => {
-  const { result } = await renderHook(() => useDuplicateCheck());
+  await render(<Harness check={checkRef} />);
   mockQueryError = new Error("server error");
-  await expect(result.current(pin)).resolves.toBe(false);
+  await expect((await ask(pin)).answer).resolves.toBe(false);
   expect(alert).toHaveBeenCalledWith("Couldn't check for nearby spots", expect.any(String));
 });
 
 test("continues without asking when nothing is nearby", async () => {
-  const { result } = await renderHook(() => useDuplicateCheck());
-  await expect(result.current({ latitude: 51.1, longitude: -114.2 })).resolves.toBe(true);
-  expect(alert).not.toHaveBeenCalled();
+  await render(<Harness check={checkRef} />);
+  await expect((await ask({ latitude: 51.1, longitude: -114.2 })).answer).resolves.toBe(true);
+  expect(screen.queryByText("Potential duplicate spot detected")).toBeNull();
 });

@@ -13,7 +13,9 @@ jest.mock("@clerk/expo", () => ({
   useAuth: () => ({ getToken: jest.fn().mockResolvedValue("token") }),
 }));
 jest.mock("convex/react", () => ({ useMutation: () => mockDiscardUpload }));
-jest.mock("@/lib/use-duplicate-check", () => ({ useDuplicateCheck: () => async () => true }));
+jest.mock("@/lib/use-duplicate-check", () => ({
+  useDuplicateCheck: () => ({ confirmNotDuplicate: async () => true, duplicateSheet: null }),
+}));
 jest.mock("expo-router", () => ({ useRouter: () => ({ push: jest.fn() }) }));
 jest.mock("@/lib/spot-photos", () => ({
   pickPhotos: (...args: unknown[]) => mockPickPhotos(...args),

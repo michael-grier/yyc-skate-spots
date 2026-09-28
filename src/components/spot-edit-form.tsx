@@ -153,7 +153,7 @@ export function SpotEditForm({
     closeStandards,
     acknowledgeStandardsAndSave,
   } = useSpotForm(initialValues, onSave, onAcknowledgeStandards);
-  const confirmNotDuplicate = useDuplicateCheck(spotId);
+  const { confirmNotDuplicate, duplicateSheet } = useDuplicateCheck(spotId);
 
   async function saveChanges() {
     const moved =
@@ -294,6 +294,7 @@ export function SpotEditForm({
           router.push("/standards");
         }}
       />
+      {duplicateSheet}
       <PhotoPermissionSheet
         visible={photoPermissionOpen}
         onChoose={choosePhotoPermission}

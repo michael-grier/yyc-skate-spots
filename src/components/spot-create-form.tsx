@@ -86,7 +86,7 @@ export function SpotCreateForm({ onCancel, onSave, onAcknowledgeStandards }: Spo
     closeStandards,
     acknowledgeStandardsAndSave,
   } = useSpotForm(EMPTY_SPOT_FORM, onSave, onAcknowledgeStandards);
-  const confirmNotDuplicate = useDuplicateCheck();
+  const { confirmNotDuplicate, duplicateSheet } = useDuplicateCheck();
 
   const stepIndex = SPOT_FORM_STEPS.indexOf(step);
   const isLastStep = stepIndex === SPOT_FORM_STEPS.length - 1;
@@ -290,6 +290,7 @@ export function SpotCreateForm({ onCancel, onSave, onAcknowledgeStandards }: Spo
           router.push("/standards");
         }}
       />
+      {duplicateSheet}
       <PhotoPermissionSheet
         visible={photoPermissionOpen}
         onChoose={choosePhotoPermission}
