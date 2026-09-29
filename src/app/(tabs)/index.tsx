@@ -137,13 +137,18 @@ function MapContent() {
     );
   }, [fitKey, spots, coords, insets.top]);
 
+  /** Closes search so the keyboard cannot cover the preview card that opens at the bottom. */
+  function closeSearch() {
+    Keyboard.dismiss();
+    setSearchActive(false);
+  }
+
   function pickSuggestion(id: string) {
     const spot = spotsById.get(id);
     if (!spot) {
       return;
     }
-    Keyboard.dismiss();
-    setSearchActive(false);
+    closeSearch();
     setSelectedId(id);
     mapRef.current?.animateToRegion(
       {
@@ -192,8 +197,7 @@ function MapContent() {
           // synthetic map press that accompanies a marker tap.
           if ((event.nativeEvent as { action?: string }).action !== "marker-press") {
             setSelectedId(null);
-            setSearchActive(false);
-            Keyboard.dismiss();
+            closeSearch();
           }
         }}
       >
@@ -202,7 +206,10 @@ function MapContent() {
             <ClusterMarker
               key={`cluster-${item.id}`}
               {...item}
-              onPress={() => mapRef.current?.animateToRegion(regionToExpand(item), 300)}
+              onPress={() => {
+                closeSearch();
+                mapRef.current?.animateToRegion(regionToExpand(item), 300);
+              }}
             />
           ) : (
             <SpotMarker
@@ -211,7 +218,11 @@ function MapContent() {
               selected={item.id === selectedId}
               mine={mineIds.has(item.id)}
               label={query ? spotsById.get(item.id)?.name : undefined}
-              onPress={setSelectedId}
+              // Markers stop the map's own press, so they close search themselves.
+              onPress={(id) => {
+                closeSearch();
+                setSelectedId(id);
+              }}
             />
           ),
         )}

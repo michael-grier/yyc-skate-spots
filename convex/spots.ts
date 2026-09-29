@@ -401,13 +401,19 @@ export const update = mutation({
       adminPhotosUnseen: fields.photoIds.length > 0 && existing.adminPhotosUnseen === true,
       createdBy: existing.createdBy,
       createdByName: existing.createdByName,
-      publicationStatus: "pending",
+      // Only owners can edit, so an admin here is editing their own spot, which skips review
+      // just as creating it did.
+      publicationStatus: identity.role === "admin" ? "published" : "pending",
     });
     const updated = await ctx.db.get("spots", id);
     if (!updated) {
       throw new Error("Spot not found after update.");
     }
-    await queueEditedSpot(ctx, updated);
+    await queueEditedSpot(
+      ctx,
+      updated,
+      identity.role === "admin" ? identity.tokenIdentifier : undefined,
+    );
     return null;
   },
 });

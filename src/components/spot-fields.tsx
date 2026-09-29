@@ -5,6 +5,7 @@ import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 
 import { CloseIcon } from "@/components/icons";
 import { Chip } from "@/components/ui/chip";
+import { ChipGrid } from "@/components/ui/chip-grid";
 import { Segmented } from "@/components/ui/segmented";
 import { type FormPhoto, MAX_PHOTOS } from "@/lib/spot-form";
 import { toggle } from "@/lib/toggle";
@@ -24,14 +25,6 @@ import { colors } from "@/theme/colors";
 
 // NativeWind uses a 14-point rem on native, so h-20 would render smaller than an 80-point photo.
 const PHOTO_TILE_DIMENSIONS = { width: 80, height: 80 };
-
-const TYPES_PER_ROW = 3;
-
-// A fixed 3-per-row grid reads as one block; a wrapping row of pills reads as a
-// ragged wall, which is the complaint this layout answers.
-const TYPE_ROWS = Array.from({ length: Math.ceil(SPOT_TYPES.length / TYPES_PER_ROW) }, (_, row) =>
-  SPOT_TYPES.slice(row * TYPES_PER_ROW, row * TYPES_PER_ROW + TYPES_PER_ROW),
-);
 
 const BUST_FACTOR_OPTIONS = BUST_FACTORS.map((bust) => ({
   value: bust,
@@ -92,7 +85,8 @@ export function NameInput({
       placeholderTextColor={colors.mute}
       accessibilityLabel="Spot name"
       className="font-sans text-[15px] text-ink"
-      style={{ paddingVertical: 0 }}
+      // iOS clips Inter's descenders at the font's line height; the minimum leaves room.
+      style={{ paddingVertical: 0, minHeight: 22 }}
     />
   );
 }
@@ -106,25 +100,19 @@ export function TypeGrid({
   onChange: (value: SpotType[]) => void;
 }) {
   return (
-    <View className="gap-2">
-      {TYPE_ROWS.map((row) => (
-        <View key={row[0]} className="flex-row gap-2">
-          {row.map((type) => (
-            <Chip
-              key={type}
-              label={SPOT_TYPE_LABELS[type]}
-              selected={value.includes(type)}
-              onPress={() => onChange(toggle(value, type))}
-              className="min-h-12 flex-1"
-            />
-          ))}
-          {/* Keeps a short final row from stretching its chips across the grid. */}
-          {row.length < TYPES_PER_ROW ? (
-            <View style={{ flex: TYPES_PER_ROW - row.length }} />
-          ) : null}
-        </View>
-      ))}
-    </View>
+    <ChipGrid
+      items={SPOT_TYPES}
+      columns={3}
+      keyOf={(type) => type}
+      renderItem={(type) => (
+        <Chip
+          label={SPOT_TYPE_LABELS[type]}
+          selected={value.includes(type)}
+          onPress={() => onChange(toggle(value, type))}
+          className="min-h-12 w-full"
+        />
+      )}
+    />
   );
 }
 

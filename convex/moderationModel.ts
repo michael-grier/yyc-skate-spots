@@ -35,26 +35,32 @@ export async function recordNewSpotModeration(ctx: MutationCtx, spot: Doc<"spots
   });
 }
 
-/** Returns an edited spot to the queue without losing any open report count. */
-export async function queueEditedSpot(ctx: MutationCtx, spot: Doc<"spots">) {
+/**
+ * Returns an edited spot to the queue without losing any open report count. An admin's edit to
+ * their own spot counts as reviewed by them, as their new spots do, unless reports still await a
+ * decision.
+ */
+export async function queueEditedSpot(ctx: MutationCtx, spot: Doc<"spots">, adminEditor?: string) {
   const moderation = await spotModerationFor(ctx, spot._id);
+  const now = Date.now();
+  const openReportCount = moderation?.openReportCount ?? 0;
+  const selfReviewed = adminEditor !== undefined && openReportCount === 0;
+  const review = {
+    needsReview: !selfReviewed,
+    attentionReason: openReportCount > 0 ? ("reported" as const) : ("edited" as const),
+    lastSubmittedAt: now,
+    reviewedAt: selfReviewed ? now : undefined,
+    reviewedBy: selfReviewed ? adminEditor : undefined,
+  };
   if (moderation) {
-    await ctx.db.patch("spotModeration", moderation._id, {
-      needsReview: true,
-      attentionReason: moderation.openReportCount > 0 ? "reported" : "edited",
-      lastSubmittedAt: Date.now(),
-      reviewedAt: undefined,
-      reviewedBy: undefined,
-    });
+    await ctx.db.patch("spotModeration", moderation._id, review);
     return;
   }
   await ctx.db.insert("spotModeration", {
     spotId: spot._id,
     spotCreationTime: spot._creationTime,
-    needsReview: true,
-    attentionReason: "edited",
-    lastSubmittedAt: Date.now(),
     openReportCount: 0,
+    ...review,
   });
 }
 

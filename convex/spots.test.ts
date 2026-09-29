@@ -203,11 +203,11 @@ describe("spots authz", () => {
     );
   });
 
-  test("accepts skate parks, DIYs, wallrides, and flatground spots", async () => {
+  test("accepts skate parks, DIYs, wallrides, flatground, and transition spots", async () => {
     const t = convexTest(schema, modules);
     const asAlice = t.withIdentity({ subject: "alice" });
     await acknowledgeStandards(asAlice);
-    const types = ["skate_park", "diy", "wallride", "flatground"] as const;
+    const types = ["skate_park", "diy", "wallride", "flatground", "transition"] as const;
 
     const id = await asAlice.mutation(api.spots.create, { ...SPOT, types: [...types] });
     const spot = await asAlice.query(api.spots.get, { id });

@@ -22,11 +22,17 @@ export const SPOT_TYPE_LABELS: Record<SpotType, string> = {
   diy: "DIY",
   wallride: "Wallride",
   flatground: "Flatground",
+  transition: "Transition",
   other: "Other",
 };
 
-/** Every spot type, in the order the add form and filter sheet list them. */
-export const SPOT_TYPES = Object.keys(SPOT_TYPE_LABELS) as SpotType[];
+/**
+ * Every spot type, in the order the add form and filter sheet list them: alphabetical so the list
+ * is easy to scan, with Other last as the fallback when nothing else fits.
+ */
+export const SPOT_TYPES = (Object.keys(SPOT_TYPE_LABELS) as SpotType[]).sort((a, b) =>
+  a === "other" ? 1 : b === "other" ? -1 : SPOT_TYPE_LABELS[a].localeCompare(SPOT_TYPE_LABELS[b]),
+);
 
 export const BUST_FACTORS = ["low", "medium", "high"] as const satisfies readonly BustFactor[];
 

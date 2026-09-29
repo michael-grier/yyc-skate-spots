@@ -50,14 +50,22 @@ describe("spot moderation", () => {
       reviewedAt: expect.any(Number),
     });
 
-    // Automatic approval is for creation; reports still need an explicit admin decision.
+    // The admin's own edits skip review too.
+    await asAdmin.mutation(api.spots.update, { ...SPOT, id, notes: "Updated by admin" });
+    expect(await t.query(api.spots.get, { id })).toMatchObject({
+      notes: "Updated by admin",
+      isPendingReview: false,
+    });
+    expect(await asAdmin.query(api.moderation.reviewCount, {})).toBe(0);
+
+    // Reports still need an explicit admin decision, but do not unpublish the spot.
     const asReporter = t.withIdentity({ subject: "reporter" });
     await asReporter.mutation(api.reports.create, {
       spotId: id,
       reason: "duplicate_or_inaccurate",
     });
-    await asAdmin.mutation(api.spots.update, { ...SPOT, id, notes: "Updated by admin" });
-    expect(await t.query(api.spots.get, { id })).toBeNull();
+    await asAdmin.mutation(api.spots.update, { ...SPOT, id, notes: "Edited again" });
+    expect(await t.query(api.spots.get, { id })).toMatchObject({ notes: "Edited again" });
     expect(await asAdmin.query(api.moderation.getSpot, { id })).toMatchObject({
       review: { needsReview: true, attentionReason: "reported", openReportCount: 1 },
     });
