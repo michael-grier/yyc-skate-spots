@@ -47,7 +47,7 @@ Connect after filling in the recording link and account details.
 ```text
 1. PHYSICAL-DEVICE WALKTHROUGH
 Recording: [REVIEWER-ACCESSIBLE VIDEO URL]
-Device: [IPHONE MODEL]; iOS: [VERSION]; app: 1.0.0 (10); tested: [DATE].
+Device: iPhone 17; iOS: 26.6.2; app: 1.0.0 (10); tested: September 29, 2026.
 Shows launch, main features, registration/login, reporting, moderation, contribution blocking, and deletion.
 
 2. PURPOSE AND AUDIENCE

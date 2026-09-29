@@ -11,7 +11,7 @@ This candidate supersedes [build 9](yyc-testflight-1.0.0-9.md).
 - TestFlight upload and Apple processing: completed. Apple reports `VALID` and internal `IN_BETA_TESTING`.
 - App Store Connect build ID: `a6f2bfb5-0492-4276-8eb0-18393f7bfeb9`.
 - Assigned to the existing internal group `Release Candidate Testers`; membership verified. Automatic access to all builds remains off. No processing or compliance blocker reported.
-- Physical-device QA: pending for build 10.
+- Physical-device QA: passed September 29, 2026 on an iPhone 17 running iOS 26.6.2. Both reviewer accounts have display names. Build 10 is frozen as the recording candidate.
 - App Review: not resubmitted.
 
 ## Changes from build 9
@@ -35,12 +35,12 @@ All 14 bundled privacy manifests declare no tracking. Google Maps' resource mani
 
 ## Device checks before recording
 
-- [ ] Install build 10 and cold-launch the map; open a spot.
-- [ ] Focus search, then tap a pin; the keyboard closes and the preview card opens on the first tap.
-- [ ] Add spot lists types alphabetically with Transition, Other last, and every pill the same width.
-- [ ] The filter sheet's type and distance pills line up in equal columns.
-- [ ] The email and spot name fields show descenders fully.
-- [ ] As admin, editing your own spot keeps it public and out of the review count.
-- [ ] Complete the remaining candidate checks in [the resubmission guide](../app-review-resubmission.md).
+- [x] Install build 10 and cold-launch the map; open a spot.
+- [x] Focus search, then tap a pin; the keyboard closes and the preview card opens on the first tap.
+- [x] Add spot lists types alphabetically with Transition, Other last, and every pill the same width.
+- [x] The filter sheet's type and distance pills line up in equal columns.
+- [x] The email and spot name fields show descenders fully.
+- [x] As admin, editing your own spot keeps it public and out of the review count.
+- [x] Complete the remaining candidate checks in [the resubmission guide](../app-review-resubmission.md).
 
 Use disposable accounts and content for destructive demonstrations. Build 9's device results do not establish that build 10 passes these checks.
