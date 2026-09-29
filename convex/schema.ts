@@ -19,6 +19,7 @@ export const spotType = v.union(
   v.literal("diy"),
   v.literal("wallride"),
   v.literal("flatground"),
+  v.literal("transition"),
   v.literal("other"),
 );
 

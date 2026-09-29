@@ -22,6 +22,7 @@ export const SPOT_TYPE_LABELS: Record<SpotType, string> = {
   diy: "DIY",
   wallride: "Wallride",
   flatground: "Flatground",
+  transition: "Transition",
   other: "Other",
 };
 
