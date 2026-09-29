@@ -92,7 +92,8 @@ export function NameInput({
       placeholderTextColor={colors.mute}
       accessibilityLabel="Spot name"
       className="font-sans text-[15px] text-ink"
-      style={{ paddingVertical: 0 }}
+      // iOS clips Inter's descenders at the font's line height; the height leaves room.
+      style={{ paddingVertical: 0, height: 22 }}
     />
   );
 }
@@ -118,10 +119,11 @@ export function TypeGrid({
               className="min-h-12 flex-1"
             />
           ))}
-          {/* Keeps a short final row from stretching its chips across the grid. */}
-          {row.length < TYPES_PER_ROW ? (
-            <View style={{ flex: TYPES_PER_ROW - row.length }} />
-          ) : null}
+          {/* Empty cells keep a short final row's chips, and the gaps between them, the same width
+              as a full row's. One wide spacer would leave out a gap and stretch the chips. */}
+          {Array.from({ length: TYPES_PER_ROW - row.length }, (_, i) => (
+            <View key={`empty-${i}`} className="flex-1" />
+          ))}
         </View>
       ))}
     </View>

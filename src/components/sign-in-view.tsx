@@ -390,7 +390,9 @@ function SignInField({ label, ...props }: TextInputProps & { label: string }) {
           ref={input}
           placeholderTextColor={colors.mute}
           className="mt-0.5 font-sans text-[15px] text-ink"
-          style={{ paddingVertical: 0 }}
+          // iOS sizes a single-line field from the font's line height, which clips Inter's
+          // descenders; an explicit height leaves room and iOS centers the text in it.
+          style={{ paddingVertical: 0, height: 22 }}
         />
       </Pressable>
     </Card>
