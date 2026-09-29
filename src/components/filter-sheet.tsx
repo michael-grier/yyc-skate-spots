@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
+import { ChipGrid } from "@/components/ui/chip-grid";
 import { renderSheetBackdrop } from "@/components/ui/sheet-backdrop";
 import {
   DISTANCE_PRESETS_KM,
@@ -21,6 +22,9 @@ import {
 } from "@/lib/spot-labels";
 import { toggle } from "@/lib/toggle";
 import { colors } from "@/theme/colors";
+
+// null is Any distance.
+const DISTANCE_OPTIONS = [null, ...DISTANCE_PRESETS_KM] as const;
 
 type FilterSheetProps = {
   ref: Ref<BottomSheetModal>;
@@ -78,20 +82,20 @@ export function FilterSheet({
         </View>
 
         <SectionLabel>DISTANCE</SectionLabel>
-        <View className="mt-2 flex-row flex-wrap gap-2">
-          <Chip
-            label="Any"
-            selected={filters.maxDistanceKm === null}
-            onPress={() => onChange({ ...filters, maxDistanceKm: null })}
+        <View className="mt-2">
+          <ChipGrid
+            items={DISTANCE_OPTIONS}
+            columns={DISTANCE_OPTIONS.length}
+            keyOf={(km) => String(km)}
+            renderItem={(km) => (
+              <Chip
+                label={km === null ? "Any" : `${km} km`}
+                selected={filters.maxDistanceKm === km}
+                onPress={() => onChange({ ...filters, maxDistanceKm: km })}
+                className="w-full"
+              />
+            )}
           />
-          {DISTANCE_PRESETS_KM.map((km) => (
-            <Chip
-              key={km}
-              label={`${km} km`}
-              selected={filters.maxDistanceKm === km}
-              onPress={() => onChange({ ...filters, maxDistanceKm: km })}
-            />
-          ))}
         </View>
         {!hasLocation ? (
           <Pressable accessibilityRole="button" onPress={onRequestLocation} className="mt-2">
@@ -102,15 +106,21 @@ export function FilterSheet({
         ) : null}
 
         <SectionLabel>TYPES</SectionLabel>
-        <View className="mt-2 flex-row flex-wrap gap-2">
-          {SPOT_TYPES.map((type) => (
-            <Chip
-              key={type}
-              label={SPOT_TYPE_LABELS[type]}
-              selected={filters.types.includes(type)}
-              onPress={() => onChange({ ...filters, types: toggle(filters.types, type) })}
-            />
-          ))}
+        {/* Three columns line up with the bust factor row and fit the longest label. */}
+        <View className="mt-2">
+          <ChipGrid
+            items={SPOT_TYPES}
+            columns={3}
+            keyOf={(type) => type}
+            renderItem={(type) => (
+              <Chip
+                label={SPOT_TYPE_LABELS[type]}
+                selected={filters.types.includes(type)}
+                onPress={() => onChange({ ...filters, types: toggle(filters.types, type) })}
+                className="w-full"
+              />
+            )}
+          />
         </View>
 
         <SectionLabel>BUST FACTOR</SectionLabel>
