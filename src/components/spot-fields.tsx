@@ -92,8 +92,8 @@ export function NameInput({
       placeholderTextColor={colors.mute}
       accessibilityLabel="Spot name"
       className="font-sans text-[15px] text-ink"
-      // iOS clips Inter's descenders at the font's line height; the height leaves room.
-      style={{ paddingVertical: 0, height: 22 }}
+      // iOS clips Inter's descenders at the font's line height; the minimum leaves room.
+      style={{ paddingVertical: 0, minHeight: 22 }}
     />
   );
 }
@@ -110,17 +110,18 @@ export function TypeGrid({
     <View className="gap-2">
       {TYPE_ROWS.map((row) => (
         <View key={row[0]} className="flex-row gap-2">
+          {/* Every cell, filled or empty, is the same unpadded flex box. A padded chip starts
+              wider than an empty cell, so a short final row would otherwise stretch its chips. */}
           {row.map((type) => (
-            <Chip
-              key={type}
-              label={SPOT_TYPE_LABELS[type]}
-              selected={value.includes(type)}
-              onPress={() => onChange(toggle(value, type))}
-              className="min-h-12 flex-1"
-            />
+            <View key={type} className="flex-1">
+              <Chip
+                label={SPOT_TYPE_LABELS[type]}
+                selected={value.includes(type)}
+                onPress={() => onChange(toggle(value, type))}
+                className="min-h-12 w-full"
+              />
+            </View>
           ))}
-          {/* Empty cells keep a short final row's chips, and the gaps between them, the same width
-              as a full row's. One wide spacer would leave out a gap and stretch the chips. */}
           {Array.from({ length: TYPES_PER_ROW - row.length }, (_, i) => (
             <View key={`empty-${i}`} className="flex-1" />
           ))}
