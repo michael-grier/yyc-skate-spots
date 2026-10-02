@@ -64,7 +64,7 @@ Contributor submissions/edits stay private until admin approval. Report another 
 
 Admin demo email: [ADMIN DEMO EMAIL]
 Admin demo password: [ADMIN DEMO PASSWORD]
-Sign out, use admin password login > Profile > Review spots > select a spot. Meets standards approves; Remove spot requires a reason. Dead-spot removal adds no strike. After three other confirmed removals, Ban contributor blocks submissions, edits, uploads, and reports. Sign-in, browsing, and deletion remain available. Blocking is admin-managed; no personal block-user control or chat. Use disposable content for removal tests.
+Sign out, use admin password login > Profile > Review spots > select a spot. Meets standards approves; Remove spot requires a reason. Dead-spot removal adds no strike. After three other confirmed removals, Ban contributor blocks submissions, edits, uploads, and reports. Sign-in, browsing, and deletion remain available. Blocking is admin-managed; no personal block-user control or chat.
 
 Photo assistance: submit without photos > Allow and save spot. Admins use Review spots > Needs photos to add photos with owner permission; pending spots stay pending. Owners can withdraw permission.
 

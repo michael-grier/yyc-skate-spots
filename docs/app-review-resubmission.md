@@ -185,7 +185,7 @@ This resubmission includes app changes, so select the new tested binary from the
 - [x] Physical iPhone model, latest iOS version, and test date recorded: iPhone 17, iOS 26.6.2, September 29, 2026.
 - [ ] Replacement TestFlight build passes the walkthrough, including deletion and contribution blocking.
 - [ ] Both reviewer logins reverified and kept usable.
-- [ ] Recording uploaded and accessible without permission requests.
+- [x] Recording uploaded and accessible without permission requests: unlisted YouTube video, link kept outside git.
 - [ ] Notes saved and reply sent with all six answers and recording access.
 - [ ] Resubmission confirmed by App Store Connect status.
 

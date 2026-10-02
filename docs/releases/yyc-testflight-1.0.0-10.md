@@ -12,6 +12,7 @@ This candidate supersedes [build 9](yyc-testflight-1.0.0-9.md).
 - App Store Connect build ID: `a6f2bfb5-0492-4276-8eb0-18393f7bfeb9`.
 - Assigned to the existing internal group `Release Candidate Testers`; membership verified. Automatic access to all builds remains off. No processing or compliance blocker reported.
 - Physical-device QA: passed September 29, 2026 on an iPhone 17 running iOS 26.6.2. Both reviewer accounts have display names. Build 10 is frozen as the recording candidate.
+- App Review recording: filmed on build 10 on September 29, 2026, edited with captions and privacy blurs, and uploaded as an unlisted YouTube video on October 2, 2026. The link is kept outside git.
 - App Review: not resubmitted.
 
 ## Changes from build 9
