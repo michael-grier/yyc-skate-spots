@@ -47,7 +47,7 @@ Connect after filling in the recording link and account details.
 ```text
 1. PHYSICAL-DEVICE WALKTHROUGH
 Recording: [REVIEWER-ACCESSIBLE VIDEO URL]
-Device: [IPHONE MODEL]; iOS: [VERSION]; app: 1.0.0 (9); tested: [DATE].
+Device: iPhone 17; iOS: 26.6.2; app: 1.0.0 (10); tested: September 29, 2026.
 Shows launch, main features, registration/login, reporting, moderation, contribution blocking, and deletion.
 
 2. PURPOSE AND AUDIENCE
@@ -64,7 +64,7 @@ Contributor submissions/edits stay private until admin approval. Report another 
 
 Admin demo email: [ADMIN DEMO EMAIL]
 Admin demo password: [ADMIN DEMO PASSWORD]
-Sign out, use admin password login > Profile > Review spots > select a spot. Meets standards approves; Remove spot requires a reason. Dead-spot removal adds no strike. After three other confirmed removals, Ban contributor blocks submissions, edits, uploads, and reports. Sign-in, browsing, and deletion remain available. Blocking is admin-managed; no personal block-user control or chat. Use disposable content for removal tests.
+Sign out, use admin password login > Profile > Review spots > select a spot. Meets standards approves; Remove spot requires a reason. Dead-spot removal adds no strike. After three other confirmed removals, Ban contributor blocks submissions, edits, uploads, and reports. Sign-in, browsing, and deletion remain available. Blocking is admin-managed; no personal block-user control or chat.
 
 Photo assistance: submit without photos > Allow and save spot. Admins use Review spots > Needs photos to add photos with owner permission; pending spots stay pending. Owners can withdraw permission.
 

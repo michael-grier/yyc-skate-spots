@@ -26,20 +26,24 @@ so the provider-name and email fallbacks never applied.
 anonymous names. Its device QA on September 28, 2026 passed the core flows and found minor issues,
 #113 to #120, plus silent photo and location permission denials.
 
-[TestFlight 1.0.0 (9)](releases/yyc-testflight-1.0.0-9.md) is the current candidate. It fixes those
-issues and warns contributors about possible duplicate spots. The owner confirmed the changes on
-the physical iPhone using development build `9b09903a-8716-429e-a9b5-a58e9e84d62c` and Metro. That
-development client does not replace device QA of build 9.
+[TestFlight 1.0.0 (9)](releases/yyc-testflight-1.0.0-9.md) fixed those issues and added a
+duplicate-spot warning. Its device checks on September 29, 2026 passed and found a keyboard that
+stayed over the spot preview after search, #125, plus smaller layout issues.
 
-1. Run the candidate checks below on build 9 and record the device, iOS version, and test date.
-2. Freeze build 9 and re-film all six sections of the [video script](app-review-video-script.md).
+[TestFlight 1.0.0 (10)](releases/yyc-testflight-1.0.0-10.md) is the current candidate. It fixes
+those issues. The owner confirmed the changes on the physical iPhone using development build
+`9b09903a-8716-429e-a9b5-a58e9e84d62c` and Metro. That development client does not replace device
+QA of build 10.
+
+1. Run the candidate checks below on build 10 and record the device, iOS version, and test date.
+2. Freeze build 10 and re-film all six sections of the [video script](app-review-video-script.md).
 
 The old clips are rehearsal references. Do not mix them into a walkthrough presented as the
 replacement build. App Store Connect has not been updated by preparing these documents.
 
 ## Before recording
 
-- Install **1.0.0 (9)**, the new candidate, from TestFlight on a physical iPhone running the latest publicly released
+- Install **1.0.0 (10)**, the new candidate, from TestFlight on a physical iPhone running the latest publicly released
   iOS available when recording. Record the model, exact iOS version, and test date. Check Software
   Update rather than relying on a version number in this document.
 - Confirm the TestFlight build matches the build selected in App Store Connect. Use the installed
@@ -149,7 +153,7 @@ numbered text when replying to Apple:
 ```text
 Hello App Review team,
 
-Here is the requested information for YYC Skate Spots 1.0.0 (9), including a physical-iPhone walkthrough of that build. I have also added it to App Review Information > Notes.
+Here is the requested information for YYC Skate Spots 1.0.0 (10), including a physical-iPhone walkthrough of that build. I have also added it to App Review Information > Notes.
 ```
 
 Do not send the introduction until its statements are true. Check both fields' displayed character
@@ -163,7 +167,7 @@ This resubmission includes app changes, so select the new tested binary from the
 
 1. Open YYC Skate Spots, app ID `6807476193`, in App Store Connect. Review the live rejection and
    status and any additional issues. Replace build 5 with the exact tested and recorded
-   **1.0.0 (9)** candidate.
+   **1.0.0 (10)** candidate.
 2. Open the rejected version's App Review Information. Verify the contact and demo credentials,
    replace Notes with the completed six-part response, and save. Preserve Canada-only availability
    and the existing manual release option.
@@ -178,10 +182,10 @@ This resubmission includes app changes, so select the new tested binary from the
 
 ## Evidence still needed
 
-- [ ] Physical iPhone model, latest iOS version, and test date recorded.
+- [x] Physical iPhone model, latest iOS version, and test date recorded: iPhone 17, iOS 26.6.2, September 29, 2026.
 - [ ] Replacement TestFlight build passes the walkthrough, including deletion and contribution blocking.
 - [ ] Both reviewer logins reverified and kept usable.
-- [ ] Recording uploaded and accessible without permission requests.
+- [x] Recording uploaded and accessible without permission requests: unlisted YouTube video, link kept outside git.
 - [ ] Notes saved and reply sent with all six answers and recording access.
 - [ ] Resubmission confirmed by App Store Connect status.
 

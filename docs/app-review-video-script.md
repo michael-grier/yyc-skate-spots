@@ -7,13 +7,14 @@ and its result together in the recording.
 
 ## Before recording
 
-Record **TestFlight 1.0.0 (9)**, the [current candidate](releases/yyc-testflight-1.0.0-9.md), after it
-passes device QA. The rejected 1.0.0 (5), the superseded builds 6 to 8, and the development client
+Record **TestFlight 1.0.0 (10)**, the [current candidate](releases/yyc-testflight-1.0.0-10.md), after it
+passes device QA. The rejected 1.0.0 (5), the superseded builds 6 to 9, and the development client
 also labelled 1.0.0 (5) are not the recording target.
 Use the same candidate for every clip and select that build in App Store Connect.
 
-Use your physical iPhone 17 with the latest public iOS available to it. The previous script listed
-iOS 26.6.2; recheck Settings > General > Software Update and replace `[IOS VERSION]` before filming.
+Use your physical iPhone 17. Build 10's device QA passed on iOS 26.6.2 on September 29, 2026. If
+Software Update installs a newer iOS before filming, repeat the device checks and update the
+version in the narration and review notes.
 Start signed out. Have these ready:
 
 - A new disposable email address for registration, submissions, blocking, and deletion.
@@ -34,8 +35,8 @@ the disposable account.**
 
 Start screen recording on the iPhone Home Screen, then tap YYC Skate Spots.
 
-> This is YYC Skate Spots version 1.0.0, build 9, running on a physical iPhone 17
-> with iOS [IOS VERSION]. It helps skateboarders find and share skate spots in Calgary.
+> This is YYC Skate Spots version 1.0.0, build 10, running on a physical iPhone 17
+> with iOS 26.6.2. It helps skateboarders find and share skate spots in Calgary.
 
 Let the map finish loading.
 
