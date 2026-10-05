@@ -111,29 +111,31 @@ the submitted app.
 ## Candidate device checks
 
 Complete these on the replacement TestFlight build before recording. The development sign-in
-checks are already confirmed, but they do not replace testing this production binary.
+checks are already confirmed, but they do not replace testing this production binary. The owner
+reported every check passing on build 10, on iOS 26.6.2 on September 29, 2026 and again on
+iOS 27.0.1 on October 5, 2026. Clear the boxes for a new candidate.
 
-- [ ] First tap on the email field opens the keyboard, including after a cold launch.
-- [ ] Wrong password and wrong/expired email code show an error with a usable Back to sign in.
-- [ ] Switching to Map or Add spot resets the flow, clears errors/password/code, and keeps email.
-- [ ] Opening Mail preserves code entry; Apple and Google sign-in return successfully.
-- [ ] Password sign-in works for both reviewer accounts. Wrong-password/code errors are centered,
+- [x] First tap on the email field opens the keyboard, including after a cold launch.
+- [x] Wrong password and wrong/expired email code show an error with a usable Back to sign in.
+- [x] Switching to Map or Add spot resets the flow, clears errors/password/code, and keeps email.
+- [x] Opening Mail preserves code entry; Apple and Google sign-in return successfully.
+- [x] Password sign-in works for both reviewer accounts. Wrong-password/code errors are centered,
       become visible without manually closing the keyboard, and allow a retry.
-- [ ] Signed-out Report dead spot and Report another problem open sign-in, then resume the selected
+- [x] Signed-out Report dead spot and Report another problem open sign-in, then resume the selected
       report after authentication. Back cancels; signing in as the owner does not allow reporting.
-- [ ] New accounts, including Apple and Google, are asked to choose a display name with an anonymous
+- [x] New accounts, including Apple and Google, are asked to choose a display name with an anonymous
       option, also when sign-in resumes a report. Favourites, creation, editing, and current
       display-name labels work.
-- [ ] Admin queue/detail labels show contributor names; unnamed accounts show the same anonymous
+- [x] Admin queue/detail labels show contributor names; unnamed accounts show the same anonymous
       name publicly and to admins.
-- [ ] Approval publishes contributor content; admin-created content is immediately published.
-- [ ] Photo permission can be declined, granted, and withdrawn. Admin photos require permission and
+- [x] Approval publishes contributor content; admin-created content is immediately published.
+- [x] Photo permission can be declined, granted, and withdrawn. Admin photos require permission and
       an empty gallery, preserve spot details/review state, and notify the owner in Your spots.
-- [ ] Reports reach admins. Dead-spot reports require 1–3 private evidence photos; resolving them
+- [x] Reports reach admins. Dead-spot reports require 1–3 private evidence photos; resolving them
       removes the evidence, and dead-spot removal does not add a contributor strike.
-- [ ] Three qualifying removals allow an admin ban, and the disposable account cannot contribute.
-- [ ] Account deletion succeeds and removes its listings, photos, profile, and associated records.
-- [ ] Maps, location denied/granted, directions, sharing, and policy/support links work.
+- [x] Three qualifying removals allow an admin ban, and the disposable account cannot contribute.
+- [x] Account deletion succeeds and removes its listings, photos, profile, and associated records.
+- [x] Maps, location denied/granted, directions, sharing, and policy/support links work.
 
 Use disposable accounts and their own content for production QA. Never remove an unrelated spot
 or change another user's moderation status to exercise these checks.
