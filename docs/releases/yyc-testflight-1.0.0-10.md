@@ -1,6 +1,6 @@
 # YYC Skate Spots 1.0.0 (10) candidate record
 
-This records the candidate state on September 29, 2026. Recheck App Store Connect before acting.
+This records the candidate state on October 5, 2026. Recheck App Store Connect before acting.
 This candidate supersedes [build 9](yyc-testflight-1.0.0-9.md).
 
 - Release commit: `1d8ace671aa4aac28df91fc19a1de9ae65d95f64`, merged PR #128.
@@ -11,9 +11,9 @@ This candidate supersedes [build 9](yyc-testflight-1.0.0-9.md).
 - TestFlight upload and Apple processing: completed. Apple reports `VALID` and internal `IN_BETA_TESTING`.
 - App Store Connect build ID: `a6f2bfb5-0492-4276-8eb0-18393f7bfeb9`.
 - Assigned to the existing internal group `Release Candidate Testers`; membership verified. Automatic access to all builds remains off. No processing or compliance blocker reported.
-- Physical-device QA: passed September 29, 2026 on an iPhone 17 running iOS 26.6.2. Both reviewer accounts have display names. Build 10 is frozen as the recording candidate.
-- App Review recording: filmed on build 10 on September 29, 2026, edited with captions and privacy blurs, and uploaded as an unlisted YouTube video on October 2, 2026. The link is kept outside git.
-- App Review: not resubmitted.
+- Physical-device QA: passed September 29, 2026 on an iPhone 17 running iOS 26.6.2, and again October 5, 2026 after updating to iOS 27.0.1. Both reviewer accounts have display names. Build 10 is frozen as the recording candidate.
+- App Review recording: first filmed September 29, 2026 on iOS 26.6.2 and uploaded October 2. Apple asks for the latest iOS, so it was filmed again on iOS 27.0.1 on October 5, 2026, edited with captions and privacy blurs, and uploaded as an unlisted YouTube video. The edit cuts the back-navigation issue #130 and a brief display-name sheet that appears after account deletion (#131). The link is kept outside git.
+- App Review: resubmitted October 5, 2026 with build 1.0.0 (10). Notes were updated and the reply sent with all six answers and the recording link; App Store Connect shows Waiting for Review. Release remains manual.
 
 ## Changes from build 9
 

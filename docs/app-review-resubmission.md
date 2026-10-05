@@ -173,8 +173,9 @@ This resubmission includes app changes, so select the new tested binary from the
    and the existing manual release option.
 3. Open View App Review Issues & Messages > Resolve > Reply to App Review. Send the introduction
    and six answers with the working video link or attachment **before** resubmitting.
-4. If the submission remains Unresolved Issues, use Edit on its rejected item, then Add for Review
-   after saving the corrections. Return to the submission details and choose Resubmit to App Review.
+4. If the submission remains Unresolved Issues, Resubmit to App Review stays disabled until the
+   rejected version is added back. Choose Update Review on the version page, which returns the item
+   to the submission as Ready for Review, then choose Resubmit to App Review on the submission details.
    Follow the actual status and controls shown; do not remove the rejected item.
 5. Verify App Store Connect reports the submission as Waiting for Review or In Review. Record the
    submission date, build, video reference, and observed status in the release record. A saved draft
@@ -182,12 +183,12 @@ This resubmission includes app changes, so select the new tested binary from the
 
 ## Evidence still needed
 
-- [x] Physical iPhone model, latest iOS version, and test date recorded: iPhone 17, iOS 26.6.2, September 29, 2026.
-- [ ] Replacement TestFlight build passes the walkthrough, including deletion and contribution blocking.
-- [ ] Both reviewer logins reverified and kept usable.
-- [x] Recording uploaded and accessible without permission requests: unlisted YouTube video, link kept outside git.
-- [ ] Notes saved and reply sent with all six answers and recording access.
-- [ ] Resubmission confirmed by App Store Connect status.
+- [x] Physical iPhone model, latest iOS version, and test date recorded: iPhone 17, iOS 27.0.1, October 5, 2026.
+- [x] Replacement TestFlight build passes the walkthrough, including deletion and contribution blocking.
+- [x] Both reviewer logins reverified and kept usable.
+- [x] Recording uploaded and accessible without permission requests: unlisted YouTube video of the iOS 27.0.1 recording, link kept outside git.
+- [x] Notes saved and reply sent with all six answers and recording access.
+- [x] Resubmission confirmed by App Store Connect status: Waiting for Review, October 5, 2026.
 
 ## References
 

@@ -47,7 +47,7 @@ Connect after filling in the recording link and account details.
 ```text
 1. PHYSICAL-DEVICE WALKTHROUGH
 Recording: [REVIEWER-ACCESSIBLE VIDEO URL]
-Device: iPhone 17; iOS: 26.6.2; app: 1.0.0 (10); tested: September 29, 2026.
+Device: iPhone 17; iOS: 27.0.1; app: 1.0.0 (10); tested: October 5, 2026.
 Shows launch, main features, registration/login, reporting, moderation, contribution blocking, and deletion.
 
 2. PURPOSE AND AUDIENCE
@@ -58,7 +58,7 @@ Internet required; browsing needs no account or sample files. Map > marker > det
 
 Contributor demo: Sign in > enter the supplied email > Sign in with a password > enter supplied password > Sign in. A spot's heart saves it in Profile > Favourites. Add spot guides name, type, location, optional photos/notes, and bust factor, and warns about existing spots within 50 m; save and accept the standards. Find submissions in Profile > Your spots. After first sign-in, the app asks for a display name or an anonymous one; edit it on Profile.
 
-Registration: Sign in > new email > Continue > emailed code > Verify. Apple/Google sign-in are also available. Back to sign in or switching app tabs resets the form, retaining email. Opening Mail preserves verification. Passwords for demo accounts are managed by the app operator.
+Registration: Sign in > new email > Continue > emailed code > Verify. Apple/Google sign-in are also available. Back to sign in or switching app tabs resets the form, retaining email. Opening Mail preserves verification. Password sign-in exists only for these operator-managed demo accounts.
 
 Contributor submissions/edits stay private until admin approval. Report another user's spot via Report another problem > reason > Send report. Report dead spot requires 1–3 private evidence photos. Signed-out users see sign-in first, then continue directly to the selected report.
 

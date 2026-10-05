@@ -12,9 +12,9 @@ passes device QA. The rejected 1.0.0 (5), the superseded builds 6 to 9, and the 
 also labelled 1.0.0 (5) are not the recording target.
 Use the same candidate for every clip and select that build in App Store Connect.
 
-Use your physical iPhone 17. Build 10's device QA passed on iOS 26.6.2 on September 29, 2026. If
-Software Update installs a newer iOS before filming, repeat the device checks and update the
-version in the narration and review notes.
+Use your physical iPhone 17. Build 10's device QA passed on iOS 26.6.2 on September 29, 2026, and
+again on iOS 27.0.1 on October 5, 2026. If Software Update installs a newer iOS before filming,
+repeat the device checks and update the version in the narration and review notes.
 Start signed out. Have these ready:
 
 - A new disposable email address for registration, submissions, blocking, and deletion.
@@ -36,7 +36,7 @@ the disposable account.**
 Start screen recording on the iPhone Home Screen, then tap YYC Skate Spots.
 
 > This is YYC Skate Spots version 1.0.0, build 10, running on a physical iPhone 17
-> with iOS 26.6.2. It helps skateboarders find and share skate spots in Calgary.
+> with iOS 27.0.1. It helps skateboarders find and share skate spots in Calgary.
 
 Let the map finish loading.
 
@@ -128,7 +128,8 @@ the email preserved. Return to the disposable account with its email code.
 > Leaving the sign-in tab starts a fresh attempt. Opening Mail to retrieve a code keeps the
 > verification screen available.
 
-Reviewer passwords are managed in Clerk by the app operator. There is no in-app password reset.
+Password sign-in exists only for the two App Review demo accounts, which the app operator manages in
+Clerk. Real accounts use email codes, Apple, or Google. There is no in-app password reset.
 
 Stop recording with the original submission still pending.
 
@@ -152,8 +153,8 @@ Open **Profile → Review spots**. Show the disposable account's display name ne
 submission. Select the original, accurate submission, inspect it, then select
 **Meets standards → Confirm**. Show it on the public map.
 
-> Administrators review submitted content before publication. This is the same password sign-in
-> method available to the supplied reviewer accounts.
+> Administrators review submitted content before publication. Password sign-in exists only for
+> the App Review demo accounts.
 
 Approving this spot makes it public temporarily. Preserve existing listings throughout the
 demonstration.
