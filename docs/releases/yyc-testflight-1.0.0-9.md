@@ -1,7 +1,11 @@
 # YYC Skate Spots 1.0.0 (9) candidate record
 
-This records the candidate state on September 28, 2026. Recheck App Store Connect before acting.
-This candidate supersedes [build 8](yyc-testflight-1.0.0-8.md).
+This records the candidate state on September 28, 2026. This candidate supersedes
+[build 8](yyc-testflight-1.0.0-8.md).
+
+Superseded on September 29, 2026 by [candidate 1.0.0 (10)](yyc-testflight-1.0.0-10.md). The device
+checks below passed, and QA found #125, #126, and #127. The results below remain a historical
+record of build 9; do not record or submit it for App Review.
 
 - Release commit: `d4088a7a6a4c1e29d5fa75434f883e15d21c347f`, merged PRs #121 and #122.
 - Build: `c880a052-0246-4f1b-a2ac-b17450a67dd1`, production profile, store distribution, finished September 28, 2026.
@@ -11,7 +15,7 @@ This candidate supersedes [build 8](yyc-testflight-1.0.0-8.md).
 - TestFlight upload and Apple processing: completed. Apple reports `VALID` and internal `IN_BETA_TESTING`.
 - App Store Connect build ID: `a9942888-3bb5-4344-9281-c8e01450f8fa`.
 - Assigned to the existing internal group `Release Candidate Testers`; membership verified. Automatic access to all builds remains off. No processing or compliance blocker reported.
-- Physical-device QA: pending for build 9.
+- Physical-device QA: September 29, 2026; the build-specific checks passed. The full resubmission-guide pass was not recorded for this build.
 - App Review: not resubmitted.
 
 ## Changes from build 8
@@ -37,13 +41,13 @@ All 14 bundled privacy manifests declare no tracking. Google Maps' resource mani
 
 ## Device checks before recording
 
-- [ ] Install build 9 and cold-launch the map; open a spot.
-- [ ] With photo access off, Add photos shows Photo access is off, and Open Settings opens the app's settings.
-- [ ] With location access off, the locate button and Current location show Location access is off.
-- [ ] Report details and admin removal notes stay visible while typing several lines.
-- [ ] Admin review shows the review count, and dead-spot evidence photos appear whole.
-- [ ] Signing in as a different account resets the map.
-- [ ] A pin near an existing spot opens Potential duplicate spot detected; View opens the spot, and My spot is unique continues.
+- [x] Install build 9 and cold-launch the map; open a spot.
+- [x] With photo access off, Add photos shows Photo access is off, and Open Settings opens the app's settings.
+- [x] With location access off, the locate button and Current location show Location access is off.
+- [x] Report details and admin removal notes stay visible while typing several lines.
+- [x] Admin review shows the review count, and dead-spot evidence photos appear whole.
+- [x] Signing in as a different account resets the map.
+- [x] A pin near an existing spot opens Potential duplicate spot detected; View opens the spot, and My spot is unique continues.
 - [ ] Complete the remaining candidate checks in [the resubmission guide](../app-review-resubmission.md).
 
 Use disposable accounts and content for destructive demonstrations. Build 8's device results do not establish that build 9 passes these checks.

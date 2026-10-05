@@ -7,8 +7,9 @@ and App Review Information > Notes.
 
 The owner confirmed on September 9, 2026 that the rejected build is **1.0.0 (5)** and that the
 initial spot descriptions, photos, and branding are owned or used with permission. No additional
-licensed content needs authorization documents. A new candidate recording is still outstanding. App Store
-Connect has not been updated or resubmitted as part of preparing this document.
+licensed content needs authorization documents. Build 10 was recorded on iOS 27.0.1 and
+resubmitted on October 5, 2026; App Store Connect showed Waiting for Review. Check App Store Connect
+for the current status before acting.
 
 ## Candidate preparation
 
@@ -26,20 +27,26 @@ so the provider-name and email fallbacks never applied.
 anonymous names. Its device QA on September 28, 2026 passed the core flows and found minor issues,
 #113 to #120, plus silent photo and location permission denials.
 
-[TestFlight 1.0.0 (9)](releases/yyc-testflight-1.0.0-9.md) is the current candidate. It fixes those
-issues and warns contributors about possible duplicate spots. The owner confirmed the changes on
-the physical iPhone using development build `9b09903a-8716-429e-a9b5-a58e9e84d62c` and Metro. That
-development client does not replace device QA of build 9.
+[TestFlight 1.0.0 (9)](releases/yyc-testflight-1.0.0-9.md) fixed those issues and added a
+duplicate-spot warning. Its device checks on September 29, 2026 passed and found a keyboard that
+stayed over the spot preview after search, #125, plus smaller layout issues.
 
-1. Run the candidate checks below on build 9 and record the device, iOS version, and test date.
-2. Freeze build 9 and re-film all six sections of the [video script](app-review-video-script.md).
+[TestFlight 1.0.0 (10)](releases/yyc-testflight-1.0.0-10.md) is the current candidate. It fixes
+those issues. The owner confirmed the changes on the physical iPhone using development build
+`9b09903a-8716-429e-a9b5-a58e9e84d62c` and Metro. That development client does not replace device
+QA of build 10.
 
-The old clips are rehearsal references. Do not mix them into a walkthrough presented as the
-replacement build. App Store Connect has not been updated by preparing these documents.
+The steps below record the process used for build 10. Follow them again only for a new
+resubmission, with a new candidate, device check, and recording:
+
+1. Run the candidate checks below on the candidate and record the device, iOS version, and test date.
+2. Freeze the candidate and re-film all six sections of the [video script](app-review-video-script.md).
+
+Do not mix clips from an earlier build into a walkthrough presented as the replacement build.
 
 ## Before recording
 
-- Install **1.0.0 (9)**, the new candidate, from TestFlight on a physical iPhone running the latest publicly released
+- Install **1.0.0 (10)**, the new candidate, from TestFlight on a physical iPhone running the latest publicly released
   iOS available when recording. Record the model, exact iOS version, and test date. Check Software
   Update rather than relying on a version number in this document.
 - Confirm the TestFlight build matches the build selected in App Store Connect. Use the installed
@@ -104,29 +111,31 @@ the submitted app.
 ## Candidate device checks
 
 Complete these on the replacement TestFlight build before recording. The development sign-in
-checks are already confirmed, but they do not replace testing this production binary.
+checks are already confirmed, but they do not replace testing this production binary. The owner
+reported every check passing on build 10, on iOS 26.6.2 on September 29, 2026 and again on
+iOS 27.0.1 on October 5, 2026. Clear the boxes for a new candidate.
 
-- [ ] First tap on the email field opens the keyboard, including after a cold launch.
-- [ ] Wrong password and wrong/expired email code show an error with a usable Back to sign in.
-- [ ] Switching to Map or Add spot resets the flow, clears errors/password/code, and keeps email.
-- [ ] Opening Mail preserves code entry; Apple and Google sign-in return successfully.
-- [ ] Password sign-in works for both reviewer accounts. Wrong-password/code errors are centered,
+- [x] First tap on the email field opens the keyboard, including after a cold launch.
+- [x] Wrong password and wrong/expired email code show an error with a usable Back to sign in.
+- [x] Switching to Map or Add spot resets the flow, clears errors/password/code, and keeps email.
+- [x] Opening Mail preserves code entry; Apple and Google sign-in return successfully.
+- [x] Password sign-in works for both reviewer accounts. Wrong-password/code errors are centered,
       become visible without manually closing the keyboard, and allow a retry.
-- [ ] Signed-out Report dead spot and Report another problem open sign-in, then resume the selected
+- [x] Signed-out Report dead spot and Report another problem open sign-in, then resume the selected
       report after authentication. Back cancels; signing in as the owner does not allow reporting.
-- [ ] New accounts, including Apple and Google, are asked to choose a display name with an anonymous
+- [x] New accounts, including Apple and Google, are asked to choose a display name with an anonymous
       option, also when sign-in resumes a report. Favourites, creation, editing, and current
       display-name labels work.
-- [ ] Admin queue/detail labels show contributor names; unnamed accounts show the same anonymous
+- [x] Admin queue/detail labels show contributor names; unnamed accounts show the same anonymous
       name publicly and to admins.
-- [ ] Approval publishes contributor content; admin-created content is immediately published.
-- [ ] Photo permission can be declined, granted, and withdrawn. Admin photos require permission and
+- [x] Approval publishes contributor content; admin-created content is immediately published.
+- [x] Photo permission can be declined, granted, and withdrawn. Admin photos require permission and
       an empty gallery, preserve spot details/review state, and notify the owner in Your spots.
-- [ ] Reports reach admins. Dead-spot reports require 1–3 private evidence photos; resolving them
+- [x] Reports reach admins. Dead-spot reports require 1–3 private evidence photos; resolving them
       removes the evidence, and dead-spot removal does not add a contributor strike.
-- [ ] Three qualifying removals allow an admin ban, and the disposable account cannot contribute.
-- [ ] Account deletion succeeds and removes its listings, photos, profile, and associated records.
-- [ ] Maps, location denied/granted, directions, sharing, and policy/support links work.
+- [x] Three qualifying removals allow an admin ban, and the disposable account cannot contribute.
+- [x] Account deletion succeeds and removes its listings, photos, profile, and associated records.
+- [x] Maps, location denied/granted, directions, sharing, and policy/support links work.
 
 Use disposable accounts and their own content for production QA. Never remove an unrelated spot
 or change another user's moderation status to exercise these checks.
@@ -149,7 +158,7 @@ numbered text when replying to Apple:
 ```text
 Hello App Review team,
 
-Here is the requested information for YYC Skate Spots 1.0.0 (9), including a physical-iPhone walkthrough of that build. I have also added it to App Review Information > Notes.
+Here is the requested information for YYC Skate Spots 1.0.0 (10), including a physical-iPhone walkthrough of that build. I have also added it to App Review Information > Notes.
 ```
 
 Do not send the introduction until its statements are true. Check both fields' displayed character
@@ -163,27 +172,28 @@ This resubmission includes app changes, so select the new tested binary from the
 
 1. Open YYC Skate Spots, app ID `6807476193`, in App Store Connect. Review the live rejection and
    status and any additional issues. Replace build 5 with the exact tested and recorded
-   **1.0.0 (9)** candidate.
+   **1.0.0 (10)** candidate.
 2. Open the rejected version's App Review Information. Verify the contact and demo credentials,
    replace Notes with the completed six-part response, and save. Preserve Canada-only availability
    and the existing manual release option.
 3. Open View App Review Issues & Messages > Resolve > Reply to App Review. Send the introduction
    and six answers with the working video link or attachment **before** resubmitting.
-4. If the submission remains Unresolved Issues, use Edit on its rejected item, then Add for Review
-   after saving the corrections. Return to the submission details and choose Resubmit to App Review.
+4. If the submission remains Unresolved Issues, Resubmit to App Review stays disabled until the
+   rejected version is added back. Choose Update Review on the version page, which returns the item
+   to the submission as Ready for Review, then choose Resubmit to App Review on the submission details.
    Follow the actual status and controls shown; do not remove the rejected item.
 5. Verify App Store Connect reports the submission as Waiting for Review or In Review. Record the
    submission date, build, video reference, and observed status in the release record. A saved draft
    or Ready for Review status does not prove submission.
 
-## Evidence still needed
+## Build 10 evidence
 
-- [ ] Physical iPhone model, latest iOS version, and test date recorded.
-- [ ] Replacement TestFlight build passes the walkthrough, including deletion and contribution blocking.
-- [ ] Both reviewer logins reverified and kept usable.
-- [ ] Recording uploaded and accessible without permission requests.
-- [ ] Notes saved and reply sent with all six answers and recording access.
-- [ ] Resubmission confirmed by App Store Connect status.
+- [x] Physical iPhone model, latest iOS version, and test date recorded: iPhone 17, iOS 27.0.1, October 5, 2026.
+- [x] Replacement TestFlight build passes the walkthrough, including deletion and contribution blocking.
+- [x] Both reviewer logins reverified and kept usable.
+- [x] Recording uploaded and accessible without permission requests: unlisted YouTube video of the iOS 27.0.1 recording, link kept outside git.
+- [x] Notes saved and reply sent with all six answers and recording access.
+- [x] Resubmission confirmed by App Store Connect status: Waiting for Review, October 5, 2026.
 
 ## References
 
