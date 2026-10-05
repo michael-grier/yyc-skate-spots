@@ -7,8 +7,9 @@ and App Review Information > Notes.
 
 The owner confirmed on September 9, 2026 that the rejected build is **1.0.0 (5)** and that the
 initial spot descriptions, photos, and branding are owned or used with permission. No additional
-licensed content needs authorization documents. A new candidate recording is still outstanding. App Store
-Connect has not been updated or resubmitted as part of preparing this document.
+licensed content needs authorization documents. Build 10 was recorded on iOS 27.0.1 and
+resubmitted on October 5, 2026; App Store Connect showed Waiting for Review. Check App Store Connect
+for the current status before acting.
 
 ## Candidate preparation
 
@@ -35,11 +36,13 @@ those issues. The owner confirmed the changes on the physical iPhone using devel
 `9b09903a-8716-429e-a9b5-a58e9e84d62c` and Metro. That development client does not replace device
 QA of build 10.
 
-1. Run the candidate checks below on build 10 and record the device, iOS version, and test date.
-2. Freeze build 10 and re-film all six sections of the [video script](app-review-video-script.md).
+The steps below record the process used for build 10. Follow them again only for a new
+resubmission, with a new candidate, device check, and recording:
 
-The old clips are rehearsal references. Do not mix them into a walkthrough presented as the
-replacement build. App Store Connect has not been updated by preparing these documents.
+1. Run the candidate checks below on the candidate and record the device, iOS version, and test date.
+2. Freeze the candidate and re-film all six sections of the [video script](app-review-video-script.md).
+
+Do not mix clips from an earlier build into a walkthrough presented as the replacement build.
 
 ## Before recording
 
@@ -181,7 +184,7 @@ This resubmission includes app changes, so select the new tested binary from the
    submission date, build, video reference, and observed status in the release record. A saved draft
    or Ready for Review status does not prove submission.
 
-## Evidence still needed
+## Build 10 evidence
 
 - [x] Physical iPhone model, latest iOS version, and test date recorded: iPhone 17, iOS 27.0.1, October 5, 2026.
 - [x] Replacement TestFlight build passes the walkthrough, including deletion and contribution blocking.
