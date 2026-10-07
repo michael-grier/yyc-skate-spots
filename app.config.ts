@@ -1,5 +1,7 @@
 import type { ConfigContext, ExpoConfig } from "expo/config";
 
+import { APP_VARIANTS, parseAppVariant } from "./src/lib/app-variants.ts";
+
 // Google Maps keys are baked into the native binaries at build time.
 // A build with a missing key does NOT error — it just renders a blank/gray
 // map — so we fail the EAS build instead of letting that happen.
@@ -8,6 +10,11 @@ const GOOGLE_MAPS_API_KEY_IOS = process.env.GOOGLE_MAPS_API_KEY_IOS;
 const SHARE_BASE_URL = process.env.EXPO_PUBLIC_SHARE_BASE_URL;
 
 const isEasBuild = process.env.EAS_BUILD === "true";
+
+// Set per profile in eas.json and by the `start` scripts in package.json.
+const APP_VARIANT = parseAppVariant(process.env.APP_VARIANT);
+const variant = APP_VARIANTS[APP_VARIANT];
+const isProduction = APP_VARIANT === "production";
 
 function shareHost(baseUrl: string | undefined): string | null {
   if (!baseUrl) {
@@ -58,7 +65,7 @@ if (!SHARE_HOST) {
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
-  name: "YYC Skate Spots",
+  name: variant.name,
   slug: "yyc-skate-spots",
   // Pinned explicitly because this user owns more than one Expo account;
   // without `owner`, EAS infers it from login context and can resolve to the
@@ -66,13 +73,15 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   owner: "michaelgrier",
   version: "1.0.0",
   orientation: "portrait",
-  icon: "./assets/images/icon.png",
-  scheme: "yycskatespots",
+  icon: variant.icon,
+  scheme: variant.scheme,
   userInterfaceStyle: "dark",
   ios: {
-    bundleIdentifier: "com.yycskatespots.app",
+    bundleIdentifier: variant.bundleId,
     usesAppleSignIn: true,
-    associatedDomains: SHARE_HOST ? [`applinks:${SHARE_HOST}`] : [],
+    // The association file lists only the store app, so share links always
+    // open it rather than whichever variant happens to be installed.
+    associatedDomains: isProduction && SHARE_HOST ? [`applinks:${SHARE_HOST}`] : [],
     config: {
       // The shipped app uses Apple-provided cryptography and standard HTTPS,
       // not proprietary or non-standard encryption.
@@ -157,7 +166,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     },
   },
   android: {
-    package: "com.yycskatespots.app",
+    package: variant.bundleId,
     adaptiveIcon: {
       backgroundColor: "#141517",
       foregroundImage: "./assets/images/android-icon-foreground.png",
@@ -173,6 +182,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   plugins: [
     "expo-router",
+    // The dev launcher's exp+ scheme is otherwise registered by every build,
+    // so scanning the Metro QR code could open the store app instead.
+    ["expo-dev-client", { addGeneratedScheme: APP_VARIANT === "development" }],
     // Keys must go through react-native-maps' own plugin, not the legacy
     // `ios.config.googleMapsApiKey` / `android.config.googleMaps` fields.
     // Those fields make Expo's built-in fallback plugin write
@@ -227,6 +239,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     eas: {
       projectId: "c70e46c5-1b1d-43d6-b8d0-dd48cd050273",
     },
+    appVariant: APP_VARIANT,
     // Runtime-visible flags so the app can fail loudly on a bad build
     // instead of showing a silently blank map (see src/lib/env.ts).
     googleMapsKeyPresent: {

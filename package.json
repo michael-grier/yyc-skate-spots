@@ -68,9 +68,9 @@
     "vitest": "^4.1.11"
   },
   "scripts": {
-    "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
+    "start": "APP_VARIANT=development expo start",
+    "android": "APP_VARIANT=development expo start --android",
+    "ios": "APP_VARIANT=development expo start --ios",
     "web": "expo start --web",
     "setup:worktree": "bash scripts/setup-worktree.sh",
     "lint": "expo lint",

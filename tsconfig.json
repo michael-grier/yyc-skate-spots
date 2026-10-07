@@ -5,6 +5,9 @@
     // TS 6 no longer auto-includes node_modules/@types; jest's globals for
     // the *.test.tsx component tests must be requested explicitly.
     "types": ["jest"],
+    // Expo's config loader resolves app.config.ts imports only with an
+    // explicit .ts extension.
+    "allowImportingTsExtensions": true,
     "paths": {
       "@/*": ["./src/*"],
       "@/assets/*": ["./assets/*"],

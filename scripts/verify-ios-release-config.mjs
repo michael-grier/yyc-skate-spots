@@ -10,6 +10,8 @@ const result = spawnSync(process.execPath, [expoCli, "config", "--type", "intros
   encoding: "utf8",
   env: {
     ...process.env,
+    // A variant left set in the caller's shell must not stand in for the store app.
+    APP_VARIANT: "production",
     EXPO_NO_DOTENV: "1",
     EXPO_PUBLIC_SHARE_BASE_URL: "https://yycskatespots.com",
     GOOGLE_MAPS_API_KEY_ANDROID: "ios-release-verification-placeholder",
