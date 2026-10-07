@@ -18,6 +18,11 @@ const colors = {
   pinSelectedInk: "#17191D",
   pinMine: "#FFFFFF",
   pinMineRing: "#FF10F0",
+  // Non-store build badge; hues kept distinct from the bust and pin colours.
+  variant: {
+    development: "#E3A04F",
+    preview: "#6FA8DC",
+  },
 };
 
 // Google Maps custom style palette; slightly lighter than `base` so floating
