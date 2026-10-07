@@ -37,6 +37,14 @@ export const reportReason = v.union(
   v.literal("other"),
 );
 
+// Bundle IDs of the app variants in src/lib/app-variants.ts. Apple issues each
+// authorization code to one of them and accepts it only from that client.
+export const appleClientId = v.union(
+  v.literal("com.yycskatespots.app"),
+  v.literal("com.yycskatespots.app.preview"),
+  v.literal("com.yycskatespots.app.dev"),
+);
+
 const reviewReason = v.union(v.literal("new"), v.literal("edited"), v.literal("reported"));
 
 export default defineSchema({
@@ -191,6 +199,8 @@ export default defineSchema({
     requestedAt: v.number(),
     appleToken: v.optional(v.string()),
     appleTokenType: v.optional(v.union(v.literal("access_token"), v.literal("refresh_token"))),
+    // Absent for tokens stored before variants existed, which all came from the store app.
+    appleClientId: v.optional(appleClientId),
     appleRevoked: v.boolean(),
   }).index("by_userIdentifier", ["userIdentifier"]),
 });

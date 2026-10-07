@@ -1,5 +1,5 @@
 import { decodeJwt, importPKCS8, SignJWT } from "jose";
-import { v } from "convex/values";
+import { type Infer, v } from "convex/values";
 
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
@@ -17,11 +17,13 @@ import {
 } from "./moderationModel";
 import { deleteReport } from "./reportPhotos";
 import { profileFor } from "./profileModel";
+import { appleClientId } from "./schema";
 import { releasePhotos, scheduleSpotDeletion } from "./spots";
 
 const CLERK_API_ORIGIN = "https://api.clerk.com";
 const APPLE_AUTH_ORIGIN = "https://appleid.apple.com";
-const APPLE_CLIENT_ID = "com.yycskatespots.app";
+// Store builds released before variants existed send no client ID.
+const DEFAULT_APPLE_CLIENT_ID = "com.yycskatespots.app";
 const DELETE_BATCH_SIZE = 100;
 const UPLOAD_DELETE_BATCH_SIZE = 20;
 const MAX_CLEANUP_BATCHES_PER_REQUEST = 1_000;
@@ -29,6 +31,7 @@ const REQUEST_EXPIRY_MS = 7 * 24 * 60 * 60 * 1_000;
 const EXTERNAL_REQUEST_TIMEOUT_MS = 10_000;
 
 type AppleTokenType = "access_token" | "refresh_token";
+type AppleClientId = Infer<typeof appleClientId>;
 type ClerkExternalAccount = { provider: string; providerUserId: string };
 type ClerkUser = { externalAccounts: ClerkExternalAccount[] };
 type DeleteAccountResult =
@@ -106,7 +109,7 @@ async function deleteClerkUser(clerkUserId: string) {
   }
 }
 
-async function createAppleClientSecret() {
+async function createAppleClientSecret(clientId: AppleClientId) {
   const teamId = requiredEnvironmentValue("APPLE_TEAM_ID", env.APPLE_TEAM_ID);
   const keyId = requiredEnvironmentValue("APPLE_SIGN_IN_KEY_ID", env.APPLE_SIGN_IN_KEY_ID);
   const privateKey = requiredEnvironmentValue(
@@ -118,16 +121,20 @@ async function createAppleClientSecret() {
     .setProtectedHeader({ alg: "ES256", kid: keyId })
     .setIssuer(teamId)
     .setAudience(APPLE_AUTH_ORIGIN)
-    .setSubject(APPLE_CLIENT_ID)
+    .setSubject(clientId)
     .setIssuedAt()
     .setExpirationTime("5m")
     .sign(signingKey);
 }
 
-async function exchangeAppleAuthorizationCode(code: string, expectedAppleUserId: string) {
+async function exchangeAppleAuthorizationCode(
+  code: string,
+  expectedAppleUserId: string,
+  clientId: AppleClientId,
+) {
   const body = new URLSearchParams({
-    client_id: APPLE_CLIENT_ID,
-    client_secret: await createAppleClientSecret(),
+    client_id: clientId,
+    client_secret: await createAppleClientSecret(clientId),
     code,
     grant_type: "authorization_code",
   });
@@ -162,10 +169,10 @@ async function exchangeAppleAuthorizationCode(code: string, expectedAppleUserId:
   throw new Error("Apple did not return a token that can be revoked.");
 }
 
-async function revokeAppleToken(token: string, tokenType: AppleTokenType) {
+async function revokeAppleToken(token: string, tokenType: AppleTokenType, clientId: AppleClientId) {
   const body = new URLSearchParams({
-    client_id: APPLE_CLIENT_ID,
-    client_secret: await createAppleClientSecret(),
+    client_id: clientId,
+    client_secret: await createAppleClientSecret(clientId),
     token,
     token_type_hint: tokenType,
   });
@@ -229,6 +236,7 @@ export const rememberAppleToken = internalMutation({
     requestId: v.id("accountDeletionRequests"),
     token: v.string(),
     tokenType: v.union(v.literal("access_token"), v.literal("refresh_token")),
+    clientId: appleClientId,
   },
   handler: async (ctx, args) => {
     const request = await ctx.db.get("accountDeletionRequests", args.requestId);
@@ -238,6 +246,7 @@ export const rememberAppleToken = internalMutation({
     await ctx.db.patch("accountDeletionRequests", request._id, {
       appleToken: args.token,
       appleTokenType: args.tokenType,
+      appleClientId: args.clientId,
     });
     return null;
   },
@@ -253,6 +262,7 @@ export const markAppleRevoked = internalMutation({
         appleRevoked: true,
         appleToken: undefined,
         appleTokenType: undefined,
+        appleClientId: undefined,
       });
     }
     return null;
@@ -482,7 +492,11 @@ export const expireRequest = internalMutation({
 
 /** Coordinates external revocation and complete data cleanup for the caller only. */
 export const deleteAccount = action({
-  args: { appleAuthorizationCode: v.optional(v.string()) },
+  args: {
+    appleAuthorizationCode: v.optional(v.string()),
+    // The variant whose Apple prompt issued the code; Apple rejects any other.
+    appleClientId: v.optional(appleClientId),
+  },
   handler: async (ctx, args): Promise<DeleteAccountResult> => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
@@ -526,6 +540,7 @@ export const deleteAccount = action({
     if (!request.appleRevoked && appleAccount) {
       let token = request.appleToken;
       let tokenType = request.appleTokenType;
+      let clientId = request.appleClientId ?? DEFAULT_APPLE_CLIENT_ID;
       if (!token || !tokenType) {
         if (!args.appleAuthorizationCode) {
           return {
@@ -533,9 +548,11 @@ export const deleteAccount = action({
             appleUserId: appleAccount.providerUserId,
           };
         }
+        clientId = args.appleClientId ?? DEFAULT_APPLE_CLIENT_ID;
         const exchanged = await exchangeAppleAuthorizationCode(
           args.appleAuthorizationCode,
           appleAccount.providerUserId,
+          clientId,
         );
         token = exchanged.token;
         tokenType = exchanged.tokenType;
@@ -543,14 +560,19 @@ export const deleteAccount = action({
           requestId,
           token,
           tokenType,
+          clientId,
         });
       }
-      await revokeAppleToken(token, tokenType);
+      await revokeAppleToken(token, tokenType, clientId);
       await ctx.runMutation(internal.accountDeletion.markAppleRevoked, { requestId });
     } else if (!request.appleRevoked && request.appleToken && request.appleTokenType) {
       // Clerk may have removed the external-account link after a partial
       // attempt; the stored Apple token still needs to be revoked.
-      await revokeAppleToken(request.appleToken, request.appleTokenType);
+      await revokeAppleToken(
+        request.appleToken,
+        request.appleTokenType,
+        request.appleClientId ?? DEFAULT_APPLE_CLIENT_ID,
+      );
       await ctx.runMutation(internal.accountDeletion.markAppleRevoked, { requestId });
     }
 

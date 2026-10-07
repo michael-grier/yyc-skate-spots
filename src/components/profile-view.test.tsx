@@ -207,6 +207,7 @@ describe("ProfileView", () => {
     expect(mockDeleteAccount).toHaveBeenNthCalledWith(1, {});
     expect(mockDeleteAccount).toHaveBeenNthCalledWith(2, {
       appleAuthorizationCode: "fresh-code",
+      appleClientId: "com.yycskatespots.app",
     });
     await waitFor(() => expect(mockSignOut).toHaveBeenCalledTimes(1));
   });
