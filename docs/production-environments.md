@@ -16,7 +16,7 @@ display, not whether an app user can extract a value.
 | `EXPO_PUBLIC_CONVEX_SITE_URL` | Expo project owner | Plain text | Conditional: HTTP-actions origin for custom Convex domains, consumed by photo uploads; omitted for default `*.convex.cloud` URLs | Configure the replacement HTTP-actions host with the deployment URL, update EAS, build, and verify authenticated photo uploads. |
 | `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY` | Expo project owner | Plain text | Clerk production API Keys page, consumed by `ClerkProvider` | When Clerk issues a replacement, update EAS, then make a new build and verify sign-in before retiring the old configuration. A Clerk domain change creates a new key. |
 | `EXPO_PUBLIC_SHARE_BASE_URL` | Expo project owner | Plain text | Cloudflare Pages production custom domain, consumed by Expo configuration and share links | Configure the replacement domain and association file first. Update Cloudflare Pages and EAS, make a new build, verify Universal Links, then redirect or retire the old domain. |
-| `GOOGLE_MAPS_API_KEY_IOS` | Expo project owner | Sensitive | Google Cloud credential restricted to the iOS bundle ID and Maps SDK for iOS, embedded by Expo at build time | Create and restrict a replacement key, update EAS, build and test the map on an iPhone, then revoke the old key. |
+| `GOOGLE_MAPS_API_KEY_IOS` | Expo project owner | Sensitive | Google Cloud credential restricted to the production and preview bundle IDs and Maps SDK for iOS, embedded by Expo at build time | Create and restrict a replacement key, update EAS, build and test the map on an iPhone, then revoke the old key. |
 | `GOOGLE_MAPS_API_KEY_ANDROID` | Expo project owner | Sensitive | Google Cloud credential restricted to the Android package, signing certificates, and Maps SDK for Android, embedded by Expo at build time | Android is deferred, but the current app configuration still requires this variable for every build. Add the replacement signing fingerprints, update EAS, test an Android build when Android work resumes, then revoke the old key. |
 
 ## Convex production
@@ -52,8 +52,11 @@ The production Clerk instance, domain, Convex integration, publishable key, user
 metadata belong to the Clerk application owner. Development and production users are separate.
 The administrator's public metadata contains the `admin` role, and the session token maps only
 that role into the top-level `role` claim. Configure Apple and Google sign-in in the matching
-Clerk instance using provider credentials held in Clerk. Verify both flows in the selected release
-build. Apple account deletion additionally needs the revocation credentials listed under Convex.
+Clerk instance using provider credentials held in Clerk. Native applications lists both the
+production and preview bundle IDs, and the Google redirect allowlist includes both
+`yycskatespots://sso-callback` and `yycskatespots-preview://sso-callback`. Verify both flows in
+the selected release build. Apple account deletion additionally needs the revocation credentials
+listed under Convex.
 Verify deletion with disposable provider accounts before release.
 
 Enable email-code sign-in and the password flow used by reviewer accounts. Follow

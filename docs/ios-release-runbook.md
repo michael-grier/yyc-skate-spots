@@ -83,7 +83,8 @@ The EAS environment must list these five project variables:
 For a custom Convex domain, also require `EXPO_PUBLIC_CONVEX_SITE_URL` for photo uploads.
 
 Do not add `--include-sensitive` when checking the list. Confirm in Google Cloud that the iOS Maps
-key remains restricted to `com.yycskatespots.app` and Maps SDK for iOS.
+key allows `com.yycskatespots.app` and Maps SDK for iOS. The `production` profile pins
+`APP_VARIANT=production`, so the archive uses the store bundle ID.
 
 Check the production Convex variable names without reading their values:
 
