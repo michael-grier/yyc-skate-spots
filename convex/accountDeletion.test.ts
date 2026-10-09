@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
 import { decodeJwt } from "jose";
-import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { api } from "./_generated/api";
 import schema from "./schema";
@@ -39,6 +39,12 @@ afterAll(() => {
 
 beforeEach(() => {
   fetchMock.mockReset();
+  // Scheduled cleanup only runs when a test advances these timers.
+  vi.useFakeTimers();
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe("account deletion", () => {
@@ -183,7 +189,6 @@ describe("account deletion", () => {
       expect(await ctx.db.query("uploads").collect()).toEqual([]);
       expect(await ctx.db.query("spotReports").collect()).toEqual([]);
       expect(await ctx.db.query("communityAcknowledgements").collect()).toEqual([]);
-      expect(await ctx.db.query("accountDeletionRequests").collect()).toEqual([]);
       expect(await ctx.db.get("spotModeration", ids.otherReview)).toMatchObject({
         needsReview: false,
         openReportCount: 0,
@@ -196,6 +201,14 @@ describe("account deletion", () => {
       expect(await ctx.db.query("userModeration").collect()).toHaveLength(1);
       expect(await ctx.db.query("spotRemovals").collect()).toHaveLength(1);
     });
+
+    // The app is still signed in until sign-out finishes; it must not see a fresh account.
+    expect(await asAlice.query(api.profiles.me, {})).toBeNull();
+    await expect(
+      asAlice.mutation(api.profiles.setDisplayName, { displayName: "Recreated" }),
+    ).rejects.toThrow(/deleting/);
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    expect(await t.run((ctx) => ctx.db.query("accountDeletionRequests").collect())).toEqual([]);
   });
 
   test("requests Apple authorization and revokes the matching Apple token", async () => {
@@ -293,6 +306,7 @@ describe("account deletion", () => {
     expect(
       fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/auth/revoke")),
     ).toHaveLength(1);
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
     expect(await t.run((ctx) => ctx.db.query("accountDeletionRequests").collect())).toEqual([]);
   });
 
@@ -341,6 +355,7 @@ describe("account deletion", () => {
     expect(
       fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/auth/revoke")),
     ).toHaveLength(2);
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
     expect(await t.run((ctx) => ctx.db.query("accountDeletionRequests").collect())).toEqual([]);
   });
 
