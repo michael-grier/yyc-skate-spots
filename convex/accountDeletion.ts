@@ -28,6 +28,9 @@ const DELETE_BATCH_SIZE = 100;
 const UPLOAD_DELETE_BATCH_SIZE = 20;
 const MAX_CLEANUP_BATCHES_PER_REQUEST = 1_000;
 const REQUEST_EXPIRY_MS = 7 * 24 * 60 * 60 * 1_000;
+// Clerk session tokens last a minute and a deleted user cannot refresh them,
+// so by then no client can still call Convex as the deleted account.
+const FINISHED_REQUEST_RETENTION_MS = 5 * 60 * 1_000;
 const EXTERNAL_REQUEST_TIMEOUT_MS = 10_000;
 
 type AppleTokenType = "access_token" | "refresh_token";
@@ -222,7 +225,7 @@ export const beginRequest = internalMutation({
       appleRevoked: false,
     });
     // An abandoned confirmation must not retain an Apple token or identity
-    // reference indefinitely. Successful requests remove this row immediately.
+    // reference indefinitely. Successful requests remove this row within minutes.
     await ctx.scheduler.runAfter(REQUEST_EXPIRY_MS, internal.accountDeletion.expireRequest, {
       requestId,
     });
@@ -590,7 +593,14 @@ export const deleteAccount = action({
     }
 
     await deleteClerkUser(clerkUserId);
-    await ctx.runMutation(internal.accountDeletion.finishRequest, { requestId });
+    // The app stays signed in as the deleted user until signOut() resolves. Keeping
+    // the request until its tokens expire stops profiles.me from reporting a new,
+    // unnamed account in that gap and stops setDisplayName from recreating a profile.
+    await ctx.scheduler.runAfter(
+      FINISHED_REQUEST_RETENTION_MS,
+      internal.accountDeletion.finishRequest,
+      { requestId },
+    );
     return { status: "complete" };
   },
 });
