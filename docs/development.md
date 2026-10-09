@@ -100,17 +100,28 @@ its own bundle ID, URL scheme, home-screen name, and icon. Every `eas.json` prof
 | Development | `development` | `com.yycskatespots.app.dev` | YYC Dev, amber ribbon | Development |
 
 Dev and preview builds show a small colored pill at the bottom of every screen naming the
-variant and its data. Only production claims the share domain, so shared links always open the
-store app. App Store releases and TestFlight builds share the production bundle ID, so a
-TestFlight install replaces the App Store app until you reinstall it from the App Store.
+variant and its data. Preview uses production Clerk and Convex, so anything created there is live
+content. Only production claims the share domain, so shared links always open the store app. App
+Store releases and TestFlight builds share the production bundle ID, so a TestFlight install
+replaces the App Store app until you reinstall it from the App Store.
+
+Code that needs the running app's bundle ID or URL scheme reads `appIdentity` from
+`src/lib/env.ts`. The `appleClientId` validator in `convex/schema.ts` lists the same bundle IDs;
+change both together. Account deletion from a variant works only once the Convex deployment it
+uses includes that bundle ID. The variant icons are rendered from `assets/brand/icon-dev.svg` and
+`icon-preview.svg`, like the other icons.
 
 Each new bundle ID needs one-time setup before its first build works end to end:
 
 - In the Apple Developer portal, set Sign in with Apple on the variant's App ID to group with the
   primary `com.yycskatespots.app`. The shared Sign in with Apple key then works for account
   deletion, and an Apple user keeps the same Clerk account across variants on the same backend.
-- Add the bundle ID to the iOS Maps key's application restrictions.
+  Saving the change marks that App ID's provisioning profiles invalid. Installed builds keep
+  working; let the next EAS build regenerate the profile.
+- Add the bundle ID to the iOS Maps key's application restrictions. One iOS key serves every EAS
+  environment.
 - Register the variant in the matching Clerk instance as described under service configuration.
+  Production instances enforce the SSO redirect allowlist; development instances do not.
 
 `bun run start` runs Metro as the development variant, so the dev client receives matching
 configuration. Install a preview build with `bun x eas-cli build --profile preview --platform ios`.
@@ -189,15 +200,18 @@ Run the release configuration check after changing the app config or a native de
 bun run verify:ios-release
 ```
 
-It verifies the resolved privacy manifest, export-compliance flag, permission descriptions, bundle
-identifier, Sign in with Apple entitlement, and Universal Link entitlement without printing
-build-time credentials.
+It resolves the production variant regardless of the shell's `APP_VARIANT` and verifies the
+privacy manifest, export-compliance flag, permission descriptions, bundle identifier, Sign in with
+Apple entitlement, and Universal Link entitlement without printing build-time credentials.
 
 To inspect the generated native files after a native dependency update:
 
 ```sh
 bun x expo prebuild --platform ios --no-install
 ```
+
+Prebuild resolves production unless `APP_VARIANT` is set. Prefix the command with
+`APP_VARIANT=development` or `APP_VARIANT=preview` to inspect another variant.
 
 Confirm `ios/YYCSkateSpots/PrivacyInfo.xcprivacy`, `Info.plist`, the app entitlements, and the Xcode
 project's bundle identifier. The generated `ios/` directory is ignored and must not be committed.

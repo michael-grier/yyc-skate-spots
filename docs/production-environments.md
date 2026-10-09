@@ -19,6 +19,12 @@ display, not whether an app user can extract a value.
 | `GOOGLE_MAPS_API_KEY_IOS` | Expo project owner | Sensitive | Google Cloud credential shared by every EAS environment, restricted to the production, preview, and development bundle IDs and Maps SDK for iOS, embedded by Expo at build time | Create and restrict a replacement key, update EAS, build and test the map on an iPhone, then revoke the old key. |
 | `GOOGLE_MAPS_API_KEY_ANDROID` | Expo project owner | Sensitive | Google Cloud credential restricted to the Android package, signing certificates, and Maps SDK for Android, embedded by Expo at build time | Android is deferred, but the current app configuration still requires this variable for every build. Add the replacement signing fingerprints, update EAS, test an Android build when Android work resumes, then revoke the old key. |
 
+## EAS preview
+
+The `preview` environment holds the same project variables as production, with production values,
+so preview builds use production Clerk, Convex, and share links. Its variables are separate
+entries scoped to `preview`. Update them alongside production in every rotation above.
+
 ## Convex production
 
 These variables belong to the Convex project owner and are scoped to the production deployment.
@@ -29,7 +35,7 @@ Use `bun x convex env list --names-only --prod` to inspect names without printin
 | `CLERK_JWT_ISSUER_DOMAIN` | Convex project owner | Public configuration | Required | Frontend API URL from the matching Clerk production Convex integration, consumed by `convex/auth.config.ts` | Finish the replacement Clerk domain or instance first. Set the new URL on Convex, deploy the auth configuration, and verify an authenticated request before retiring the old Clerk configuration. |
 | `CLERK_SECRET_KEY` | Convex project owner | Secret | Required | Secret key from the matching Clerk production instance, consumed only by the account-deletion action | Create or reveal the replacement in Clerk, update the variable in the production deployment's Convex dashboard, test account deletion with a disposable account, then revoke the old key in Clerk. |
 | `APPLE_TEAM_ID` | Convex project owner | Plain text | Required | Apple Developer membership Team ID, used to sign short-lived client secrets for Apple account revocation | Update only when app ownership moves to another Apple team, alongside the replacement key and App ID configuration. |
-| `APPLE_SIGN_IN_KEY_ID` | Convex project owner | Sensitive identifier | Required | Identifier of a Sign in with Apple private key associated with the app's primary App ID | Create a replacement Sign in with Apple key, update the key ID and private key together, verify deletion with a disposable Apple account, then revoke the old key. |
+| `APPLE_SIGN_IN_KEY_ID` | Convex project owner | Sensitive identifier | Required | Identifier of a Sign in with Apple private key associated with the app's primary App ID, which also signs for the grouped preview and development App IDs | Create a replacement Sign in with Apple key, update the key ID and private key together, verify deletion with a disposable Apple account, then revoke the old key. |
 | `APPLE_SIGN_IN_PRIVATE_KEY` | Convex project owner | Secret | Required | Contents of the `.p8` Sign in with Apple private key, consumed only to sign short-lived Apple client secrets | Follow the same paired rotation as `APPLE_SIGN_IN_KEY_ID`; Apple permits downloading a private key only once, so retain the replacement securely outside Git. |
 | `SEED_OWNER_TOKEN_IDENTIFIER` | Convex project owner | Non-secret account identifier | Optional | Canonical Clerk identity for deliberate seed and ownership operations, consumed only by guarded seed functions | Set it to the intended account's Frontend API URL and user ID pair before an approved seed or claim operation. Change or remove it when that owner changes or seeding is no longer allowed. |
 | `TEST_FIXTURES_ENABLED` | Convex project owner | Internal feature flag | Development only | Manual moderation fixture gate, consumed by fixture functions | Keep it absent from production. If it appears there, remove it immediately. Enable it only on development for a specific fixture run and remove it afterward. |
@@ -72,7 +78,8 @@ recorded separately in [the version 1.0 release record](releases/1.0.md#launch-d
 ## Verification and incident response
 
 - Confirm the Expo dashboard lists the five required production names and, for custom Convex domains,
-  `EXPO_PUBLIC_CONVEX_SITE_URL`. Do not copy their values into logs.
+  `EXPO_PUBLIC_CONVEX_SITE_URL`, in both the production and preview environments. Do not copy their
+  values into logs.
 - Confirm Convex lists every required name in the inventory and does not list
   `TEST_FIXTURES_ENABLED`.
 - Confirm the production share domain serves `/share` and the Apple association file over HTTPS.

@@ -203,7 +203,8 @@ bun x eas-cli submit:status --platform ios --profile production
 
 Resolve any upload or processing warnings. The TestFlight upload is complete when Apple finishes
 processing the binary, reports no unresolved binary or compliance error, and the release version
-printed in step 1 appears in TestFlight. App Store listing
+printed in step 1 appears in TestFlight. Installing it on a device for QA replaces the App Store
+app there; YYC Dev and YYC Preview stay installed. App Store listing
 changes, App Review submission, and public release are separate manual operations. Use the
 [listing](app-store-listing.md) and [reviewer notes](app-review-notes.md) when preparing App Review.
 
