@@ -20,13 +20,14 @@ import { PublicSiteLinks } from "@/components/public-site-links";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { describeAuthError } from "@/lib/auth-errors";
+import { appIdentity } from "@/lib/env";
 import { useEmailCodeAuth } from "@/lib/use-email-code-auth";
 import { colors } from "@/theme/colors";
 
 // Lets the OAuth browser session hand control back to the app (no-op on native).
 WebBrowser.maybeCompleteAuthSession();
 
-const GOOGLE_SSO_REDIRECT_URL = "yycskatespots://sso-callback";
+const GOOGLE_SSO_REDIRECT_URL = `${appIdentity.scheme}://sso-callback`;
 
 /** Shared sign-in form for the Account tab and actions that require an account. */
 export function SignInView({ hasHeader = false }: { hasHeader?: boolean }) {

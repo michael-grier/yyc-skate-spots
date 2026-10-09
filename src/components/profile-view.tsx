@@ -15,6 +15,7 @@ import { PublicSiteLinks } from "@/components/public-site-links";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/cn";
+import { appIdentity } from "@/lib/env";
 import { BUST_FACTOR_COLORS, BUST_FACTOR_LABELS, formatSpotTypes } from "@/lib/spot-labels";
 import { reportReasonLabel } from "@/lib/spot-standards";
 import { colors } from "@/theme/colors";
@@ -109,7 +110,10 @@ export function ProfileView() {
         if (!credential.authorizationCode) {
           throw new Error("Apple did not return an authorization code.");
         }
-        result = await deleteAccount({ appleAuthorizationCode: credential.authorizationCode });
+        result = await deleteAccount({
+          appleAuthorizationCode: credential.authorizationCode,
+          appleClientId: appIdentity.bundleId,
+        });
       }
       if (result.status !== "complete") {
         throw new Error("Account deletion did not complete.");

@@ -1,5 +1,6 @@
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
+import { decodeJwt } from "jose";
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { api } from "./_generated/api";
@@ -341,5 +342,46 @@ describe("account deletion", () => {
       fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/auth/revoke")),
     ).toHaveLength(2);
     expect(await t.run((ctx) => ctx.db.query("accountDeletionRequests").collect())).toEqual([]);
+  });
+
+  test("uses the issuing variant's Apple client ID, including when retrying revocation", async () => {
+    const t = convexTest(schema, modules);
+    const asAlice = t.withIdentity({
+      subject: "user_alice",
+      tokenIdentifier: USER_IDENTIFIER,
+    });
+    const clerkUser = {
+      external_accounts: [{ provider: "apple", provider_user_id: "apple-user" }],
+    };
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse(clerkUser))
+      .mockResolvedValueOnce(
+        jsonResponse({ id_token: APPLE_ID_TOKEN, refresh_token: "apple-refresh-token" }),
+      )
+      .mockResolvedValueOnce(jsonResponse({ error: "unavailable" }, 503))
+      .mockResolvedValueOnce(jsonResponse(clerkUser))
+      .mockResolvedValueOnce(new Response(null, { status: 200 }))
+      .mockResolvedValueOnce(jsonResponse({ object: "user", deleted: true }));
+
+    await expect(
+      asAlice.action(api.accountDeletion.deleteAccount, {
+        appleAuthorizationCode: "fresh-authorization-code",
+        appleClientId: "com.yycskatespots.app.preview",
+      }),
+    ).rejects.toThrow(/Apple could not revoke/);
+    // The retry carries no client ID, so it must come from the stored request.
+    await expect(asAlice.action(api.accountDeletion.deleteAccount, {})).resolves.toEqual({
+      status: "complete",
+    });
+
+    const appleCalls = fetchMock.mock.calls.filter(([url]) =>
+      String(url).startsWith("https://appleid.apple.com/"),
+    );
+    expect(appleCalls).toHaveLength(3);
+    for (const [, options] of appleCalls) {
+      const body = options?.body as URLSearchParams;
+      expect(body.get("client_id")).toBe("com.yycskatespots.app.preview");
+      expect(decodeJwt(body.get("client_secret") ?? "").sub).toBe("com.yycskatespots.app.preview");
+    }
   });
 });

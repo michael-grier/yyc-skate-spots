@@ -14,20 +14,25 @@ Google Maps keys, and Universal Links. Expo Go does not replace verification in 
 2. Follow [development setup](docs/development.md) for local environment configuration and device
    installation. In a T3 Code worktree, `bun run setup:worktree` runs automatically; run it once
    yourself for a manually created worktree.
-3. Run `bun run start` and open the installed development client. If backend changes need a
-   watcher, run `bun x convex dev` in a separate terminal against development. Only one watcher
-   should target the shared deployment at a time.
+3. Run `bun run start` and open the installed development client, **YYC Dev**. If backend changes
+   need a watcher, run `bun x convex dev` in a separate terminal against development. Only one
+   watcher should target the shared deployment at a time.
+
+Development, preview, and store builds install side by side as separate apps. See
+[build variants](docs/development.md#build-variants) for how each is identified and configured.
 
 ## Google Maps API keys
 
-Both keys are required by EAS builds. Use separate keys restricted to the app identifier, Maps
-SDK, and Android signing certificates as applicable. See [service configuration](docs/development.md#service-configuration)
+Both keys are required by EAS builds. Use separate iOS and Android keys, each restricted to the app
+identifier of every [build variant](docs/development.md#build-variants), its Maps SDK, and, for
+Android, the signing certificates. See [service configuration](docs/development.md#service-configuration)
 for setup and [the environment inventory](docs/production-environments.md) for rotation.
 
 ## Share links
 
 Set `EXPO_PUBLIC_SHARE_BASE_URL` to the public HTTPS origin without a path, query, fragment,
-credentials, or port. It configures share links and the iOS associated-domain entitlement.
+credentials, or port. It configures share links and, in production builds only, the iOS
+associated-domain entitlement.
 See [public-site setup](docs/public-site.md) for the fallback pages and association file.
 
 ## Pull request checks
@@ -52,7 +57,7 @@ Apple accounts.
 
 | Document | Purpose |
 | --- | --- |
-| [Development](docs/development.md) | Local setup, worktrees, native builds, and seed ownership |
+| [Development](docs/development.md) | Local setup, worktrees, build variants, native builds, and seed ownership |
 | [Development fixtures](docs/development-fixtures.md) | Repeatable manual moderation checks |
 | [Public site](docs/public-site.md) | Static page builds and Cloudflare Pages configuration |
 | [Production environments](docs/production-environments.md) | Configuration ownership and rotation |
@@ -67,7 +72,7 @@ Apple accounts.
 
 | Command | What it does |
 | --- | --- |
-| `bun run start` | Start Metro |
+| `bun run start` | Start Metro as the development variant |
 | `bun run setup:worktree` | Link local env files and install dependencies |
 | `bun run typecheck` | Check TypeScript |
 | `bun run lint` | Run ESLint |
@@ -82,6 +87,9 @@ Apple accounts.
 - `app.config.ts` reads native configuration from environment variables. Maps keys are embedded
   in the native binary. Expo substitutes `EXPO_PUBLIC_*` values into the JavaScript bundle;
   changing a provider dashboard value does not reconfigure an installed bundle.
+- `APP_VARIANT`, set by each `eas.json` profile and the `start` scripts, selects the development,
+  preview, or production identity in `src/lib/app-variants.ts`. An unset variant builds production.
+  Non-production builds show `BuildVariantBadge` on every screen.
 - `src/app/` contains Expo Router's file-based routes.
 - Convex enforces authentication, ownership, moderation roles, and contribution restrictions.
   Public browsing and sharing do not require an account.

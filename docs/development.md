@@ -26,11 +26,14 @@ The watcher pushes functions and schema on save, so coordinate its use as descri
 For a deliberately provisioned development environment, check these settings:
 
 - Google Cloud has Maps SDK for Android and Maps SDK for iOS enabled with billing configured.
-  Use separate restricted keys. The iOS key is restricted to `com.yycskatespots.app` and Maps SDK
-  for iOS. The Android key is restricted to the same package, its signing certificate SHA-1, and
-  Maps SDK for Android. Obtain signing fingerprints through `bun x eas-cli credentials`; include
-  each certificate used to sign an installed build. A wrong fingerprint can produce a gray map.
-- Clerk's Native API and Convex integration are enabled. Preserve the integration's `aud` claim
+  Use separate restricted keys. The iOS key is restricted to the bundle IDs of every
+  [build variant](#build-variants) it is built into and Maps SDK for iOS. The Android key is
+  restricted to the matching packages, their signing certificate SHA-1s, and Maps SDK for
+  Android. Obtain signing fingerprints through `bun x eas-cli credentials`; include each
+  certificate used to sign an installed build. A wrong fingerprint can produce a gray map.
+- Clerk's Native API and Convex integration are enabled. Under Native applications, register the
+  Team ID and bundle ID of each variant that uses the instance, and allow its
+  `<scheme>://sso-callback` redirect for Google sign-in. Preserve the integration's `aud` claim
   and map `"role": "{{user.public_metadata.role}}"` into the session token. For a development admin,
   set public metadata to `{ "role": "admin" }`, then sign out and back in to refresh the token.
 - Convex's `CLERK_JWT_ISSUER_DOMAIN` matches that Clerk instance's Frontend API URL. Configure
@@ -84,6 +87,46 @@ compatible development client can load JavaScript from any prepared worktree.
 No teardown command is needed. Setup creates no external resource, and Git removes the links and
 branch-local `node_modules` with the worktree.
 
+## Build variants
+
+Three builds can be installed on one iPhone at the same time. `src/lib/app-variants.ts` gives each
+its own bundle ID, URL scheme, home-screen name, and icon. Every `eas.json` profile sets
+`APP_VARIANT`. When it is unset, the config builds production.
+
+| Variant | Profile | Bundle ID | Home screen | Backend |
+| --- | --- | --- | --- | --- |
+| Production | `production`, `production-test` | `com.yycskatespots.app` | YYC Skate Spots | Production |
+| Preview | `preview` | `com.yycskatespots.app.preview` | YYC Preview, blue ribbon | Production |
+| Development | `development` | `com.yycskatespots.app.dev` | YYC Dev, amber ribbon | Development |
+
+Dev and preview builds show a small colored pill at the bottom of every screen naming the
+variant and its data. Preview uses production Clerk and Convex, so anything created there is live
+content. Only production claims the share domain, so shared links always open the store app. App
+Store releases and TestFlight builds share the production bundle ID, so a TestFlight install
+replaces the App Store app until you reinstall it from the App Store.
+
+Code that needs the running app's bundle ID or URL scheme reads `appIdentity` from
+`src/lib/env.ts`. The `appleClientId` validator in `convex/schema.ts` lists the same bundle IDs;
+change both together. Account deletion from a variant works only once the Convex deployment it
+uses includes that bundle ID. The variant icons are rendered from `assets/brand/icon-dev.svg` and
+`icon-preview.svg`, like the other icons.
+
+Each new bundle ID needs one-time setup before its first build works end to end:
+
+- In the Apple Developer portal, set Sign in with Apple on the variant's App ID to group with the
+  primary `com.yycskatespots.app`. The shared Sign in with Apple key then works for account
+  deletion, and an Apple user keeps the same Clerk account across variants on the same backend.
+  Saving the change marks that App ID's provisioning profiles invalid. Installed builds keep
+  working; let the next EAS build regenerate the profile.
+- Add the bundle ID to the iOS Maps key's application restrictions. One iOS key serves every EAS
+  environment.
+- Register the variant in the matching Clerk instance as described under service configuration.
+  Production instances enforce the SSO redirect allowlist; development instances do not.
+
+`bun run start` runs Metro as the development variant, so the dev client receives matching
+configuration. Install a preview build with `bun x eas-cli build --profile preview --platform ios`.
+It uses the EAS `preview` environment, which needs the same variable names as production.
+
 ## Install a development build
 
 An existing compatible development client can load this checkout's JavaScript. Rebuild after a
@@ -97,8 +140,10 @@ bun x eas-cli device:create
 bun x eas-cli build --profile development --platform ios
 ```
 
-Install from the build's device-install page. If iOS requests Developer Mode, enable it under
-Settings → Privacy & Security → Developer Mode, restart, and confirm.
+First delete any development build installed before variants existed. It uses the production
+bundle ID and would be replaced by the App Store app. Install from the build's device-install
+page. If iOS requests Developer Mode, enable it under Settings → Privacy & Security → Developer
+Mode, restart, and confirm.
 
 For Android:
 
@@ -155,15 +200,18 @@ Run the release configuration check after changing the app config or a native de
 bun run verify:ios-release
 ```
 
-It verifies the resolved privacy manifest, export-compliance flag, permission descriptions, bundle
-identifier, Sign in with Apple entitlement, and Universal Link entitlement without printing
-build-time credentials.
+It resolves the production variant regardless of the shell's `APP_VARIANT` and verifies the
+privacy manifest, export-compliance flag, permission descriptions, bundle identifier, Sign in with
+Apple entitlement, and Universal Link entitlement without printing build-time credentials.
 
 To inspect the generated native files after a native dependency update:
 
 ```sh
 bun x expo prebuild --platform ios --no-install
 ```
+
+Prebuild resolves production unless `APP_VARIANT` is set. Prefix the command with
+`APP_VARIANT=development` or `APP_VARIANT=preview` to inspect another variant.
 
 Confirm `ios/YYCSkateSpots/PrivacyInfo.xcprivacy`, `Info.plist`, the app entitlements, and the Xcode
 project's bundle identifier. The generated `ios/` directory is ignored and must not be committed.

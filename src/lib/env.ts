@@ -1,7 +1,12 @@
 import Constants from "expo-constants";
 import { Platform } from "react-native";
 
+import { APP_VARIANTS, parseAppVariant } from "@/lib/app-variants";
 import { needsExplicitSiteUrl } from "@/lib/convex-site";
+
+/** Which side-by-side build is running; app.config.ts records it at build time. */
+export const appVariant = parseAppVariant(Constants.expoConfig?.extra?.appVariant);
+export const appIdentity = APP_VARIANTS[appVariant];
 
 /**
  * Startup environment check. Returns human-readable problems instead of

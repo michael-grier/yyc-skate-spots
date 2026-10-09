@@ -15,6 +15,7 @@ import { StatusBar } from "expo-status-bar";
 import { ScrollView, Text } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
+import { BuildVariantBadge } from "@/components/build-variant-badge";
 import { FirstDisplayNameChoice } from "@/components/first-display-name-choice";
 import { getEnvProblems } from "@/lib/env";
 import { colors } from "@/theme/colors";
@@ -90,6 +91,7 @@ export default function RootLayout() {
             >
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             </Stack>
+            <BuildVariantBadge />
             <FirstDisplayNameChoice />
           </BottomSheetModalProvider>
         </GestureHandlerRootView>

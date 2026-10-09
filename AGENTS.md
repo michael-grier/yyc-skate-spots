@@ -16,6 +16,19 @@ Convex agent skills for common tasks can be installed by running
 
 <!-- convex-ai-end -->
 
+## Build variants
+
+Development, preview, and production builds install side by side. Read
+[build variants](docs/development.md#build-variants) before changing bundle IDs, URL schemes, app
+icons, Apple sign-in, or `eas.json` profiles.
+
+- `APP_VARIANT` selects the variant, and an unset value builds production. Set it on `expo config`
+  or `expo prebuild` to inspect a non-production variant; `bun run start` sets `development`.
+- `src/lib/app-variants.ts` is the source of bundle IDs and schemes; app code reads the running
+  one from `appIdentity` in `src/lib/env.ts`. The only other literals are the production-only
+  association file and release check, and Convex's `appleClientId` list in `convex/schema.ts`,
+  which must name the same bundle IDs.
+
 ## Linked worktrees
 
 T3 Code runs `bun run setup:worktree` when it creates a worktree. Run it once yourself in a
