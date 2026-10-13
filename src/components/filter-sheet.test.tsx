@@ -72,6 +72,7 @@ describe("FilterSheet", () => {
       maxDistanceKm: 5,
       types: ["ledge" as const],
       bustFactors: ["low" as const],
+      hasPhotos: true,
     };
     const { onChange, result } = renderSheet(active);
     await result;

@@ -11,6 +11,8 @@ export type SpotFilters = {
   types: SpotType[];
   /** Empty = any bust factor; otherwise the spot's must be one of these. */
   bustFactors: BustFactor[];
+  /** true = only spots with at least one photo; false = any. */
+  hasPhotos: boolean;
 };
 
 export const DEFAULT_FILTERS: SpotFilters = {
@@ -18,6 +20,7 @@ export const DEFAULT_FILTERS: SpotFilters = {
   maxDistanceKm: null,
   types: [],
   bustFactors: [],
+  hasPhotos: false,
 };
 
 /** Preset radii offered by the distance filter, in kilometres. */
@@ -27,6 +30,7 @@ type FilterableSpot = LatLng & {
   name: string;
   types: SpotType[];
   bustFactor: BustFactor;
+  previewPhotoUrl: string | null;
 };
 
 export function applyFilters<T extends FilterableSpot>(
@@ -52,20 +56,24 @@ export function applyFilters<T extends FilterableSpot>(
     if (filters.bustFactors.length > 0 && !filters.bustFactors.includes(spot.bustFactor)) {
       return false;
     }
+    if (filters.hasPhotos && spot.previewPhotoUrl === null) {
+      return false;
+    }
     return true;
   });
 }
 
-/** How many of the three chip filters are narrowing results (search excluded). */
+/** How many of the sheet's filters are narrowing results (search excluded). */
 export function countActiveFilters(filters: SpotFilters) {
   return [
     filters.maxDistanceKm !== null,
     filters.types.length > 0,
     filters.bustFactors.length > 0,
+    filters.hasPhotos,
   ].filter(Boolean).length;
 }
 
-/** True when search or any chip filter is narrowing the map. */
+/** True when search or any sheet filter is narrowing the map. */
 export function hasActiveFilters(filters: SpotFilters) {
   return filters.query.trim().length > 0 || countActiveFilters(filters) > 0;
 }
