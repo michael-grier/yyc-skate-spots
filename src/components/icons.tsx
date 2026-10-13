@@ -161,6 +161,24 @@ export function ChevronDownIcon({ size = 24, color }: IconProps) {
   );
 }
 
+export function SlidersIcon({ size = 24, color }: IconProps) {
+  return (
+    <Svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth={2}
+      strokeLinecap="round"
+    >
+      <Path d="M4 7h10M18 7h2M4 17h4M12 17h8" />
+      <Circle cx="16" cy="7" r="2" />
+      <Circle cx="10" cy="17" r="2" />
+    </Svg>
+  );
+}
+
 export function CloseIcon({ size = 24, color }: IconProps) {
   return (
     <Svg

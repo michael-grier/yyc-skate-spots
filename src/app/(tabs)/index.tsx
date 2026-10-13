@@ -9,7 +9,7 @@ import MapView, { PROVIDER_GOOGLE, type Region } from "react-native-maps";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ClusterMarker } from "@/components/cluster-marker";
-import { type FilterSection, FilterChips } from "@/components/filter-chips";
+import { FilterChips } from "@/components/filter-chips";
 import { FilterSheet } from "@/components/filter-sheet";
 import { LocateIcon } from "@/components/icons";
 import { SearchBar } from "@/components/search-bar";
@@ -161,14 +161,6 @@ function MapContent() {
     );
   }
 
-  function openFilters(section: FilterSection) {
-    // A radius is meaningless without a position, so ask as the sheet opens.
-    if (section === "distance" && !coords) {
-      void locate();
-    }
-    sheetRef.current?.present();
-  }
-
   async function handleLocate() {
     const position = await locate();
     // With a search or filter active, the results-fit effect frames the
@@ -252,7 +244,11 @@ function MapContent() {
             }
           />
         ) : (
-          <FilterChips filters={filters} onOpen={openFilters} />
+          <FilterChips
+            filters={filters}
+            onOpen={() => sheetRef.current?.present()}
+            onChange={setFilters}
+          />
         )}
         {loading ? (
           <View

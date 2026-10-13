@@ -9,16 +9,30 @@ type ChipProps = {
   onPress?: () => void;
   /** Small leading dot, used for the bust-factor semantic colors. */
   dotColor?: string;
+  /** Rendered before the label, e.g. an icon. */
+  leading?: ReactNode;
   /** Rendered after the label, e.g. a disclosure chevron. */
   trailing?: ReactNode;
+  /** Overrides the label for screen readers when the press does something the label doesn't say. */
+  accessibilityLabel?: string;
   className?: string;
 };
 
 /** Pill control used by map filters and the bust-factor selector. */
-export function Chip({ label, selected, onPress, dotColor, trailing, className }: ChipProps) {
+export function Chip({
+  label,
+  selected,
+  onPress,
+  dotColor,
+  leading,
+  trailing,
+  accessibilityLabel,
+  className,
+}: ChipProps) {
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
       accessibilityState={{ selected: !!selected }}
       onPress={onPress}
       className={cn(
@@ -35,6 +49,7 @@ export function Chip({ label, selected, onPress, dotColor, trailing, className }
           style={{ backgroundColor: dotColor, opacity: selected ? 1 : 0.4 }}
         />
       ) : null}
+      {leading}
       <Text
         adjustsFontSizeToFit
         minimumFontScale={0.85}
