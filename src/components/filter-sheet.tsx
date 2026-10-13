@@ -41,7 +41,7 @@ function SectionLabel({ children }: { children: string }) {
   return <Text className="mt-6 font-sans-medium text-[11px] text-mute">{children}</Text>;
 }
 
-/** All three filters in one sheet; any chip on the map opens it. */
+/** Every filter in one sheet, opened from the map's Filters button. */
 export function FilterSheet({
   ref,
   filters,
@@ -91,7 +91,13 @@ export function FilterSheet({
               <Chip
                 label={km === null ? "Any" : `${km} km`}
                 selected={filters.maxDistanceKm === km}
-                onPress={() => onChange({ ...filters, maxDistanceKm: km })}
+                onPress={() => {
+                  onChange({ ...filters, maxDistanceKm: km });
+                  // A radius is meaningless without a position, so ask for one.
+                  if (km !== null && !hasLocation) {
+                    onRequestLocation();
+                  }
+                }}
                 className="w-full"
               />
             )}
@@ -137,6 +143,15 @@ export function FilterSheet({
               className="flex-1"
             />
           ))}
+        </View>
+
+        <SectionLabel>PHOTOS</SectionLabel>
+        <View className="mt-2 flex-row">
+          <Chip
+            label="Has photos"
+            selected={filters.hasPhotos}
+            onPress={() => onChange({ ...filters, hasPhotos: !filters.hasPhotos })}
+          />
         </View>
 
         <Button
