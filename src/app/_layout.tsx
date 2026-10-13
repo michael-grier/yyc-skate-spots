@@ -21,6 +21,11 @@ import { getEnvProblems } from "@/lib/env";
 import { colors } from "@/theme/colors";
 import "../global.css";
 
+// A deep link (such as a shared spot) otherwise opens its screen alone in the
+// stack, leaving its back button nothing to return to. The anchor loads the
+// tabs underneath any deep-linked screen.
+export const unstable_settings = { anchor: "(tabs)" };
+
 const publishableKey: string = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
 
 // Evaluated once at startup: a misconfigured environment shows this screen
