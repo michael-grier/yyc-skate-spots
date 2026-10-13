@@ -1,4 +1,4 @@
-import type { Region } from "react-native-maps";
+import type { EdgePadding, Region } from "react-native-maps";
 
 import type { LatLng } from "@/lib/geo";
 
@@ -31,4 +31,50 @@ export function regionAtZoom(center: LatLng, zoom: number, current: Region): Reg
   const longitudeDelta = 360 / 2 ** Math.min(zoom, MAX_ZOOM);
   const aspect = current.latitudeDelta / current.longitudeDelta;
   return { ...center, longitudeDelta, latitudeDelta: longitudeDelta * aspect };
+}
+
+// Gap kept between framed pins and anything drawn over the map; fits a pin and its label.
+const PIN_MARGIN = 48;
+// Least map height left for framing. A long suggestion list gives way to it,
+// since pins behind the list are no worse than pins behind the keyboard.
+const MIN_FIT_SPAN = 120;
+
+/**
+ * Widens `padding` so framed pins land between the search chrome and the
+ * keyboard. Positions are measured down from the map's top edge.
+ */
+export function paddingAboveKeyboard(
+  padding: EdgePadding,
+  {
+    mapHeight,
+    chromeBottom,
+    keyboardTop,
+  }: { mapHeight: number; chromeBottom: number; keyboardTop: number },
+): EdgePadding {
+  const bottom = Math.max(padding.bottom, mapHeight - keyboardTop + PIN_MARGIN);
+  const top = Math.min(
+    Math.max(padding.top, chromeBottom + PIN_MARGIN),
+    mapHeight - bottom - MIN_FIT_SPAN,
+  );
+  return { ...padding, top, bottom };
+}
+
+/**
+ * Points to fit so the map centres on `center`, spans at least `minSpan`
+ * degrees, and still shows `include`. Mirroring `include` through the centre
+ * keeps the fit from drifting toward it.
+ */
+export function framingAround(center: LatLng, minSpan: number, include: LatLng | null): LatLng[] {
+  const half = minSpan / 2;
+  const points = [
+    { latitude: center.latitude - half, longitude: center.longitude - half },
+    { latitude: center.latitude + half, longitude: center.longitude + half },
+  ];
+  if (include) {
+    points.push(include, {
+      latitude: 2 * center.latitude - include.latitude,
+      longitude: 2 * center.longitude - include.longitude,
+    });
+  }
+  return points;
 }
