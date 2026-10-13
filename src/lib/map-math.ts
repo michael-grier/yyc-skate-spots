@@ -1,6 +1,6 @@
 import type { EdgePadding, Region } from "react-native-maps";
 
-import type { LatLng } from "@/lib/geo";
+import type { LatLng, LatLngBounds } from "@/lib/geo";
 
 // Deeper than this and Google's tiles stop adding detail; also stops a
 // cluster of co-located spots from zooming into the void.
@@ -21,6 +21,25 @@ export function regionToBbox(region: Region): [number, number, number, number] {
     region.longitude + halfLng,
     region.latitude + halfLat,
   ];
+}
+
+/**
+ * `region` shifted as little as possible to keep its view inside `bounds`. On
+ * an axis where the view is wider than the bounds, it centres on the bounds.
+ */
+export function clampRegion(region: Region, bounds: LatLngBounds): Region {
+  return {
+    ...region,
+    latitude: clampAxis(region.latitude, region.latitudeDelta / 2, bounds.south, bounds.north),
+    longitude: clampAxis(region.longitude, region.longitudeDelta / 2, bounds.west, bounds.east),
+  };
+}
+
+function clampAxis(centre: number, half: number, min: number, max: number) {
+  if (max - min <= 2 * half) {
+    return (min + max) / 2;
+  }
+  return Math.min(Math.max(centre, min + half), max - half);
 }
 
 /**

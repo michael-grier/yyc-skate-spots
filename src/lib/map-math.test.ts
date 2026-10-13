@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 
 import {
   MAX_ZOOM,
+  clampRegion,
   framingAround,
   paddingAboveKeyboard,
   regionAtZoom,
@@ -105,5 +106,25 @@ describe("framingAround", () => {
     expect(points).toContainEqual(user);
     expect(centreOf(points).latitude).toBeCloseTo(spot.latitude);
     expect(centreOf(points).longitude).toBeCloseTo(spot.longitude);
+  });
+});
+
+describe("clampRegion", () => {
+  const bounds = { south: 50.8, west: -114.4, north: 51.26, east: -113.8 };
+
+  test("leaves a region already inside the bounds alone", () => {
+    expect(clampRegion(CALGARY, bounds)).toEqual(CALGARY);
+  });
+
+  test("pulls a region panned past an edge back just inside it", () => {
+    const region = clampRegion({ ...CALGARY, latitude: 51.4, longitude: -114.6 }, bounds);
+    expect(region.latitude).toBeCloseTo(51.26 - 0.175);
+    expect(region.longitude).toBeCloseTo(-114.4 + 0.175);
+  });
+
+  test("centres on an axis where the view is wider than the bounds", () => {
+    const region = clampRegion({ ...CALGARY, latitudeDelta: 0.6 }, bounds);
+    expect(region.latitude).toBeCloseTo(51.03);
+    expect(region.longitude).toBe(CALGARY.longitude);
   });
 });
