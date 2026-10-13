@@ -3,7 +3,15 @@ import { api } from "@convex/_generated/api";
 import { useQuery } from "convex/react";
 import { useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Keyboard, Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Alert,
+  Keyboard,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import MapView, { PROVIDER_GOOGLE, type Region } from "react-native-maps";
 
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -16,7 +24,8 @@ import { SearchBar } from "@/components/search-bar";
 import { SearchSuggestions } from "@/components/search-suggestions";
 import { SpotMarker } from "@/components/spot-marker";
 import { SpotPreviewCard } from "@/components/spot-preview-card";
-import { distanceKm } from "@/lib/geo";
+import { CALGARY_BOUNDS, distanceKm, isInCalgary } from "@/lib/geo";
+import { clampRegion, framingAround, paddingAboveKeyboard } from "@/lib/map-math";
 import {
   applyFilters,
   countActiveFilters,
@@ -41,10 +50,15 @@ const CALGARY_REGION: Region = {
   longitudeDelta: 0.35,
 };
 
+// Zoomed out this far, the map already spans the whole city.
+const MIN_ZOOM = 10;
 // Neighbourhood-scale framing used when jumping to the user's position.
 const LOCATE_DELTA = 0.03;
-// Block-scale framing when jumping to one spot from the search list.
+// Tightest framing when jumping to one spot from the search list.
 const SPOT_DELTA = 0.01;
+// Keeps fitted pins clear of the search bar and chips above (below the status
+// bar inset) and the locate button and preview card below.
+const FIT_PADDING = { top: 170, bottom: 230, left: 48, right: 48 };
 // Typing pause before the map re-fits to search results.
 const REFIT_DEBOUNCE_MS = 400;
 
@@ -79,6 +93,8 @@ function MapContent() {
   // recompute once the map settles.
   const [region, setRegion] = useState(CALGARY_REGION);
   const { coords, granted, locate } = useUserLocation();
+  // Fits only include the user while they're in the city the map is locked to.
+  const coordsInCity = coords && isInCalgary(coords) ? coords : null;
 
   const spots = useMemo(() => applyFilters(allSpots, filters, coords), [allSpots, filters, coords]);
   // Stable between renders so useClusters only rebuilds its index when the
@@ -116,6 +132,9 @@ function MapContent() {
   const settledFilters = useDebouncedValue(filters, REFIT_DEBOUNCE_MS);
   const fitKey = fitKeyFor(settledFilters, coords, spots.length);
   const lastFitKeyRef = useRef<string | null>(null);
+  // Read when a fit runs, so they're refs rather than state that would re-render.
+  const mapHeightRef = useRef(0);
+  const chromeBottomRef = useRef(0);
   useEffect(() => {
     if (fitKey === null) {
       lastFitKeyRef.current = null;
@@ -125,17 +144,28 @@ function MapContent() {
       return;
     }
     lastFitKeyRef.current = fitKey;
+    const padding = { ...FIT_PADDING, top: insets.top + FIT_PADDING.top };
+    const keyboard = Keyboard.metrics();
     mapRef.current?.fitToCoordinates(
       [
         ...spots.map(({ latitude, longitude }) => ({ latitude, longitude })),
-        ...(coords ? [coords] : []),
+        ...(coordsInCity ? [coordsInCity] : []),
       ],
       {
-        edgePadding: { top: insets.top + 170, bottom: 230, left: 48, right: 48 },
+        // Results refit as the user types, so they must also clear the
+        // suggestion list and the keyboard. The map starts at the window's top
+        // edge, so the keyboard's screen position is a map position.
+        edgePadding: keyboard
+          ? paddingAboveKeyboard(padding, {
+              mapHeight: mapHeightRef.current,
+              chromeBottom: chromeBottomRef.current,
+              keyboardTop: keyboard.screenY,
+            })
+          : padding,
         animated: true,
       },
     );
-  }, [fitKey, spots, coords, insets.top]);
+  }, [fitKey, spots, coordsInCity, insets.top]);
 
   /** Closes search so the keyboard cannot cover the preview card that opens at the bottom. */
   function closeSearch() {
@@ -150,15 +180,13 @@ function MapContent() {
     }
     closeSearch();
     setSelectedId(id);
-    mapRef.current?.animateToRegion(
-      {
-        latitude: spot.latitude,
-        longitude: spot.longitude,
-        latitudeDelta: SPOT_DELTA,
-        longitudeDelta: SPOT_DELTA,
-      },
-      400,
-    );
+    // A pick inside the typing debounce would otherwise be overridden by the
+    // results fit landing a moment later.
+    lastFitKeyRef.current = fitKeyFor(filters, coords, spots.length);
+    mapRef.current?.fitToCoordinates(framingAround(spot, SPOT_DELTA, coordsInCity), {
+      edgePadding: { ...FIT_PADDING, top: insets.top + FIT_PADDING.top },
+      animated: true,
+    });
   }
 
   function openFilters(section: FilterSection) {
@@ -171,6 +199,13 @@ function MapContent() {
 
   async function handleLocate() {
     const position = await locate();
+    if (position && !isInCalgary(position)) {
+      Alert.alert(
+        "Outside Calgary",
+        "The map only covers Calgary, so it can't show where you are.",
+      );
+      return;
+    }
     // With a search or filter active, the results-fit effect frames the
     // user together with the matches; animating here too would fight it.
     if (position && !hasActiveFilters(filters)) {
@@ -182,7 +217,12 @@ function MapContent() {
   }
 
   return (
-    <View className="flex-1">
+    <View
+      className="flex-1"
+      onLayout={(event) => {
+        mapHeightRef.current = event.nativeEvent.layout.height;
+      }}
+    >
       <MapView
         ref={mapRef}
         provider={PROVIDER_GOOGLE}
@@ -191,7 +231,20 @@ function MapContent() {
         style={styles.map}
         showsUserLocation={granted}
         showsMyLocationButton={false}
-        onRegionChangeComplete={setRegion}
+        minZoomLevel={MIN_ZOOM}
+        onRegionChangeComplete={(next, { isGesture }) => {
+          setRegion(next);
+          // setMapBoundaries is a no-op under the new architecture in
+          // react-native-maps 1.27, so a pan out of the city is pulled back
+          // once it settles. Only gestures can leave; fits frame city points.
+          if (!isGesture) {
+            return;
+          }
+          const inside = clampRegion(next, CALGARY_BOUNDS);
+          if (inside.latitude !== next.latitude || inside.longitude !== next.longitude) {
+            mapRef.current?.animateToRegion(inside, 250);
+          }
+        }}
         onPress={(event) => {
           // Belt and braces with the markers' stopPropagation: ignore the
           // synthetic map press that accompanies a marker tap.
@@ -228,7 +281,14 @@ function MapContent() {
         )}
       </MapView>
 
-      <View className="absolute inset-x-4 gap-3" style={{ top: insets.top + 8 }}>
+      <View
+        className="absolute inset-x-4 gap-3"
+        style={{ top: insets.top + 8 }}
+        onLayout={(event) => {
+          const { y, height } = event.nativeEvent.layout;
+          chromeBottomRef.current = y + height;
+        }}
+      >
         <SearchBar
           value={filters.query}
           onChangeText={(next) => {

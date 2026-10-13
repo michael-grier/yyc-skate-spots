@@ -3,6 +3,25 @@ export type LatLng = { latitude: number; longitude: number };
 /** Downtown Calgary; the fallback centre when the user's location is unknown. */
 export const CALGARY_CENTER: LatLng = { latitude: 51.0447, longitude: -114.0719 };
 
+export type LatLngBounds = { south: number; west: number; north: number; east: number };
+
+/**
+ * Calgary's city limits (OpenStreetMap's boundary box) widened by about 5 km
+ * on every side: 0.045° of latitude and 0.071° of longitude at this latitude.
+ * The app only serves Calgary, so the map stays inside this box.
+ */
+export const CALGARY_BOUNDS: LatLngBounds = {
+  south: 50.7975,
+  west: -114.3872,
+  north: 51.2575,
+  east: -113.7886,
+};
+
+export function isInCalgary({ latitude, longitude }: LatLng) {
+  const { south, west, north, east } = CALGARY_BOUNDS;
+  return latitude >= south && latitude <= north && longitude >= west && longitude <= east;
+}
+
 const EARTH_RADIUS_KM = 6371;
 const DECIMAL_COORDINATE = /^([+-]?(?:\d+(?:\.\d*)?|\.\d+))\s*°?\s*([NSEW])?$/i;
 
