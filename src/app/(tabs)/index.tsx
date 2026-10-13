@@ -17,6 +17,7 @@ import { SearchSuggestions } from "@/components/search-suggestions";
 import { SpotMarker } from "@/components/spot-marker";
 import { SpotPreviewCard } from "@/components/spot-preview-card";
 import { distanceKm } from "@/lib/geo";
+import { framingAround, paddingAboveKeyboard } from "@/lib/map-math";
 import {
   applyFilters,
   countActiveFilters,
@@ -43,8 +44,11 @@ const CALGARY_REGION: Region = {
 
 // Neighbourhood-scale framing used when jumping to the user's position.
 const LOCATE_DELTA = 0.03;
-// Block-scale framing when jumping to one spot from the search list.
+// Tightest framing when jumping to one spot from the search list.
 const SPOT_DELTA = 0.01;
+// Keeps fitted pins clear of the search bar and chips above (below the status
+// bar inset) and the locate button and preview card below.
+const FIT_PADDING = { top: 170, bottom: 230, left: 48, right: 48 };
 // Typing pause before the map re-fits to search results.
 const REFIT_DEBOUNCE_MS = 400;
 
@@ -116,6 +120,9 @@ function MapContent() {
   const settledFilters = useDebouncedValue(filters, REFIT_DEBOUNCE_MS);
   const fitKey = fitKeyFor(settledFilters, coords, spots.length);
   const lastFitKeyRef = useRef<string | null>(null);
+  // Read when a fit runs, so they're refs rather than state that would re-render.
+  const mapHeightRef = useRef(0);
+  const chromeBottomRef = useRef(0);
   useEffect(() => {
     if (fitKey === null) {
       lastFitKeyRef.current = null;
@@ -125,13 +132,24 @@ function MapContent() {
       return;
     }
     lastFitKeyRef.current = fitKey;
+    const padding = { ...FIT_PADDING, top: insets.top + FIT_PADDING.top };
+    const keyboard = Keyboard.metrics();
     mapRef.current?.fitToCoordinates(
       [
         ...spots.map(({ latitude, longitude }) => ({ latitude, longitude })),
         ...(coords ? [coords] : []),
       ],
       {
-        edgePadding: { top: insets.top + 170, bottom: 230, left: 48, right: 48 },
+        // Results refit as the user types, so they must also clear the
+        // suggestion list and the keyboard. The map starts at the window's top
+        // edge, so the keyboard's screen position is a map position.
+        edgePadding: keyboard
+          ? paddingAboveKeyboard(padding, {
+              mapHeight: mapHeightRef.current,
+              chromeBottom: chromeBottomRef.current,
+              keyboardTop: keyboard.screenY,
+            })
+          : padding,
         animated: true,
       },
     );
@@ -150,15 +168,13 @@ function MapContent() {
     }
     closeSearch();
     setSelectedId(id);
-    mapRef.current?.animateToRegion(
-      {
-        latitude: spot.latitude,
-        longitude: spot.longitude,
-        latitudeDelta: SPOT_DELTA,
-        longitudeDelta: SPOT_DELTA,
-      },
-      400,
-    );
+    // A pick inside the typing debounce would otherwise be overridden by the
+    // results fit landing a moment later.
+    lastFitKeyRef.current = fitKeyFor(filters, coords, spots.length);
+    mapRef.current?.fitToCoordinates(framingAround(spot, SPOT_DELTA, coords), {
+      edgePadding: { ...FIT_PADDING, top: insets.top + FIT_PADDING.top },
+      animated: true,
+    });
   }
 
   function openFilters(section: FilterSection) {
@@ -182,7 +198,12 @@ function MapContent() {
   }
 
   return (
-    <View className="flex-1">
+    <View
+      className="flex-1"
+      onLayout={(event) => {
+        mapHeightRef.current = event.nativeEvent.layout.height;
+      }}
+    >
       <MapView
         ref={mapRef}
         provider={PROVIDER_GOOGLE}
@@ -228,7 +249,14 @@ function MapContent() {
         )}
       </MapView>
 
-      <View className="absolute inset-x-4 gap-3" style={{ top: insets.top + 8 }}>
+      <View
+        className="absolute inset-x-4 gap-3"
+        style={{ top: insets.top + 8 }}
+        onLayout={(event) => {
+          const { y, height } = event.nativeEvent.layout;
+          chromeBottomRef.current = y + height;
+        }}
+      >
         <SearchBar
           value={filters.query}
           onChangeText={(next) => {
