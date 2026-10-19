@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import type { Region } from "react-native-maps";
 import Supercluster from "supercluster";
 
-import { regionAtZoom, regionToBbox, zoomForRegion } from "@/lib/map-math";
+import { regionAtZoom, zoomForRegion } from "@/lib/map-math";
 
 type Point = { id: string; latitude: number; longitude: number };
 
@@ -12,8 +12,13 @@ export type ClusterItem =
   | { kind: "spot"; id: string; latitude: number; longitude: number }
   | { kind: "cluster"; id: number; latitude: number; longitude: number; count: number };
 
+// Clusters every spot rather than just the viewport: the list is capped at
+// city scale, and keeping off-screen markers mounted is what lets a pan
+// reveal them instantly instead of after the camera settles.
+const WORLD_BBOX: [number, number, number, number] = [-180, -85, 180, 85];
+
 /**
- * Groups nearby spots into count bubbles for the visible region. Returns the
+ * Groups nearby spots into count bubbles at the region's zoom. Returns the
  * items to draw plus a helper that produces the region to animate to when a
  * cluster is tapped (the zoom at which it splits apart).
  */
@@ -33,7 +38,7 @@ export function useClusters(points: Point[], region: Region) {
   const items = useMemo<ClusterItem[]>(
     () =>
       // supercluster works in integer zoom levels.
-      index.getClusters(regionToBbox(region), Math.floor(zoomForRegion(region))).map((feature) => {
+      index.getClusters(WORLD_BBOX, Math.floor(zoomForRegion(region))).map((feature) => {
         const [longitude, latitude] = feature.geometry.coordinates;
         if ("cluster" in feature.properties && feature.properties.cluster) {
           return {

@@ -11,18 +11,6 @@ export function zoomForRegion(region: Region) {
   return Math.log2(360 / region.longitudeDelta);
 }
 
-/** [west, south, east, north], the order supercluster expects. */
-export function regionToBbox(region: Region): [number, number, number, number] {
-  const halfLng = region.longitudeDelta / 2;
-  const halfLat = region.latitudeDelta / 2;
-  return [
-    region.longitude - halfLng,
-    region.latitude - halfLat,
-    region.longitude + halfLng,
-    region.latitude + halfLat,
-  ];
-}
-
 /**
  * `region` shifted as little as possible to keep its view inside `bounds`. On
  * an axis where the view is wider than the bounds, it centres on the bounds.

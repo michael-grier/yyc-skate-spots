@@ -6,7 +6,6 @@ import {
   framingAround,
   paddingAboveKeyboard,
   regionAtZoom,
-  regionToBbox,
   zoomForRegion,
 } from "./map-math";
 
@@ -22,21 +21,6 @@ describe("zoomForRegion", () => {
     expect(zoomForRegion({ ...CALGARY, longitudeDelta: 360 })).toBe(0);
     expect(zoomForRegion({ ...CALGARY, longitudeDelta: 360 / 2 ** 10 })).toBe(10);
     expect(zoomForRegion(CALGARY)).toBeCloseTo(10.006, 2);
-  });
-});
-
-describe("regionToBbox", () => {
-  test("returns [west, south, east, north] around the centre", () => {
-    const [west, south, east, north] = regionToBbox({
-      latitude: 51,
-      longitude: -114,
-      latitudeDelta: 0.2,
-      longitudeDelta: 0.4,
-    });
-    expect(west).toBeCloseTo(-114.2);
-    expect(east).toBeCloseTo(-113.8);
-    expect(south).toBeCloseTo(50.9);
-    expect(north).toBeCloseTo(51.1);
   });
 });
 
