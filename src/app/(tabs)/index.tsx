@@ -52,6 +52,10 @@ const CALGARY_REGION: Region = {
 
 // Zoomed out this far, the map already spans the whole city.
 const MIN_ZOOM = 10;
+// react-native-maps' documented default. It must be passed whenever MIN_ZOOM is:
+// the native prop otherwise arrives as 0, and Google Maps on iOS throws when
+// the minimum zoom exceeds the maximum.
+const MAX_ZOOM = 20;
 // Neighbourhood-scale framing used when jumping to the user's position.
 const LOCATE_DELTA = 0.03;
 // Tightest framing when jumping to one spot from the search list.
@@ -232,6 +236,7 @@ function MapContent() {
         showsUserLocation={granted}
         showsMyLocationButton={false}
         minZoomLevel={MIN_ZOOM}
+        maxZoomLevel={MAX_ZOOM}
         onRegionChangeComplete={(next, { isGesture }) => {
           setRegion(next);
           // setMapBoundaries is a no-op under the new architecture in
