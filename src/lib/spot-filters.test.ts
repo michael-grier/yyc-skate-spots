@@ -16,6 +16,7 @@ const SPOTS = [
     name: "Harmony Park",
     types: ["ledge", "stairs"],
     bustFactor: "medium",
+    previewPhotoUrl: "https://example.com/harmony.jpg",
     latitude: 51.049144,
     longitude: -114.063528,
   },
@@ -23,6 +24,7 @@ const SPOTS = [
     name: "Bowness Curbs",
     types: ["curb"],
     bustFactor: "low",
+    previewPhotoUrl: null,
     latitude: 51.0841944,
     longitude: -114.1868889,
   },
@@ -30,6 +32,7 @@ const SPOTS = [
     name: "Chinatown 12 Stair",
     types: ["stairs"],
     bustFactor: "high",
+    previewPhotoUrl: "https://example.com/chinatown.jpg",
     latitude: 51.050971,
     longitude: -114.065359,
   },
@@ -62,6 +65,11 @@ describe("applyFilters", () => {
     expect(names(result)).toEqual(["Bowness Curbs", "Chinatown 12 Stair"]);
   });
 
+  test("has photos drops spots without a photo", () => {
+    const result = applyFilters([...SPOTS], { ...DEFAULT_FILTERS, hasPhotos: true }, null);
+    expect(names(result)).toEqual(["Harmony Park", "Chinatown 12 Stair"]);
+  });
+
   test("distance keeps spots within the radius of the user", () => {
     // Bowness is ~9 km from downtown; the other two are under 1 km.
     const result = applyFilters([...SPOTS], { ...DEFAULT_FILTERS, maxDistanceKm: 5 }, DOWNTOWN);
@@ -77,7 +85,7 @@ describe("applyFilters", () => {
   test("filters combine with AND", () => {
     const result = applyFilters(
       [...SPOTS],
-      { query: "", maxDistanceKm: 5, types: ["stairs"], bustFactors: ["high"] },
+      { query: "", maxDistanceKm: 5, types: ["stairs"], bustFactors: ["high"], hasPhotos: true },
       DOWNTOWN,
     );
     expect(names(result)).toEqual(["Chinatown 12 Stair"]);
@@ -85,12 +93,18 @@ describe("applyFilters", () => {
 });
 
 describe("countActiveFilters", () => {
-  test("counts the three chip filters, not search", () => {
+  test("counts the sheet filters, not search", () => {
     expect(countActiveFilters(DEFAULT_FILTERS)).toBe(0);
     expect(countActiveFilters({ ...DEFAULT_FILTERS, query: "x" })).toBe(0);
     expect(
-      countActiveFilters({ query: "", maxDistanceKm: 5, types: ["ledge"], bustFactors: ["low"] }),
-    ).toBe(3);
+      countActiveFilters({
+        query: "",
+        maxDistanceKm: 5,
+        types: ["ledge"],
+        bustFactors: ["low"],
+        hasPhotos: true,
+      }),
+    ).toBe(4);
   });
 });
 
