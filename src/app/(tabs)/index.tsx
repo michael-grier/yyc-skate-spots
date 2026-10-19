@@ -25,7 +25,7 @@ import { SearchSuggestions } from "@/components/search-suggestions";
 import { SpotMarker } from "@/components/spot-marker";
 import { SpotPreviewCard } from "@/components/spot-preview-card";
 import { CALGARY_BOUNDS, distanceKm, isInCalgary } from "@/lib/geo";
-import { clampRegion, framingAround, paddingAboveKeyboard } from "@/lib/map-math";
+import { clampRegion, framingAround, paddingAboveKeyboard, zoomForRegion } from "@/lib/map-math";
 import {
   applyFilters,
   countActiveFilters,
@@ -93,9 +93,16 @@ function MapContent() {
   // Suggestions stay open across the input blurring (tapping a row blurs it
   // first); they close on pick, on a map tap, or when the query is cleared.
   const [searchActive, setSearchActive] = useState(false);
-  // Tracked on gesture end rather than every frame; clusters only need to
-  // recompute once the map settles.
-  const [region, setRegion] = useState(CALGARY_REGION);
+  // Every spot stays mounted, so only crossing an integer zoom level changes
+  // what is drawn. Tracking that mid-gesture splits clusters during a pinch;
+  // React skips the re-render while the level is unchanged.
+  const [zoom, setZoom] = useState(() => Math.floor(zoomForRegion(CALGARY_REGION)));
+  // A ref, not state, so panning doesn't re-render the screen every frame.
+  const regionRef = useRef(CALGARY_REGION);
+  function trackRegion(next: Region) {
+    regionRef.current = next;
+    setZoom(Math.floor(zoomForRegion(next)));
+  }
   const { coords, granted, locate } = useUserLocation();
   // Fits only include the user while they're in the city the map is locked to.
   const coordsInCity = coords && isInCalgary(coords) ? coords : null;
@@ -112,7 +119,7 @@ function MapContent() {
     () => new Set<string>(spots.filter((spot) => spot.isMine).map((spot) => spot._id)),
     [spots],
   );
-  const { items, regionToExpand } = useClusters(points, region);
+  const { items, regionToExpand } = useClusters(points, zoom);
   const spotsById = useMemo(
     () => new Map(spots.map((spot) => [spot._id as string, spot])),
     [spots],
@@ -237,8 +244,9 @@ function MapContent() {
         showsMyLocationButton={false}
         minZoomLevel={MIN_ZOOM}
         maxZoomLevel={MAX_ZOOM}
+        onRegionChange={trackRegion}
         onRegionChangeComplete={(next, { isGesture }) => {
-          setRegion(next);
+          trackRegion(next);
           // setMapBoundaries is a no-op under the new architecture in
           // react-native-maps 1.27, so a pan out of the city is pulled back
           // once it settles. Only gestures can leave; fits frame city points.
@@ -266,7 +274,7 @@ function MapContent() {
               {...item}
               onPress={() => {
                 closeSearch();
-                mapRef.current?.animateToRegion(regionToExpand(item), 300);
+                mapRef.current?.animateToRegion(regionToExpand(item, regionRef.current), 300);
               }}
             />
           ) : (
