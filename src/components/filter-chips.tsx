@@ -1,63 +1,89 @@
-import { View } from "react-native";
+import { ScrollView } from "react-native";
 
-import { ChevronDownIcon } from "@/components/icons";
+import { CloseIcon, SlidersIcon } from "@/components/icons";
 import { Chip } from "@/components/ui/chip";
 import { BUST_FACTOR_LABELS, SPOT_TYPE_LABELS } from "@/lib/spot-labels";
-import type { SpotFilters } from "@/lib/spot-filters";
+import { type SpotFilters, countActiveFilters } from "@/lib/spot-filters";
 import { colors } from "@/theme/colors";
-
-export type FilterSection = "distance" | "types" | "bust";
 
 type FilterChipsProps = {
   filters: SpotFilters;
-  onOpen: (section: FilterSection) => void;
+  onOpen: () => void;
+  onChange: (filters: SpotFilters) => void;
 };
 
 function typesLabel(types: SpotFilters["types"]) {
-  if (types.length === 0) return "All types";
   if (types.length === 1) return SPOT_TYPE_LABELS[types[0]];
   return `${types.length} types`;
 }
 
 function bustLabel(bustFactors: SpotFilters["bustFactors"]) {
-  if (bustFactors.length === 0) return "Any bust";
   if (bustFactors.length === 1) return `${BUST_FACTOR_LABELS[bustFactors[0]]} bust`;
   return `${bustFactors.length} bust levels`;
 }
 
-/** The three always-visible filter chips; each opens the filter sheet. */
-export function FilterChips({ filters, onOpen }: FilterChipsProps) {
-  const chevron = (active: boolean) => (
-    <ChevronDownIcon size={12} color={active ? colors.ink : colors.mute} />
-  );
-  const distanceActive = filters.maxDistanceKm !== null;
-  const typesActive = filters.types.length > 0;
-  const bustActive = filters.bustFactors.length > 0;
+/** One pill per active filter; tapping a pill clears that filter. */
+function activePills(filters: SpotFilters) {
+  return [
+    filters.maxDistanceKm !== null && {
+      key: "distance",
+      label: `≤ ${filters.maxDistanceKm} km`,
+      cleared: { ...filters, maxDistanceKm: null },
+    },
+    filters.types.length > 0 && {
+      key: "types",
+      label: typesLabel(filters.types),
+      cleared: { ...filters, types: [] },
+    },
+    filters.bustFactors.length > 0 && {
+      key: "bust",
+      label: bustLabel(filters.bustFactors),
+      cleared: { ...filters, bustFactors: [] },
+    },
+    filters.hasPhotos && {
+      key: "photos",
+      label: "Has photos",
+      cleared: { ...filters, hasPhotos: false },
+    },
+  ].filter((pill) => pill !== false);
+}
+
+/**
+ * The Filters button that opens the sheet, followed by the active filters.
+ * Scrolls sideways rather than wrapping so it never pushes onto a second line.
+ */
+export function FilterChips({ filters, onOpen, onChange }: FilterChipsProps) {
+  const activeCount = countActiveFilters(filters);
+  const active = activeCount > 0;
 
   return (
-    // Wraps so all three stay reachable on narrow screens and long labels.
-    <View className="flex-row flex-wrap gap-2">
+    // Bleeds to the screen edges so pills scroll out of view instead of
+    // clipping at the overlay's inset.
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+      className="-mx-4"
+      contentContainerStyle={{ gap: 8, paddingHorizontal: 16 }}
+    >
       <Chip
-        label={distanceActive ? `≤ ${filters.maxDistanceKm} km` : "Any distance"}
-        selected={distanceActive}
-        trailing={chevron(distanceActive)}
-        onPress={() => onOpen("distance")}
+        label={active ? `Filters · ${activeCount}` : "Filters"}
+        selected={active}
+        leading={<SlidersIcon size={14} color={active ? colors.ink : colors.mute} />}
+        onPress={onOpen}
         className="bg-[rgba(30,32,36,0.92)]"
       />
-      <Chip
-        label={typesLabel(filters.types)}
-        selected={typesActive}
-        trailing={chevron(typesActive)}
-        onPress={() => onOpen("types")}
-        className="bg-[rgba(30,32,36,0.92)]"
-      />
-      <Chip
-        label={bustLabel(filters.bustFactors)}
-        selected={bustActive}
-        trailing={chevron(bustActive)}
-        onPress={() => onOpen("bust")}
-        className="bg-[rgba(30,32,36,0.92)]"
-      />
-    </View>
+      {activePills(filters).map(({ key, label, cleared }) => (
+        <Chip
+          key={key}
+          label={label}
+          selected
+          trailing={<CloseIcon size={11} color={colors.ink} />}
+          accessibilityLabel={`Remove ${label} filter`}
+          onPress={() => onChange(cleared)}
+          className="bg-[rgba(30,32,36,0.92)]"
+        />
+      ))}
+    </ScrollView>
   );
 }
