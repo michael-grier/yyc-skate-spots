@@ -1,6 +1,12 @@
 import { describe, expect, test } from "vitest";
 
-import { distanceKm, formatCoordinatePair, formatDistance, parseCoordinatePair } from "./geo";
+import {
+  distanceKm,
+  formatCoordinatePair,
+  formatDistance,
+  isInCalgary,
+  parseCoordinatePair,
+} from "./geo";
 
 // Two seed spots at opposite ends of the city.
 const HARMONY_PARK = { latitude: 51.049144, longitude: -114.063528 };
@@ -70,5 +76,20 @@ describe("coordinate pairs", () => {
     expect(formatCoordinatePair({ latitude: 51.0447, longitude: -114.0719 })).toBe(
       "51.044700, -114.071900",
     );
+  });
+});
+
+describe("isInCalgary", () => {
+  test("includes spots across the city and just past its limits", () => {
+    expect(isInCalgary(HARMONY_PARK)).toBe(true);
+    expect(isInCalgary(BOWNESS_CURBS)).toBe(true);
+    // About 3 km west of the city limits.
+    expect(isInCalgary({ latitude: 51.17, longitude: -114.36 })).toBe(true);
+  });
+
+  test("excludes places well outside the city", () => {
+    // Downtown Edmonton and Airdrie.
+    expect(isInCalgary({ latitude: 53.5461, longitude: -113.4938 })).toBe(false);
+    expect(isInCalgary({ latitude: 51.2917, longitude: -114.0144 })).toBe(false);
   });
 });
