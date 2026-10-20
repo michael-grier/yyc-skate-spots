@@ -8,6 +8,8 @@ type SegmentedOption<T> = {
   label: string;
   /** Small leading dot, used for the bust-factor semantic colors. */
   dotColor?: string;
+  /** Shown dimmed and not tappable, for a choice the caller cannot make right now. */
+  disabled?: boolean;
 };
 
 type SegmentedProps<T> = {
@@ -31,11 +33,13 @@ export function Segmented<T>({ options, value, onChange }: SegmentedProps<T>) {
           <Pressable
             key={option.label}
             accessibilityRole="button"
-            accessibilityState={{ selected }}
+            accessibilityState={{ selected, disabled: option.disabled }}
+            disabled={option.disabled}
             onPress={() => onChange(option.value)}
             className={cn(
               "min-h-12 flex-1 flex-row items-center justify-center gap-1.5 rounded-[9px] px-1 active:opacity-80",
               selected && "bg-ctagrey",
+              option.disabled && "opacity-40",
             )}
           >
             {option.dotColor ? (

@@ -11,6 +11,9 @@ export default defineConfig({
     include: ["convex/**/*.test.ts", "scripts/**/*.test.ts", "src/**/*.test.ts"],
   },
   resolve: {
-    alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
+    alias: {
+      "@": fileURLToPath(new URL("./src", import.meta.url)),
+      "@convex": fileURLToPath(new URL("./convex", import.meta.url)),
+    },
   },
 });

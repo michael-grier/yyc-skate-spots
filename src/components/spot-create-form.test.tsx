@@ -76,7 +76,13 @@ beforeEach(() => {
 
 describe("SpotCreateForm", () => {
   test("a step will not advance until its own fields are valid", async () => {
-    await render(<SpotCreateForm onCancel={jest.fn()} onSave={jest.fn()} />);
+    await render(
+      <SpotCreateForm
+        privateQuota={{ used: 0, allowed: 3 }}
+        onCancel={jest.fn()}
+        onSave={jest.fn()}
+      />,
+    );
 
     await fireEvent.press(screen.getByText("Next · Place"));
 
@@ -89,7 +95,13 @@ describe("SpotCreateForm", () => {
 
   test("walking all three steps saves the picked options and location", async () => {
     const onSave = jest.fn().mockResolvedValue(undefined);
-    await render(<SpotCreateForm onCancel={jest.fn()} onSave={onSave} />);
+    await render(
+      <SpotCreateForm
+        privateQuota={{ used: 0, allowed: 3 }}
+        onCancel={jest.fn()}
+        onSave={onSave}
+      />,
+    );
 
     await fillBasics();
     await fireEvent.press(screen.getByText("Set test location"));
@@ -103,6 +115,7 @@ describe("SpotCreateForm", () => {
     expect(onSave).toHaveBeenCalledWith(
       {
         name: "Test Ledge",
+        visibility: "public",
         allowAdminPhotos: false,
         types: ["ledge"],
         bustFactor: "low",
@@ -119,6 +132,7 @@ describe("SpotCreateForm", () => {
     const onSave = jest.fn().mockResolvedValue(undefined);
     await render(
       <SpotCreateForm
+        privateQuota={{ used: 0, allowed: 3 }}
         onCancel={jest.fn()}
         onSave={onSave}
         onAcknowledgeStandards={onAcknowledgeStandards}
@@ -147,7 +161,13 @@ describe("SpotCreateForm", () => {
     // typed into. Tying it to focus events instead of the keyboard used to leave
     // it stuck on other steps, which hid Save and dead-ended the wizard.
     mockKeyboardVisible = true;
-    await render(<SpotCreateForm onCancel={jest.fn()} onSave={jest.fn()} />);
+    await render(
+      <SpotCreateForm
+        privateQuota={{ used: 0, allowed: 3 }}
+        onCancel={jest.fn()}
+        onSave={jest.fn()}
+      />,
+    );
 
     await fillBasics();
     await fireEvent.press(screen.getByText("Set test location"));
@@ -166,7 +186,13 @@ describe("SpotCreateForm", () => {
     const alertSpy = jest.spyOn(Alert, "alert").mockImplementation(() => {});
     const onSave = jest.fn();
 
-    await render(<SpotCreateForm onCancel={jest.fn()} onSave={onSave} />);
+    await render(
+      <SpotCreateForm
+        privateQuota={{ used: 0, allowed: 3 }}
+        onCancel={jest.fn()}
+        onSave={onSave}
+      />,
+    );
 
     await fillBasics();
     await fireEvent.press(screen.getByText("Set test location"));
@@ -190,7 +216,9 @@ describe("SpotCreateForm", () => {
 
 test("dismissing photo permission cancels saving, while allowing it saves once after dismissal", async () => {
   const onSave = jest.fn().mockResolvedValue(undefined);
-  await render(<SpotCreateForm onCancel={jest.fn()} onSave={onSave} />);
+  await render(
+    <SpotCreateForm privateQuota={{ used: 0, allowed: 3 }} onCancel={jest.fn()} onSave={onSave} />,
+  );
   await fillBasics();
   await fireEvent.press(screen.getByText("Set test location"));
   await fireEvent.press(screen.getByText("Next · Details"));

@@ -25,8 +25,11 @@ export type FormPhoto = {
   storageId?: Id<"_storage">;
 };
 
+export type SpotVisibility = "public" | "private";
+
 export type SpotFormValues = {
   name: string;
+  visibility: SpotVisibility;
   types: SpotType[];
   bustFactor: BustFactor | null;
   surface: Surface | null;
@@ -39,6 +42,7 @@ export type SpotFormValues = {
 
 export const EMPTY_SPOT_FORM: SpotFormValues = {
   name: "",
+  visibility: "public",
   types: [],
   bustFactor: null,
   surface: null,
@@ -50,6 +54,7 @@ export const EMPTY_SPOT_FORM: SpotFormValues = {
 
 type EditableSpot = {
   name: string;
+  isPrivate: boolean;
   types: SpotType[];
   bustFactor: BustFactor;
   surface?: Surface;
@@ -65,6 +70,7 @@ type EditableSpot = {
 export function spotToFormValues(spot: EditableSpot): SpotFormValues {
   return {
     name: spot.name,
+    visibility: spot.isPrivate ? "private" : "public",
     adminPhotosAddedAt: spot.adminPhotosAddedAt,
     types: spot.types,
     bustFactor: spot.bustFactor,
@@ -90,6 +96,7 @@ const schema = z.object({
     .trim()
     .min(1, "Give the spot a name.")
     .max(MAX_NAME_LENGTH, `Keep the name under ${MAX_NAME_LENGTH} characters.`),
+  visibility: z.enum(["public", "private"]),
   types: z.array(z.enum(SPOT_TYPES as [SpotType, ...SpotType[]])).min(1, "Pick at least one type."),
   bustFactor: z.enum(BUST_FACTORS, { error: "Pick a bust factor." }),
   surface: z.enum(SURFACES).nullable(),
@@ -125,6 +132,7 @@ export type SpotFormErrors = Partial<Record<(typeof STEP_FIELDS)[SpotFormStep][n
 export type SpotPayload = {
   allowAdminPhotos?: boolean;
   name: string;
+  visibility: SpotVisibility;
   types: SpotType[];
   bustFactor: BustFactor;
   surface?: Surface;
