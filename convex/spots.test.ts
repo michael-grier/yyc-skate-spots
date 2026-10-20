@@ -3,6 +3,7 @@ import { convexTest } from "convex-test";
 import { describe, expect, test } from "vitest";
 import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
+import { FREE_PRIVATE_SPOTS } from "./privateSpots";
 import schema from "./schema";
 import { MAX_SPOTS_LISTED } from "./spots";
 
@@ -382,5 +383,96 @@ describe("spots authz", () => {
     await asAlice.mutation(api.spots.remove, { id });
     expect(await t.run((ctx) => ctx.storage.getUrl(second))).toBeNull();
     expect(await t.run((ctx) => ctx.db.query("spotPhotos").take(10))).toEqual([]);
+  });
+});
+
+describe("private spots", () => {
+  const PRIVATE = { ...SPOT, visibility: "private" as const };
+
+  test("a private spot reaches only its owner and never enters review", async () => {
+    const t = convexTest(schema, modules);
+    const asAlice = t.withIdentity({ subject: "alice" });
+    const asBob = t.withIdentity({ subject: "bob" });
+    const asAdmin = t.withIdentity({ subject: "admin", role: "admin" });
+    await acknowledgeStandards(asAlice);
+    await acknowledgeStandards(asBob);
+    const id = await asAlice.mutation(api.spots.create, PRIVATE);
+
+    expect(await t.query(api.spots.list, {})).toEqual([]);
+    expect(await asBob.query(api.spots.list, {})).toEqual([]);
+    expect(await asAlice.query(api.spots.list, {})).toMatchObject([
+      { _id: id, isMine: true, isPrivate: true },
+    ]);
+    expect(await asBob.query(api.spots.get, { id })).toBeNull();
+    expect(await asAlice.query(api.spots.get, { id })).toMatchObject({
+      isOwner: true,
+      isPrivate: true,
+      isPendingReview: false,
+    });
+    expect(await asAlice.query(api.spots.mine, {})).toMatchObject([{ status: "private" }]);
+
+    expect(await asAdmin.query(api.moderation.listSpots, {})).toEqual([]);
+    expect(await asAdmin.query(api.moderation.getSpot, { id })).toBeNull();
+    expect(await asAdmin.query(api.moderation.reviewCount, {})).toBe(0);
+    await expect(
+      asBob.mutation(api.reports.create, { spotId: id, reason: "other" }),
+    ).rejects.toThrow(/not found/);
+    await expect(
+      asAlice.mutation(api.spots.setAdminPhotoPermission, { id, allowed: true }),
+    ).rejects.toThrow(/private/);
+  });
+
+  test("the allowance grows only with published spots", async () => {
+    const t = convexTest(schema, modules);
+    const asAlice = t.withIdentity({ subject: "alice" });
+    const asAdmin = t.withIdentity({ subject: "admin", role: "admin" });
+    await acknowledgeStandards(asAlice);
+    for (let i = 0; i < FREE_PRIVATE_SPOTS; i += 1) {
+      await asAlice.mutation(api.spots.create, PRIVATE);
+    }
+    await expect(asAlice.mutation(api.spots.create, PRIVATE)).rejects.toThrow(/private spots/);
+
+    // Pending submissions earn nothing, or junk could be submitted to unlock slots.
+    const publicId = await asAlice.mutation(api.spots.create, SPOT);
+    await expect(asAlice.mutation(api.spots.create, PRIVATE)).rejects.toThrow(/private spots/);
+    await asAdmin.mutation(api.moderation.markMeetsStandards, { spotId: publicId });
+    await asAlice.mutation(api.spots.create, PRIVATE);
+  });
+
+  test("flipping visibility moves a spot in and out of review", async () => {
+    const t = convexTest(schema, modules);
+    const asAlice = t.withIdentity({ subject: "alice" });
+    const asAdmin = t.withIdentity({ subject: "admin", role: "admin" });
+    await acknowledgeStandards(asAlice);
+    const id = await asAlice.mutation(api.spots.create, PRIVATE);
+
+    await asAlice.mutation(api.spots.update, { id, ...SPOT, visibility: "public" });
+    expect(await asAlice.query(api.spots.mine, {})).toMatchObject([{ status: "pending" }]);
+    expect(await asAdmin.query(api.moderation.getSpot, { id })).toMatchObject({
+      review: { needsReview: true, attentionReason: "new" },
+    });
+    await asAdmin.mutation(api.moderation.markMeetsStandards, { spotId: id });
+    expect(await t.query(api.spots.list, {})).toHaveLength(1);
+
+    await asAlice.mutation(api.spots.update, { id, ...SPOT, visibility: "private" });
+    expect(await t.query(api.spots.list, {})).toEqual([]);
+    expect(await asAlice.query(api.spots.mine, {})).toMatchObject([{ status: "private" }]);
+    expect(await asAdmin.query(api.moderation.reviewCount, {})).toBe(0);
+  });
+
+  test("a reported spot stays in the queue until an admin decides", async () => {
+    const t = convexTest(schema, modules);
+    const asAlice = t.withIdentity({ subject: "alice" });
+    const asBob = t.withIdentity({ subject: "bob" });
+    const asAdmin = t.withIdentity({ subject: "admin", role: "admin" });
+    await acknowledgeStandards(asAlice);
+    await acknowledgeStandards(asBob);
+    const id = await asAlice.mutation(api.spots.create, SPOT);
+    await asAdmin.mutation(api.moderation.markMeetsStandards, { spotId: id });
+    await asBob.mutation(api.reports.create, { spotId: id, reason: "other" });
+
+    await expect(
+      asAlice.mutation(api.spots.update, { id, ...SPOT, visibility: "private" }),
+    ).rejects.toThrow(/open reports/);
   });
 });

@@ -7,7 +7,9 @@ import { CloseIcon } from "@/components/icons";
 import { Chip } from "@/components/ui/chip";
 import { ChipGrid } from "@/components/ui/chip-grid";
 import { Segmented } from "@/components/ui/segmented";
-import { type FormPhoto, MAX_PHOTOS } from "@/lib/spot-form";
+import { PRIVATE_SPOTS_PER_PUBLISHED } from "@convex/privateSpots";
+import type { PrivateSpotQuota } from "@/lib/private-spot-quota";
+import { type FormPhoto, MAX_PHOTOS, type SpotVisibility } from "@/lib/spot-form";
 import { toggle } from "@/lib/toggle";
 import {
   BUST_FACTOR_COLORS,
@@ -176,6 +178,52 @@ export function SurfaceField({
       // field is optional though, so tapping the chosen surface clears it.
       onChange={(surface) => onChange(surface === value ? null : surface)}
     />
+  );
+}
+
+/**
+ * Public or private, with the allowance in the hint and the consequence of the
+ * current choice beneath. The quota arrives undefined while loading.
+ */
+export function VisibilityField({
+  value,
+  onChange,
+  quota,
+  className,
+}: {
+  value: SpotVisibility;
+  onChange: (value: SpotVisibility) => void;
+  quota: PrivateSpotQuota | undefined;
+  className?: string;
+}) {
+  const exhausted = quota !== undefined && quota.used >= quota.allowed;
+  const options = [
+    { value: "public" as const, label: "Public" },
+    // The current choice stays tappable; only moving into a full allowance is blocked.
+    { value: "private" as const, label: "Private", disabled: value !== "private" && exhausted },
+  ];
+  return (
+    <Field
+      label="VISIBILITY"
+      hint={quota ? `${quota.used} of ${quota.allowed} private spots used` : undefined}
+      className={className}
+    >
+      <Segmented options={options} value={value} onChange={onChange} />
+      <Text className="mt-2 px-1 font-sans text-[12px] leading-[18px] text-mute">
+        {value === "private" ? (
+          "Only you can see it. Skips review, and shares as a map pin instead of a listing."
+        ) : exhausted ? (
+          <>
+            {`You've used all ${quota.allowed} private spots. `}
+            <Text className="text-bust-medium">
+              Each spot you publish adds {PRIVATE_SPOTS_PER_PUBLISHED} more.
+            </Text>
+          </>
+        ) : (
+          "On the map for everyone after a quick review."
+        )}
+      </Text>
+    </Field>
   );
 }
 

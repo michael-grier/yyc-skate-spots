@@ -21,17 +21,24 @@ export async function spotIsPublished(ctx: QueryCtx | MutationCtx, spot: Doc<"sp
   return moderation?.needsReview !== true;
 }
 
-/** Records review state atomically with creation, including admin self-approval. */
-export async function recordNewSpotModeration(ctx: MutationCtx, spot: Doc<"spots">) {
+/**
+ * Records review state atomically with creation, including admin self-approval.
+ * `submittedAt` is later than creation when a private spot is first made public.
+ */
+export async function recordNewSpotModeration(
+  ctx: MutationCtx,
+  spot: Doc<"spots">,
+  submittedAt = spot._creationTime,
+) {
   const published = spot.publicationStatus === "published";
   await ctx.db.insert("spotModeration", {
     spotId: spot._id,
     spotCreationTime: spot._creationTime,
     needsReview: !published,
     attentionReason: "new",
-    lastSubmittedAt: spot._creationTime,
+    lastSubmittedAt: submittedAt,
     openReportCount: 0,
-    ...(published ? { reviewedAt: spot._creationTime, reviewedBy: spot.createdBy } : {}),
+    ...(published ? { reviewedAt: submittedAt, reviewedBy: spot.createdBy } : {}),
   });
 }
 

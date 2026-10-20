@@ -108,15 +108,16 @@ function MapContent() {
   const coordsInCity = coords && isInCalgary(coords) ? coords : null;
 
   const spots = useMemo(() => applyFilters(allSpots, filters, coords), [allSpots, filters, coords]);
+  // The caller's private spots skip clustering so their lock ring stays visible
+  // at every zoom; the allowance keeps them few enough to draw one by one.
+  const privateSpots = useMemo(() => spots.filter((spot) => spot.isPrivate), [spots]);
   // Stable between renders so useClusters only rebuilds its index when the
   // filtered result actually changes.
   const points = useMemo(
-    () => spots.map(({ _id, latitude, longitude }) => ({ id: _id, latitude, longitude })),
-    [spots],
-  );
-  // Cluster items carry plain string ids, hence Set<string>.
-  const mineIds = useMemo(
-    () => new Set<string>(spots.filter((spot) => spot.isMine).map((spot) => spot._id)),
+    () =>
+      spots
+        .filter((spot) => !spot.isPrivate)
+        .map(({ _id, latitude, longitude }) => ({ id: _id, latitude, longitude })),
     [spots],
   );
   const { items, regionToExpand } = useClusters(points, zoom);
@@ -274,7 +275,6 @@ function MapContent() {
               key={item.id}
               {...item}
               selected={item.id === selectedId}
-              mine={mineIds.has(item.id)}
               label={query ? spotsById.get(item.id)?.name : undefined}
               // Markers stop the map's own press, so they close search themselves.
               onPress={(id) => {
@@ -284,6 +284,21 @@ function MapContent() {
             />
           ),
         )}
+        {privateSpots.map((spot) => (
+          <SpotMarker
+            key={spot._id}
+            id={spot._id}
+            latitude={spot.latitude}
+            longitude={spot.longitude}
+            isPrivate
+            selected={spot._id === selectedId}
+            label={query ? spot.name : undefined}
+            onPress={(id) => {
+              closeSearch();
+              setSelectedId(id);
+            }}
+          />
+        ))}
       </MapView>
 
       <View
@@ -367,6 +382,7 @@ function MapContent() {
             previewPhotoUrl={selectedSpot.previewPhotoUrl}
             distanceKm={coords ? distanceKm(coords, selectedSpot) : undefined}
             mine={selectedSpot.isMine}
+            isPrivate={selectedSpot.isPrivate}
             onPress={() =>
               router.push({ pathname: "/spot/[id]", params: { id: selectedSpot._id } })
             }

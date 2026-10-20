@@ -7,6 +7,7 @@ import { ActivityIndicator, Text, View } from "react-native";
 import { SpotEditForm } from "@/components/spot-edit-form";
 import { Button } from "@/components/ui/button";
 import { spotToFormValues } from "@/lib/spot-form";
+import { usePrivateSpotQuota } from "@/lib/use-private-spot-quota";
 import { colors } from "@/theme/colors";
 
 /** Owner-only edit screen; api.spots.update enforces ownership server-side. */
@@ -20,6 +21,7 @@ export default function EditSpotScreen() {
   const spotId = id as Id<"spots">;
   const updateSpot = useMutation(api.spots.update);
   const acknowledgeStandards = useMutation(api.moderation.acknowledgeStandards);
+  const privateQuota = usePrivateSpotQuota(id);
 
   if (spot === undefined || moderation === undefined) {
     return (
@@ -68,6 +70,7 @@ export default function EditSpotScreen() {
           await updateSpot({ id: spotId, ...payload, photoIds, expectedAdminPhotosAddedAt });
           router.back();
         }}
+        privateQuota={privateQuota}
         onAcknowledgeStandards={
           moderation.hasAcknowledgedStandards
             ? undefined
