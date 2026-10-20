@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { spotShareUrl } from "@/lib/share-spot";
+import { mapPinUrl, spotShareUrl } from "@/lib/share-spot";
 
 describe("spotShareUrl", () => {
   test("builds a share link and encodes the spot id", () => {
@@ -21,5 +21,13 @@ describe("spotShareUrl", () => {
     "https://share.example.com:8443",
   ])("rejects an unusable base URL: %s", (baseUrl) => {
     expect(() => spotShareUrl("spot-1", baseUrl)).toThrow();
+  });
+});
+
+describe("mapPinUrl", () => {
+  test("points a universal maps link at the coordinates", () => {
+    expect(mapPinUrl({ latitude: 51.0447, longitude: -114.0719 })).toBe(
+      "https://www.google.com/maps/search/?api=1&query=51.0447,-114.0719",
+    );
   });
 });

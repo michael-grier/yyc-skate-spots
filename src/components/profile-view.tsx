@@ -10,7 +10,7 @@ import { ActivityIndicator, Alert, FlatList, Pressable, Text, View } from "react
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { DisplayNameSheet } from "@/components/display-name-sheet";
-import { ChevronRightIcon } from "@/components/icons";
+import { ChevronRightIcon, LockIcon } from "@/components/icons";
 import { PublicSiteLinks } from "@/components/public-site-links";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -320,6 +320,13 @@ export function ProfileView() {
                     </Text>
                     <Text className="mt-0.5 font-sans text-[11px] text-mute">
                       Visible only to you and administrators
+                    </Text>
+                  </View>
+                ) : item.status === "private" ? (
+                  <View className="mt-1 flex-row items-center gap-1.5">
+                    <LockIcon size={12} color={colors.mute} />
+                    <Text numberOfLines={1} className="font-sans text-[12px] text-mute">
+                      Private · {formatSpotTypes(item.types)}
                     </Text>
                   </View>
                 ) : (
