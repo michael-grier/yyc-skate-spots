@@ -2,6 +2,7 @@ import { Text, View } from "react-native";
 import { Marker } from "react-native-maps";
 
 import { BoardMark } from "@/components/board-mark";
+import { LockIcon } from "@/components/icons";
 import { colors, mapColors } from "@/theme/colors";
 
 type SpotMarkerProps = {
@@ -9,8 +10,8 @@ type SpotMarkerProps = {
   latitude: number;
   longitude: number;
   selected: boolean;
-  /** The signed-in user's own spot: marked with a neon ring so it stands out. */
-  mine?: boolean;
+  /** One of the signed-in user's private spots: a lock in a neon ring so it stands out. */
+  isPrivate?: boolean;
   /** Name shown under the disc, used while a search is active. */
   label?: string;
   onPress: (id: string) => void;
@@ -19,30 +20,30 @@ type SpotMarkerProps = {
 // Disc sizes and the label row height, used to keep the marker anchored on
 // the disc's centre whether or not a label is rendered beneath it.
 const DISC = {
-  mine: { idle: 36, selected: 56 },
+  private: { idle: 36, selected: 56 },
   standard: { idle: 32, selected: 52 },
 };
 const LABEL_HEIGHT = 22;
 
 type MarkerDiscProps = {
-  mine: boolean;
+  isPrivate: boolean;
   selected: boolean;
 };
 
-/** Marker face; owned spots add a graphite gap inside the neon ring. */
-function MarkerDisc({ mine, selected }: MarkerDiscProps) {
-  if (mine) {
+/** Marker face; private spots swap the board for a lock inside a ringed disc. */
+function MarkerDisc({ isPrivate, selected }: MarkerDiscProps) {
+  if (isPrivate) {
     return (
       <View
         className={`${selected ? "h-11 w-11" : "h-9 w-9"} rounded-full p-0.5`}
-        style={{ backgroundColor: colors.pinMineRing }}
+        style={{ backgroundColor: colors.pinPrivateRing }}
       >
         <View className="flex-1 rounded-full p-0.5" style={{ backgroundColor: mapColors.land }}>
           <View
             className="flex-1 items-center justify-center rounded-full"
-            style={{ backgroundColor: colors.pinMine }}
+            style={{ backgroundColor: colors.pinPrivate }}
           >
-            <BoardMark size={selected ? 18 : 15} strokeWidth={2.4} color={colors.pinSelectedInk} />
+            <LockIcon size={selected ? 17 : 14} color={colors.pinSelectedInk} />
           </View>
         </View>
       </View>
@@ -65,25 +66,25 @@ function MarkerDisc({ mine, selected }: MarkerDiscProps) {
 
 /**
  * A spot on the map: the board glyph in a light disc. Selection adds a halo,
- * while the signed-in user's spots get a neon ring.
+ * while the signed-in user's private spots get a lock in a neon ring.
  */
 export function SpotMarker({
   id,
   latitude,
   longitude,
   selected,
-  mine,
+  isPrivate,
   label,
   onPress,
 }: SpotMarkerProps) {
   const state = selected ? "selected" : "idle";
-  const disc = (mine ? DISC.mine : DISC.standard)[state];
+  const disc = (isPrivate ? DISC.private : DISC.standard)[state];
   const anchorY = label ? disc / 2 / (disc + LABEL_HEIGHT) : 0.5;
   return (
     <Marker
       // Custom marker views are rasterized once (tracksViewChanges off) for
       // scroll performance, so remount on a look change to capture it.
-      key={`${id}-${state}-${mine ? "mine" : "theirs"}-${label ?? ""}`}
+      key={`${id}-${state}-${isPrivate ? "private" : "public"}-${label ?? ""}`}
       identifier={id}
       coordinate={{ latitude, longitude }}
       anchor={{ x: 0.5, y: anchorY }}
@@ -98,12 +99,12 @@ export function SpotMarker({
       <View className="items-center">
         {selected ? (
           <View
-            className={`${mine ? "h-14 w-14" : "h-[52px] w-[52px]"} items-center justify-center rounded-full bg-white/15`}
+            className={`${isPrivate ? "h-14 w-14" : "h-[52px] w-[52px]"} items-center justify-center rounded-full bg-white/15`}
           >
-            <MarkerDisc mine={mine === true} selected />
+            <MarkerDisc isPrivate={isPrivate === true} selected />
           </View>
         ) : (
-          <MarkerDisc mine={mine === true} selected={false} />
+          <MarkerDisc isPrivate={isPrivate === true} selected={false} />
         )}
         {label ? (
           <View
