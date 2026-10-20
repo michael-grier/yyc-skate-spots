@@ -76,6 +76,7 @@ describe("SpotEditForm", () => {
   test("notes are edited in their own overlay and land back on the form", async () => {
     await render(
       <SpotEditForm
+        privateQuota={{ used: 0, allowed: 3 }}
         spotId="spot-1"
         initialValues={EXISTING}
         onCancel={jest.fn()}
@@ -95,6 +96,7 @@ describe("SpotEditForm", () => {
     const onSave = jest.fn().mockResolvedValue(undefined);
     await render(
       <SpotEditForm
+        privateQuota={{ used: 0, allowed: 3 }}
         spotId="spot-1"
         initialValues={{ ...EXISTING, surface: "smooth" }}
         onCancel={jest.fn()}
@@ -113,6 +115,7 @@ describe("SpotEditForm", () => {
     expect(onSave).toHaveBeenCalledWith(
       {
         name: "Harmony Park Ledges",
+        visibility: "public",
         allowAdminPhotos: false,
         types: ["ledge", "stairs"],
         bustFactor: "medium",
@@ -129,6 +132,7 @@ describe("SpotEditForm", () => {
     const onSave = jest.fn().mockResolvedValue(undefined);
     await render(
       <SpotEditForm
+        privateQuota={{ used: 0, allowed: 3 }}
         spotId="spot-1"
         initialValues={EXISTING}
         onCancel={jest.fn()}
@@ -154,6 +158,7 @@ describe("SpotEditForm", () => {
 
     await render(
       <SpotEditForm
+        privateQuota={{ used: 0, allowed: 3 }}
         spotId="spot-1"
         initialValues={EXISTING}
         onCancel={jest.fn()}
@@ -186,6 +191,7 @@ describe("SpotEditForm", () => {
 
     await render(
       <SpotEditForm
+        privateQuota={{ used: 0, allowed: 3 }}
         spotId="spot-1"
         initialValues={EXISTING}
         onCancel={jest.fn()}
@@ -208,6 +214,7 @@ describe("SpotEditForm", () => {
     const onSave = jest.fn();
     await render(
       <SpotEditForm
+        privateQuota={{ used: 0, allowed: 3 }}
         spotId="spot-1"
         initialValues={EMPTY_SPOT_FORM}
         onCancel={jest.fn()}
@@ -231,6 +238,7 @@ describe("SpotEditForm", () => {
 
     await render(
       <SpotEditForm
+        privateQuota={{ used: 0, allowed: 3 }}
         spotId="spot-1"
         initialValues={{ ...EXISTING, photos: [localPhoto("a"), localPhoto("b")] }}
         onCancel={jest.fn()}
@@ -255,6 +263,7 @@ test("keeps the photo version from when the editor opened if a reactive update a
   const onCancel = jest.fn();
   await render(
     <SpotEditForm
+      privateQuota={{ used: 0, allowed: 3 }}
       spotId="spot-1"
       initialValues={{ ...EXISTING, adminPhotosAddedAt: 100 }}
       onCancel={onCancel}
@@ -263,6 +272,7 @@ test("keeps the photo version from when the editor opened if a reactive update a
   );
   await screen.rerender(
     <SpotEditForm
+      privateQuota={{ used: 0, allowed: 3 }}
       spotId="spot-1"
       initialValues={{ ...EXISTING, adminPhotosAddedAt: 200 }}
       onCancel={onCancel}

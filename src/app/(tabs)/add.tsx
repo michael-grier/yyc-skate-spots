@@ -8,6 +8,7 @@ import { ActivityIndicator, Text, View } from "react-native";
 import { BoardMark } from "@/components/board-mark";
 import { SpotCreateForm } from "@/components/spot-create-form";
 import { Button } from "@/components/ui/button";
+import { usePrivateSpotQuota } from "@/lib/use-private-spot-quota";
 import { colors } from "@/theme/colors";
 
 /**
@@ -20,6 +21,7 @@ export default function AddSpotScreen() {
   const createSpot = useMutation(api.spots.create);
   const acknowledgeStandards = useMutation(api.moderation.acknowledgeStandards);
   const moderation = useQuery(api.moderation.viewer, isSignedIn ? {} : "skip");
+  const privateQuota = usePrivateSpotQuota();
   // Bumped to remount a blank form after save or cancel.
   const [formKey, setFormKey] = useState(0);
 
@@ -88,6 +90,7 @@ export default function AddSpotScreen() {
         setFormKey((k) => k + 1);
         router.push({ pathname: "/spot/[id]", params: { id } });
       }}
+      privateQuota={privateQuota}
       onAcknowledgeStandards={
         moderation.hasAcknowledgedStandards
           ? undefined

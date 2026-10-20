@@ -25,6 +25,7 @@ describe("validateSpotForm", () => {
       ok: true,
       payload: {
         name: "Harmony Park",
+        visibility: "public",
         types: ["ledge", "stairs"],
         bustFactor: "medium",
         latitude: 51.049144,
@@ -72,6 +73,7 @@ describe("spotToFormValues", () => {
   test("pairs stored photo ids with their urls", () => {
     const values = spotToFormValues({
       name: "Chinook",
+      isPrivate: false,
       types: ["ledge"],
       bustFactor: "high",
       latitude: 50.99,
@@ -81,6 +83,7 @@ describe("spotToFormValues", () => {
     });
     expect(values.surface).toBeNull();
     expect(values.notes).toBe("");
+    expect(values.visibility).toBe("public");
     expect(values.photos.map((p) => [p.storageId, p.uri])).toEqual([
       ["a", "https://x/a"],
       ["b", "https://x/b"],
