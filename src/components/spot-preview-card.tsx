@@ -1,7 +1,7 @@
 import { Image } from "expo-image";
 import { Pressable, Text, View } from "react-native";
 
-import { ChevronRightIcon } from "@/components/icons";
+import { ChevronRightIcon, LockIcon } from "@/components/icons";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/cn";
 import { formatDistance } from "@/lib/geo";
@@ -22,6 +22,8 @@ type SpotPreviewCardProps = {
   /** Omitted when the user's location is unknown. */
   distanceKm?: number;
   mine?: boolean;
+  /** Replaces the "Your spot" note: private implies yours. */
+  isPrivate?: boolean;
   /** When absent the card is static: no chevron, no button semantics. */
   onPress?: () => void;
 };
@@ -34,10 +36,11 @@ export function SpotPreviewCard({
   previewPhotoUrl,
   distanceKm,
   mine,
+  isPrivate,
   onPress,
 }: SpotPreviewCardProps) {
   const subtitle = [
-    mine && "Your spot",
+    isPrivate ? "Private" : mine && "Your spot",
     formatSpotTypes(types),
     distanceKm !== undefined && `${formatDistance(distanceKm)} away`,
   ]
@@ -64,9 +67,12 @@ export function SpotPreviewCard({
         <Text numberOfLines={1} className="font-sans-semibold text-[15px] text-ink">
           {name}
         </Text>
-        <Text numberOfLines={1} className="mt-0.5 font-sans text-[13px] text-mute">
-          {subtitle}
-        </Text>
+        <View className="mt-0.5 flex-row items-center gap-1">
+          {isPrivate ? <LockIcon size={12} color={colors.mute} /> : null}
+          <Text numberOfLines={1} className="flex-shrink font-sans text-[13px] text-mute">
+            {subtitle}
+          </Text>
+        </View>
         <View className="mt-1.5 flex-row items-center gap-1.5">
           <View
             className="h-1.5 w-1.5 rounded-full"

@@ -16,8 +16,9 @@ const colors = {
   // Bright pin colors contrast with the dark Google Maps style.
   pinSelected: "#E8EAEE",
   pinSelectedInk: "#17191D",
-  pinMine: "#FFFFFF",
-  pinMineRing: "#FF10F0",
+  // The ring marks the signed-in user's private spots, the ones they revisit most.
+  pinPrivate: "#FFFFFF",
+  pinPrivateRing: "#FF10F0",
   // Non-store build badge; hues kept distinct from the bust and pin colours.
   variant: {
     development: "#E3A04F",
