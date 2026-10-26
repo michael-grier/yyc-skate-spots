@@ -458,6 +458,14 @@ describe("private spots", () => {
     expect(await t.query(api.spots.list, {})).toEqual([]);
     expect(await asAlice.query(api.spots.mine, {})).toMatchObject([{ status: "private" }]);
     expect(await asAdmin.query(api.moderation.reviewCount, {})).toBe(0);
+    // An admin screen opened before the flip must not republish or remove it.
+    await expect(
+      asAdmin.mutation(api.moderation.markMeetsStandards, { spotId: id }),
+    ).rejects.toThrow(/not found/);
+    await expect(
+      asAdmin.mutation(api.moderation.removeSpot, { spotId: id, reason: "other" }),
+    ).rejects.toThrow(/not found/);
+    expect(await asAlice.query(api.spots.mine, {})).toMatchObject([{ status: "private" }]);
   });
 
   test("a reported spot stays in the queue until an admin decides", async () => {
