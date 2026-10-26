@@ -238,7 +238,8 @@ export const markMeetsStandards = mutation({
   handler: async (ctx, args) => {
     const identity = await requireAdmin(ctx);
     const spot = await ctx.db.get("spots", args.spotId);
-    if (!spot || spot.deletionRequested) {
+    // A spot made private after an admin opened it is theirs alone again.
+    if (!spot || spot.deletionRequested || spot.publicationStatus === "private") {
       throw new Error("Spot not found.");
     }
     await ctx.db.patch("spots", spot._id, { publicationStatus: "published" });
@@ -278,7 +279,8 @@ export const removeSpot = mutation({
   handler: async (ctx, args) => {
     const identity = await requireAdmin(ctx);
     const spot = await ctx.db.get("spots", args.spotId);
-    if (!spot || spot.deletionRequested) {
+    // A spot made private after an admin opened it is theirs alone again.
+    if (!spot || spot.deletionRequested || spot.publicationStatus === "private") {
       throw new Error("Spot not found.");
     }
     const details = args.details?.trim();
