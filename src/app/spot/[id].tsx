@@ -15,7 +15,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { BackIcon, MoreIcon, NavigateIcon, ShareIcon } from "@/components/icons";
+import { BackIcon, LockIcon, MoreIcon, NavigateIcon, ShareIcon } from "@/components/icons";
 import { FavoriteButton } from "@/components/favorite-button";
 import { PhotoCarousel } from "@/components/photo-carousel";
 import { Button } from "@/components/ui/button";
@@ -24,7 +24,7 @@ import { Hairline } from "@/components/ui/hairline";
 import { formatMonthYear } from "@/lib/dates";
 import { distanceKm, formatDistance } from "@/lib/geo";
 import { openDirections } from "@/lib/open-directions";
-import { spotShareUrl } from "@/lib/share-spot";
+import { mapPinUrl, spotShareUrl } from "@/lib/share-spot";
 import {
   BUST_FACTOR_COLORS,
   BUST_FACTOR_LABELS,
@@ -69,6 +69,8 @@ export default function SpotDetailScreen() {
   const spot = useQuery(api.spots.get, { id });
   const markAdminPhotosSeen = useMutation(api.spots.markAdminPhotosSeen);
   const setAdminPhotoPermission = useMutation(api.spots.setAdminPhotoPermission);
+  const makePublic = useMutation(api.spots.makePublic);
+  const [publishing, setPublishing] = useState(false);
   const unreadPhotoSpotId =
     spot?.status === "active" && spot.isOwner && spot.adminPhotosUnseen ? spot._id : undefined;
   const unreadPhotoAddedAt = spot?.status === "active" ? spot.adminPhotosAddedAt : undefined;
@@ -173,6 +175,7 @@ export default function SpotDetailScreen() {
   // Captured here because TS narrowing of `spot` doesn't reach the closures below.
   const spotId = spot._id;
   const spotName = spot.name;
+  const isPrivate = spot.isPrivate;
   const destination = { name: spotName, latitude: spot.latitude, longitude: spot.longitude };
 
   async function handleDirections() {
@@ -186,8 +189,12 @@ export default function SpotDetailScreen() {
 
   async function handleShare() {
     try {
-      const url = spotShareUrl(spotId);
-      const message = `Check out ${spotName} on YYC Skate Spots.`;
+      // A private listing is served only to its owner, so the link would be
+      // empty for the recipient; a pin gets a filmer or a visiting crew there.
+      const url = isPrivate ? mapPinUrl(destination) : spotShareUrl(spotId);
+      const message = isPrivate
+        ? `Meet at ${spotName}.`
+        : `Check out ${spotName} on YYC Skate Spots.`;
       await Share.share(
         Platform.OS === "ios"
           ? { message, url }
@@ -262,6 +269,33 @@ export default function SpotDetailScreen() {
                 This version is awaiting admin approval. Until then, it is visible only to you and
                 administrators.
               </Text>
+            </Card>
+          ) : null}
+          {spot.isPrivate ? (
+            <Card className="mt-4 p-4">
+              <View className="flex-row items-center gap-2">
+                <LockIcon size={14} color={colors.ink} />
+                <Text className="font-sans-semibold text-[15px] text-ink">Private spot</Text>
+              </View>
+              <Text className="mt-1 font-sans text-[13px] leading-relaxed text-mute">
+                Only you can see it. Sharing sends a map pin rather than this page. Making it public
+                sends it for a quick review, then onto the map for everyone.
+              </Text>
+              <Button
+                label={publishing ? "Making public…" : "Make public"}
+                disabled={publishing}
+                className="mt-4"
+                onPress={async () => {
+                  setPublishing(true);
+                  try {
+                    await makePublic({ id: spotId });
+                  } catch {
+                    Alert.alert("Couldn't make it public", "Check your connection and try again.");
+                  } finally {
+                    setPublishing(false);
+                  }
+                }}
+              />
             </Card>
           ) : null}
 
@@ -365,12 +399,15 @@ export default function SpotDetailScreen() {
             >
               <ShareIcon size={18} color={colors.ink} />
             </Pressable>
-            <FavoriteButton
-              isFavorite={spot.isFavorite}
-              busy={favoritePending}
-              disabled={!authLoaded}
-              onPress={() => void handleToggleFavorite()}
-            />
+            {/* Favourites only hold published spots, and a private one is already the owner's. */}
+            {spot.isPrivate ? null : (
+              <FavoriteButton
+                isFavorite={spot.isFavorite}
+                busy={favoritePending}
+                disabled={!authLoaded}
+                onPress={() => void handleToggleFavorite()}
+              />
+            )}
           </>
         )}
         {/* Only the owner gets the menu; the server rejects anyone else anyway. */}

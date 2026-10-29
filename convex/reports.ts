@@ -19,7 +19,8 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const identity = await requireUnblockedIdentity(ctx);
     const spot = await ctx.db.get("spots", args.spotId);
-    if (!spot || spot.deletionRequested) {
+    // A private spot's id may linger in an old share link; it is nobody's to report.
+    if (!spot || spot.deletionRequested || spot.publicationStatus === "private") {
       throw new Error("Spot not found.");
     }
     if (spot.createdBy === identity.tokenIdentifier) {
