@@ -468,6 +468,24 @@ describe("private spots", () => {
     expect(await asAlice.query(api.spots.mine, {})).toMatchObject([{ status: "private" }]);
   });
 
+  test("makePublic sends a private spot to review in one step", async () => {
+    const t = convexTest(schema, modules);
+    const asAlice = t.withIdentity({ subject: "alice" });
+    const asBob = t.withIdentity({ subject: "bob" });
+    const asAdmin = t.withIdentity({ subject: "admin", role: "admin" });
+    await acknowledgeStandards(asAlice);
+    await acknowledgeStandards(asBob);
+    const id = await asAlice.mutation(api.spots.create, PRIVATE);
+
+    await expect(asBob.mutation(api.spots.makePublic, { id })).rejects.toThrow(/person who added/);
+    await asAlice.mutation(api.spots.makePublic, { id });
+    expect(await asAlice.query(api.spots.mine, {})).toMatchObject([{ status: "pending" }]);
+    expect(await asAdmin.query(api.moderation.getSpot, { id })).toMatchObject({
+      review: { needsReview: true, attentionReason: "new" },
+    });
+    await expect(asAlice.mutation(api.spots.makePublic, { id })).rejects.toThrow(/already public/);
+  });
+
   test("a reported spot stays in the queue until an admin decides", async () => {
     const t = convexTest(schema, modules);
     const asAlice = t.withIdentity({ subject: "alice" });
