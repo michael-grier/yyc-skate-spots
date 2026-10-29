@@ -69,6 +69,8 @@ export default function SpotDetailScreen() {
   const spot = useQuery(api.spots.get, { id });
   const markAdminPhotosSeen = useMutation(api.spots.markAdminPhotosSeen);
   const setAdminPhotoPermission = useMutation(api.spots.setAdminPhotoPermission);
+  const makePublic = useMutation(api.spots.makePublic);
+  const [publishing, setPublishing] = useState(false);
   const unreadPhotoSpotId =
     spot?.status === "active" && spot.isOwner && spot.adminPhotosUnseen ? spot._id : undefined;
   const unreadPhotoAddedAt = spot?.status === "active" ? spot.adminPhotosAddedAt : undefined;
@@ -276,9 +278,24 @@ export default function SpotDetailScreen() {
                 <Text className="font-sans-semibold text-[15px] text-ink">Private spot</Text>
               </View>
               <Text className="mt-1 font-sans text-[13px] leading-relaxed text-mute">
-                Only you can see it. Sharing sends a map pin rather than this page. Edit the spot to
-                make it public.
+                Only you can see it. Sharing sends a map pin rather than this page. Making it public
+                sends it for a quick review, then onto the map for everyone.
               </Text>
+              <Button
+                label={publishing ? "Making public…" : "Make public"}
+                disabled={publishing}
+                className="mt-4"
+                onPress={async () => {
+                  setPublishing(true);
+                  try {
+                    await makePublic({ id: spotId });
+                  } catch {
+                    Alert.alert("Couldn't make it public", "Check your connection and try again.");
+                  } finally {
+                    setPublishing(false);
+                  }
+                }}
+              />
             </Card>
           ) : null}
 

@@ -512,6 +512,26 @@ export const update = mutation({
   },
 });
 
+/** One tap from the detail screen; the same transition as editing visibility to public. */
+export const makePublic = mutation({
+  args: { id: v.id("spots") },
+  handler: async (ctx, { id }) => {
+    const { spot, identity } = await requireOwnedSpot(ctx, id, true);
+    if (spot.publicationStatus !== "private") {
+      throw new Error("This spot is already public.");
+    }
+    await ctx.db.patch("spots", id, {
+      publicationStatus: identity.role === "admin" ? "published" : "pending",
+    });
+    const updated = await ctx.db.get("spots", id);
+    if (!updated) {
+      throw new Error("Spot not found after update.");
+    }
+    await recordNewSpotModeration(ctx, updated, Date.now());
+    return null;
+  },
+});
+
 export const remove = mutation({
   args: { id: v.id("spots") },
   handler: async (ctx, args) => {
