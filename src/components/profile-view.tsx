@@ -1,6 +1,7 @@
 import { useClerk, useUser } from "@clerk/expo";
 import { api } from "@convex/_generated/api";
 import { publicDisplayName } from "@convex/displayNames";
+import { PRIVATE_SPOTS_PER_PUBLISHED } from "@convex/privateSpots";
 import type { FunctionReturnType } from "convex/server";
 import { useAction, useQuery } from "convex/react";
 import * as AppleAuthentication from "expo-apple-authentication";
@@ -16,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/cn";
 import { appIdentity } from "@/lib/env";
+import { privateSpotQuota } from "@/lib/private-spot-quota";
 import { BUST_FACTOR_COLORS, BUST_FACTOR_LABELS, formatSpotTypes } from "@/lib/spot-labels";
 import { reportReasonLabel } from "@/lib/spot-standards";
 import { colors } from "@/theme/colors";
@@ -94,6 +96,7 @@ export function ProfileView() {
     activeList === "favorites"
       ? favorites?.map((spot) => ({ status: "active" as const, ...spot, adminPhotosUnseen: false }))
       : mySpots;
+  const privateQuota = mySpots ? privateSpotQuota(mySpots) : null;
   const emptyMessage =
     activeList === "favorites"
       ? "No favourites yet. Tap the heart on a spot to save it here."
@@ -255,6 +258,24 @@ export function ProfileView() {
                     Read the spot standards
                   </Text>
                 </Pressable>
+              </Card>
+            ) : null}
+
+            {privateQuota ? (
+              <Card className="mt-3 flex-row items-center gap-3 p-4">
+                <LockIcon size={16} color={colors.silver} />
+                <View className="flex-1">
+                  <Text className="font-sans-semibold text-[15px] text-ink">Private spots</Text>
+                  <Text className="mt-1 font-sans text-[12px] text-mute">
+                    Each spot you publish adds {PRIVATE_SPOTS_PER_PUBLISHED} more.
+                  </Text>
+                </View>
+                <Text
+                  accessibilityLabel={`${privateQuota.used} of ${privateQuota.allowed} private spots used`}
+                  className="font-sans-semibold text-[15px] text-ink"
+                >
+                  {privateQuota.used} <Text className="text-mute">of {privateQuota.allowed}</Text>
+                </Text>
               </Card>
             ) : null}
 
