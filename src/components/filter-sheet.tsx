@@ -145,12 +145,17 @@ export function FilterSheet({
           ))}
         </View>
 
-        <SectionLabel>PHOTOS</SectionLabel>
-        <View className="mt-2 flex-row">
+        <SectionLabel>SHOW ONLY</SectionLabel>
+        <View className="mt-2 flex-row gap-2">
           <Chip
             label="Has photos"
             selected={filters.hasPhotos}
             onPress={() => onChange({ ...filters, hasPhotos: !filters.hasPhotos })}
+          />
+          <Chip
+            label="Needs work"
+            selected={filters.needsWork}
+            onPress={() => onChange({ ...filters, needsWork: !filters.needsWork })}
           />
         </View>
 

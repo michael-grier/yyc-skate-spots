@@ -13,6 +13,8 @@ export type SpotFilters = {
   bustFactors: BustFactor[];
   /** true = only spots with at least one photo; false = any. */
   hasPhotos: boolean;
+  /** true = only spots their owner has tagged as needing work; false = any. */
+  needsWork: boolean;
 };
 
 export const DEFAULT_FILTERS: SpotFilters = {
@@ -21,6 +23,7 @@ export const DEFAULT_FILTERS: SpotFilters = {
   types: [],
   bustFactors: [],
   hasPhotos: false,
+  needsWork: false,
 };
 
 /** Preset radii offered by the distance filter, in kilometres. */
@@ -31,6 +34,7 @@ type FilterableSpot = LatLng & {
   types: SpotType[];
   bustFactor: BustFactor;
   previewPhotoUrl: string | null;
+  needsWork: boolean;
 };
 
 export function applyFilters<T extends FilterableSpot>(
@@ -59,6 +63,9 @@ export function applyFilters<T extends FilterableSpot>(
     if (filters.hasPhotos && spot.previewPhotoUrl === null) {
       return false;
     }
+    if (filters.needsWork && !spot.needsWork) {
+      return false;
+    }
     return true;
   });
 }
@@ -70,6 +77,7 @@ export function countActiveFilters(filters: SpotFilters) {
     filters.types.length > 0,
     filters.bustFactors.length > 0,
     filters.hasPhotos,
+    filters.needsWork,
   ].filter(Boolean).length;
 }
 
