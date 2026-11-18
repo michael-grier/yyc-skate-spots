@@ -1,4 +1,5 @@
 import type { BottomSheetModal } from "@gorhom/bottom-sheet";
+import type { Id } from "@convex/_generated/dataModel";
 import { useRouter } from "expo-router";
 import { useRef, useState } from "react";
 import {
@@ -20,6 +21,7 @@ import {
   BustFactorField,
   Field,
   NameInput,
+  NeedsWorkField,
   PhotoStrip,
   SurfaceField,
   TypeGrid,
@@ -37,11 +39,12 @@ import {
   MAX_PHOTOS,
   SPOT_FORM_STEPS,
   type SpotFormStep,
+  type SpotPayload,
   validateSpotStep,
 } from "@/lib/spot-form";
 import { useKeyboardVisible } from "@/lib/use-keyboard-visible";
 import { useDuplicateCheck } from "@/lib/use-duplicate-check";
-import { type SpotFormSave, type StandardsAcknowledge, useSpotForm } from "@/lib/use-spot-form";
+import { type StandardsAcknowledge, useSpotForm } from "@/lib/use-spot-form";
 import { colors } from "@/theme/colors";
 
 const STEP_COPY: Record<SpotFormStep, { title: string; action: string }> = {
@@ -52,7 +55,11 @@ const STEP_COPY: Record<SpotFormStep, { title: string; action: string }> = {
 
 type SpotCreateFormProps = {
   onCancel: () => void;
-  onSave: SpotFormSave;
+  // Only creation takes the tag; the edit form shares SpotPayload but never sends it.
+  onSave: (
+    payload: SpotPayload & { needsWork: boolean },
+    photoIds: Id<"_storage">[],
+  ) => Promise<void>;
   onAcknowledgeStandards?: StandardsAcknowledge;
   privateQuota: PrivateSpotQuota | undefined;
   skipPhotoPermission?: boolean;
@@ -76,6 +83,7 @@ export function SpotCreateForm({
   const keyboardVisible = useKeyboardVisible();
   const standardsRef = useRef<BottomSheetModal>(null);
   const [step, setStep] = useState<SpotFormStep>("basics");
+  const [needsWork, setNeedsWork] = useState(false);
   const {
     values,
     errors,
@@ -95,7 +103,14 @@ export function SpotCreateForm({
     save,
     closeStandards,
     acknowledgeStandardsAndSave,
-  } = useSpotForm(EMPTY_SPOT_FORM, onSave, onAcknowledgeStandards, skipPhotoPermission);
+  } = useSpotForm(
+    EMPTY_SPOT_FORM,
+    (payload, photoIds) =>
+      // Switching to private hides the field, so a tag chosen earlier must not slip through.
+      onSave({ ...payload, needsWork: payload.visibility === "public" && needsWork }, photoIds),
+    onAcknowledgeStandards,
+    skipPhotoPermission,
+  );
   const { confirmNotDuplicate, duplicateSheet } = useDuplicateCheck();
 
   const stepIndex = SPOT_FORM_STEPS.indexOf(step);
@@ -264,6 +279,9 @@ export function SpotCreateForm({
                 onChange={(visibility) => setField("visibility", visibility)}
                 quota={privateQuota}
               />
+              {values.visibility === "public" ? (
+                <NeedsWorkField value={needsWork} onChange={setNeedsWork} />
+              ) : null}
             </>
           ) : null}
         </ScrollView>

@@ -107,6 +107,7 @@ describe("SpotCreateForm", () => {
     await fireEvent.press(screen.getByText("Set test location"));
     await fireEvent.press(screen.getByText("Next · Details"));
     await fireEvent.press(screen.getByText("Low"));
+    await fireEvent.press(screen.getByText("Needs work"));
     await fireEvent.press(screen.getByText("Save spot"));
     const dismissPermission = screen.getByTestId("photo-permission-sheet").props.onDismiss;
     await fireEvent.press(screen.getByText("Save without permission"));
@@ -117,13 +118,13 @@ describe("SpotCreateForm", () => {
         name: "Test Ledge",
         visibility: "public",
         allowAdminPhotos: false,
+        needsWork: true,
         types: ["ledge"],
         bustFactor: "low",
         latitude: 51.05,
         longitude: -114.07,
       },
       [],
-      undefined,
     );
   });
 
@@ -238,7 +239,6 @@ test("dismissing photo permission cancels saving, while allowing it saves once a
   expect(onSave).toHaveBeenCalledWith(
     expect.objectContaining({ allowAdminPhotos: true }),
     [],
-    undefined,
   );
 });
 
@@ -261,6 +261,5 @@ test("admins save a photo-less spot without being asked for photo permission", a
   expect(onSave).toHaveBeenCalledWith(
     expect.objectContaining({ allowAdminPhotos: false }),
     [],
-    undefined,
   );
 });
