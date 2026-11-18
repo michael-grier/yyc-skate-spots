@@ -205,15 +205,7 @@ export function VisibilityField({
   return (
     <Field label="VISIBILITY" className={className}>
       <Segmented options={options} value={value} onChange={onChange} />
-      {quota ? (
-        <View className="mt-2.5 flex-row items-center gap-1.5 px-1">
-          <LockIcon size={12} color={colors.mute} />
-          <Text className="font-sans-medium text-[12px] text-mute">
-            {quota.used} of {quota.allowed} private spots used
-          </Text>
-        </View>
-      ) : null}
-      <Text className="mt-1 px-1 font-sans text-[12px] leading-[18px] text-mute">
+      <Text className="mt-2.5 px-1 font-sans text-[12px] leading-[18px] text-mute">
         {value === "private" ? (
           "Only you can see it. Skips review, and shares as a map pin instead of a listing."
         ) : exhausted ? (
@@ -224,6 +216,14 @@ export function VisibilityField({
           "On the map for everyone after a quick review."
         )}
       </Text>
+      {quota ? (
+        <View className="mt-1 flex-row items-center gap-1.5 px-1">
+          <LockIcon size={12} color={colors.mute} />
+          <Text className="font-sans-medium text-[12px] text-mute">
+            {quota.used} of {quota.allowed} private spots used
+          </Text>
+        </View>
+      ) : null}
     </Field>
   );
 }

@@ -285,16 +285,31 @@ export default function SpotDetailScreen() {
                 label={publishing ? "Making public…" : "Make public"}
                 disabled={publishing}
                 className="mt-4"
-                onPress={async () => {
-                  setPublishing(true);
-                  try {
-                    await makePublic({ id: spotId });
-                  } catch {
-                    Alert.alert("Couldn't make it public", "Check your connection and try again.");
-                  } finally {
-                    setPublishing(false);
-                  }
-                }}
+                onPress={() =>
+                  Alert.alert(
+                    "Make this spot public?",
+                    "It goes to an admin for review, then onto the map for everyone.",
+                    [
+                      { text: "Cancel", style: "cancel" },
+                      {
+                        text: "Make public",
+                        onPress: async () => {
+                          setPublishing(true);
+                          try {
+                            await makePublic({ id: spotId });
+                          } catch {
+                            Alert.alert(
+                              "Couldn't make it public",
+                              "Check your connection and try again.",
+                            );
+                          } finally {
+                            setPublishing(false);
+                          }
+                        },
+                      },
+                    ],
+                  )
+                }
               />
             </Card>
           ) : null}
