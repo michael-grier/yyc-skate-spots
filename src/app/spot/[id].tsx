@@ -15,7 +15,14 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { BackIcon, LockIcon, MoreIcon, NavigateIcon, ShareIcon } from "@/components/icons";
+import {
+  BackIcon,
+  HammerIcon,
+  LockIcon,
+  MoreIcon,
+  NavigateIcon,
+  ShareIcon,
+} from "@/components/icons";
 import { FavoriteButton } from "@/components/favorite-button";
 import { PhotoCarousel } from "@/components/photo-carousel";
 import { Button } from "@/components/ui/button";
@@ -70,6 +77,7 @@ export default function SpotDetailScreen() {
   const markAdminPhotosSeen = useMutation(api.spots.markAdminPhotosSeen);
   const setAdminPhotoPermission = useMutation(api.spots.setAdminPhotoPermission);
   const makePublic = useMutation(api.spots.makePublic);
+  const setNeedsWork = useMutation(api.spots.setNeedsWork);
   const [publishing, setPublishing] = useState(false);
   const unreadPhotoSpotId =
     spot?.status === "active" && spot.isOwner && spot.adminPhotosUnseen ? spot._id : undefined;
@@ -242,6 +250,25 @@ export default function SpotDetailScreen() {
     ]);
   }
 
+  async function updateNeedsWork(needsWork: boolean) {
+    try {
+      await setNeedsWork({ id: spotId, needsWork });
+    } catch {
+      Alert.alert("Couldn't update the tag", "Check your connection and try again.");
+    }
+  }
+
+  function confirmNeedsWork() {
+    Alert.alert(
+      "Tag as needing work?",
+      "It tells local skaters you're open to them fixing it up. Say what needs doing in the notes.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Tag it", onPress: () => void updateNeedsWork(true) },
+      ],
+    );
+  }
+
   const added = `Added ${formatMonthYear(spot._creationTime)}`;
   const byline = `${added} by ${spot.isOwner ? "you" : spot.createdByName}`;
 
@@ -311,6 +338,27 @@ export default function SpotDetailScreen() {
                   )
                 }
               />
+            </Card>
+          ) : null}
+
+          {spot.needsWork ? (
+            <Card className="mt-4 p-4">
+              <View className="flex-row items-center gap-2">
+                <HammerIcon size={14} color={colors.ink} />
+                <Text className="font-sans-semibold text-[15px] text-ink">Needs work</Text>
+              </View>
+              <Text className="mt-1 font-sans text-[13px] leading-relaxed text-mute">
+                {spot.isOwner
+                  ? "You're open to local skaters fixing this spot up. Say what needs doing in the notes."
+                  : "The person who added this spot is open to local skaters fixing it up. Check the notes for what needs doing."}
+              </Text>
+              {spot.isOwner ? (
+                <Button
+                  label="Remove needs work tag"
+                  className="mt-4"
+                  onPress={() => void updateNeedsWork(false)}
+                />
+              ) : null}
             </Card>
           ) : null}
 
@@ -437,6 +485,11 @@ export default function SpotDetailScreen() {
                   onPress: () =>
                     router.push({ pathname: "/spot/edit/[id]", params: { id: spotId } }),
                 },
+                // Nobody else sees a private spot, so there is no one to fix it up. Removing the
+                // tag lives on the Needs work card instead.
+                ...(spot.isPrivate || spot.needsWork
+                  ? []
+                  : [{ text: "Tag as needs work", onPress: confirmNeedsWork }]),
                 { text: "Delete spot", style: "destructive", onPress: confirmDelete },
                 { text: "Cancel", style: "cancel" },
               ])
