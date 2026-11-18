@@ -76,7 +76,10 @@ export default defineSchema({
     createdByName: v.optional(v.string()),
     // Optional during rollout so existing rows remain valid. Public reads use
     // their moderation row as the fallback until the next review or edit.
-    publicationStatus: v.optional(v.union(v.literal("pending"), v.literal("published"))),
+    // "private" is owner-chosen: visible only to the creator, never reviewed.
+    publicationStatus: v.optional(
+      v.union(v.literal("pending"), v.literal("published"), v.literal("private")),
+    ),
     // Hides a deleted spot while its unbounded favorite rows are removed in
     // scheduled batches. The final batch physically deletes this document.
     deletionRequested: v.optional(v.boolean()),

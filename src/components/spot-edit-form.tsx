@@ -2,6 +2,7 @@ import type { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { useRouter } from "expo-router";
 import { useRef, useState } from "react";
 import {
+  Alert,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -23,10 +24,12 @@ import {
   PhotoStrip,
   SurfaceField,
   TypeCarousel,
+  VisibilityField,
 } from "@/components/spot-fields";
 import { StandardsLine, StandardsSheet } from "@/components/standards-sheet";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import type { PrivateSpotQuota } from "@/lib/private-spot-quota";
 import { MAX_NOTES_LENGTH, MAX_PHOTOS, type SpotFormValues } from "@/lib/spot-form";
 import { useDuplicateCheck } from "@/lib/use-duplicate-check";
 import { type SpotFormSave, type StandardsAcknowledge, useSpotForm } from "@/lib/use-spot-form";
@@ -38,7 +41,22 @@ type SpotEditFormProps = {
   onCancel: () => void;
   onSave: SpotFormSave;
   onAcknowledgeStandards?: StandardsAcknowledge;
+  privateQuota: PrivateSpotQuota | undefined;
 };
+
+/** Other people's favourites of the spot vanish with it, so that is said before it happens. */
+function confirmGoingPrivate() {
+  return new Promise<boolean>((resolve) => {
+    Alert.alert(
+      "Make this spot private?",
+      "It comes off the map for everyone else, and anyone who favourited it loses it.",
+      [
+        { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
+        { text: "Make private", onPress: () => resolve(true) },
+      ],
+    );
+  });
+}
 
 /**
  * Notes lifted out of the form and sized to the space above the keyboard, so
@@ -129,6 +147,7 @@ export function SpotEditForm({
   onCancel,
   onSave,
   onAcknowledgeStandards,
+  privateQuota,
 }: SpotEditFormProps) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -161,6 +180,10 @@ export function SpotEditForm({
       (location.latitude !== initialValues.latitude ||
         location.longitude !== initialValues.longitude);
     if (moved && !(await confirmNotDuplicate(location))) {
+      return;
+    }
+    const goingPrivate = initialValues.visibility === "public" && values.visibility === "private";
+    if (goingPrivate && !(await confirmGoingPrivate())) {
       return;
     }
     await save();
@@ -217,6 +240,12 @@ export function SpotEditForm({
                 onChange={(surface) => setField("surface", surface)}
               />
             </Field>
+            <VisibilityField
+              value={values.visibility}
+              onChange={(visibility) => setField("visibility", visibility)}
+              quota={privateQuota}
+              className="border-t border-white/10 px-4 py-3.5"
+            />
           </Card>
 
           <Field

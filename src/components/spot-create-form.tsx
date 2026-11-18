@@ -23,11 +23,13 @@ import {
   PhotoStrip,
   SurfaceField,
   TypeGrid,
+  VisibilityField,
 } from "@/components/spot-fields";
 import { StandardsLine, StandardsSheet } from "@/components/standards-sheet";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/cn";
+import type { PrivateSpotQuota } from "@/lib/private-spot-quota";
 import {
   EMPTY_SPOT_FORM,
   firstInvalidStep,
@@ -52,6 +54,7 @@ type SpotCreateFormProps = {
   onCancel: () => void;
   onSave: SpotFormSave;
   onAcknowledgeStandards?: StandardsAcknowledge;
+  privateQuota: PrivateSpotQuota | undefined;
 };
 
 /**
@@ -60,7 +63,12 @@ type SpotCreateFormProps = {
  * the top of its own step instead of under the keyboard at the bottom of a
  * six-section scroll.
  */
-export function SpotCreateForm({ onCancel, onSave, onAcknowledgeStandards }: SpotCreateFormProps) {
+export function SpotCreateForm({
+  onCancel,
+  onSave,
+  onAcknowledgeStandards,
+  privateQuota,
+}: SpotCreateFormProps) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const keyboardVisible = useKeyboardVisible();
@@ -249,6 +257,11 @@ export function SpotCreateForm({ onCancel, onSave, onAcknowledgeStandards }: Spo
                   onChange={(surface) => setField("surface", surface)}
                 />
               </Field>
+              <VisibilityField
+                value={values.visibility}
+                onChange={(visibility) => setField("visibility", visibility)}
+                quota={privateQuota}
+              />
             </>
           ) : null}
         </ScrollView>

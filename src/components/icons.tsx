@@ -262,6 +262,24 @@ export function ShareIcon({ size = 24, color }: IconProps) {
   );
 }
 
+export function LockIcon({ size = 24, color }: IconProps) {
+  return (
+    <Svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth={2.4}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <Path d="M7.5 10.5h9a2 2 0 0 1 2 2V19a2 2 0 0 1-2 2h-9a2 2 0 0 1-2-2v-6.5a2 2 0 0 1 2-2z" />
+      <Path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" />
+    </Svg>
+  );
+}
+
 export function MoreIcon({ size = 24, color }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>

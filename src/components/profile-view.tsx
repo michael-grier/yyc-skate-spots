@@ -1,6 +1,7 @@
 import { useClerk, useUser } from "@clerk/expo";
 import { api } from "@convex/_generated/api";
 import { publicDisplayName } from "@convex/displayNames";
+import { PRIVATE_SPOTS_PER_PUBLISHED } from "@convex/privateSpots";
 import type { FunctionReturnType } from "convex/server";
 import { useAction, useQuery } from "convex/react";
 import * as AppleAuthentication from "expo-apple-authentication";
@@ -10,12 +11,13 @@ import { ActivityIndicator, Alert, FlatList, Pressable, Text, View } from "react
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { DisplayNameSheet } from "@/components/display-name-sheet";
-import { ChevronRightIcon } from "@/components/icons";
+import { ChevronRightIcon, LockIcon } from "@/components/icons";
 import { PublicSiteLinks } from "@/components/public-site-links";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/cn";
 import { appIdentity } from "@/lib/env";
+import { privateSpotQuota } from "@/lib/private-spot-quota";
 import { BUST_FACTOR_COLORS, BUST_FACTOR_LABELS, formatSpotTypes } from "@/lib/spot-labels";
 import { reportReasonLabel } from "@/lib/spot-standards";
 import { colors } from "@/theme/colors";
@@ -94,6 +96,7 @@ export function ProfileView() {
     activeList === "favorites"
       ? favorites?.map((spot) => ({ status: "active" as const, ...spot, adminPhotosUnseen: false }))
       : mySpots;
+  const privateQuota = mySpots ? privateSpotQuota(mySpots) : null;
   const emptyMessage =
     activeList === "favorites"
       ? "No favourites yet. Tap the heart on a spot to save it here."
@@ -258,6 +261,24 @@ export function ProfileView() {
               </Card>
             ) : null}
 
+            {privateQuota ? (
+              <Card className="mt-3 flex-row items-center gap-3 p-4">
+                <LockIcon size={16} color={colors.silver} />
+                <View className="flex-1">
+                  <Text className="font-sans-semibold text-[15px] text-ink">Private spots</Text>
+                  <Text className="mt-1 font-sans text-[12px] text-mute">
+                    Each spot you publish adds {PRIVATE_SPOTS_PER_PUBLISHED} more.
+                  </Text>
+                </View>
+                <Text
+                  accessibilityLabel={`${privateQuota.used} of ${privateQuota.allowed} private spots used`}
+                  className="font-sans-semibold text-[15px] text-ink"
+                >
+                  {privateQuota.used} <Text className="text-mute">of {privateQuota.allowed}</Text>
+                </Text>
+              </Card>
+            ) : null}
+
             <View className="mt-7 flex-row rounded-2xl border border-white/10 bg-card p-1">
               <ProfileSegment
                 label="Favourites"
@@ -320,6 +341,13 @@ export function ProfileView() {
                     </Text>
                     <Text className="mt-0.5 font-sans text-[11px] text-mute">
                       Visible only to you and administrators
+                    </Text>
+                  </View>
+                ) : item.status === "private" ? (
+                  <View className="mt-1 flex-row items-center gap-1.5">
+                    <LockIcon size={12} color={colors.mute} />
+                    <Text numberOfLines={1} className="font-sans text-[12px] text-mute">
+                      Private · {formatSpotTypes(item.types)}
                     </Text>
                   </View>
                 ) : (

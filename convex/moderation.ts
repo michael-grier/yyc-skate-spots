@@ -95,12 +95,17 @@ export const acknowledgeStandards = mutation({
   },
 });
 
-/** The admin queue's spots: non-deleted, newest first. */
+/** The admin queue's spots: non-deleted and not private, newest first. */
 async function queueSpots(ctx: QueryCtx) {
   return await ctx.db
     .query("spots")
     .order("desc")
-    .filter((q) => q.neq(q.field("deletionRequested"), true))
+    .filter((q) =>
+      q.and(
+        q.neq(q.field("deletionRequested"), true),
+        q.neq(q.field("publicationStatus"), "private"),
+      ),
+    )
     .take(MAX_SPOTS_LISTED);
 }
 
@@ -172,7 +177,8 @@ export const getSpot = query({
     await requireAdmin(ctx);
     const id = ctx.db.normalizeId("spots", args.id);
     const spot = id ? await ctx.db.get("spots", id) : null;
-    if (!spot || spot.deletionRequested) {
+    // Private spots are the owner's alone, admins included.
+    if (!spot || spot.deletionRequested || spot.publicationStatus === "private") {
       return null;
     }
     const [moderation, contributor, reports] = await Promise.all([
@@ -232,7 +238,8 @@ export const markMeetsStandards = mutation({
   handler: async (ctx, args) => {
     const identity = await requireAdmin(ctx);
     const spot = await ctx.db.get("spots", args.spotId);
-    if (!spot || spot.deletionRequested) {
+    // A spot made private after an admin opened it is theirs alone again.
+    if (!spot || spot.deletionRequested || spot.publicationStatus === "private") {
       throw new Error("Spot not found.");
     }
     await ctx.db.patch("spots", spot._id, { publicationStatus: "published" });
@@ -272,7 +279,8 @@ export const removeSpot = mutation({
   handler: async (ctx, args) => {
     const identity = await requireAdmin(ctx);
     const spot = await ctx.db.get("spots", args.spotId);
-    if (!spot || spot.deletionRequested) {
+    // A spot made private after an admin opened it is theirs alone again.
+    if (!spot || spot.deletionRequested || spot.publicationStatus === "private") {
       throw new Error("Spot not found.");
     }
     const details = args.details?.trim();

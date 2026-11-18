@@ -8,7 +8,9 @@ import {
   queueEditedSpot,
   recordNewSpotModeration,
   spotIsPublished,
+  spotModerationFor,
 } from "./moderationModel";
+import { PRIVATE_SPOTS_PER_PUBLISHED, privateSpotAllowance } from "./privateSpots";
 import { contributorName, type profileFor } from "./profileModel";
 import { bustFactor, spotType, surface } from "./schema";
 
@@ -34,6 +36,8 @@ const spotFields = v.object({
   longitude: v.number(),
   photoIds: v.array(v.id("_storage")),
   allowAdminPhotos: v.optional(v.boolean()),
+  // Optional so clients from before private spots keep submitting public ones.
+  visibility: v.optional(v.union(v.literal("public"), v.literal("private"))),
 });
 
 /** Loads a spot and verifies the caller owns it; throws otherwise. */
@@ -49,6 +53,39 @@ async function requireOwnedSpot(ctx: MutationCtx, id: Id<"spots">, contributionR
     throw new Error("Only the person who added a spot can change it.");
   }
   return { spot, identity };
+}
+
+/**
+ * Refuses one more private spot beyond the caller's allowance. `excludeId` is
+ * the spot being flipped, so its current state counts on neither side.
+ */
+async function assertPrivateAllowance(
+  ctx: MutationCtx,
+  owner: string,
+  excludeId: Id<"spots"> | null,
+) {
+  const spots = await ctx.db
+    .query("spots")
+    .withIndex("by_createdBy", (q) => q.eq("createdBy", owner))
+    .take(MAX_SPOTS_LISTED);
+  let privateCount = 0;
+  let publishedCount = 0;
+  for (const spot of spots) {
+    if (spot.deletionRequested || spot._id === excludeId) {
+      continue;
+    }
+    if (spot.publicationStatus === "private") {
+      privateCount += 1;
+    } else if (await spotIsPublished(ctx, spot)) {
+      publishedCount += 1;
+    }
+  }
+  const allowance = privateSpotAllowance(publishedCount);
+  if (privateCount >= allowance) {
+    throw new Error(
+      `You've used all ${allowance} of your private spots. Each spot you publish adds ${PRIVATE_SPOTS_PER_PUBLISHED} more.`,
+    );
+  }
 }
 
 function validateSpotFields(fields: {
@@ -157,10 +194,10 @@ export async function scheduleSpotDeletion(ctx: MutationCtx, spotId: Id<"spots">
 }
 
 /**
- * All spots plus a first-photo URL for the map's preview card.
- * Raw photoIds and the owner's identity key never leave the server —
- * exposing storage IDs is what would let another user attach (and later
- * destroy) someone else's photos.
+ * Published spots, plus the caller's private ones, with a first-photo URL for
+ * the map's preview card. Raw photoIds and the owner's identity key never
+ * leave the server — exposing storage IDs is what would let another user
+ * attach (and later destroy) someone else's photos.
  */
 export const list = query({
   args: {},
@@ -168,33 +205,41 @@ export const list = query({
     // isMine lets the map style the caller's own pins; the query is
     // identity-aware, so it re-runs on sign-in and sign-out.
     const identity = await ctx.auth.getUserIdentity();
-    const publishedSpots: Doc<"spots">[] = [];
+    const visibleSpots: Doc<"spots">[] = [];
     const profiles = new Map<string, ReturnType<typeof profileFor>>();
-    // Iteration lets pending rows be skipped before the public result cap.
+    // Iteration lets hidden rows be skipped before the result cap.
     for await (const spot of ctx.db.query("spots").order("desc")) {
-      if (spot.deletionRequested || !(await spotIsPublished(ctx, spot))) {
+      if (spot.deletionRequested) {
         continue;
       }
-      publishedSpots.push(spot);
-      if (publishedSpots.length === MAX_SPOTS_LISTED) {
+      const visible =
+        spot.publicationStatus === "private"
+          ? identity !== null && spot.createdBy === identity.tokenIdentifier
+          : await spotIsPublished(ctx, spot);
+      if (!visible) {
+        continue;
+      }
+      visibleSpots.push(spot);
+      if (visibleSpots.length === MAX_SPOTS_LISTED) {
         break;
       }
     }
     return Promise.all(
-      publishedSpots.map(
+      visibleSpots.map(
         async ({
           photoIds,
           createdBy,
           allowAdminPhotos: _allowAdminPhotos,
           adminPhotosAddedAt: _adminPhotosAddedAt,
           adminPhotosUnseen: _adminPhotosUnseen,
-          publicationStatus: _status,
+          publicationStatus,
           deletionRequested: _deletionRequested,
           ...spot
         }) => ({
           ...spot,
           createdByName: await contributorName(ctx, createdBy, spot.createdByName, profiles),
           isMine: identity !== null && createdBy === identity.tokenIdentifier,
+          isPrivate: publicationStatus === "private",
           previewPhotoUrl: photoIds.length > 0 ? await ctx.storage.getUrl(photoIds[0]) : null,
         }),
       ),
@@ -226,7 +271,12 @@ export const mine = query({
       spots
         .filter((spot) => !spot.deletionRequested)
         .map(async (spot) => ({
-          status: (await spotIsPublished(ctx, spot)) ? ("active" as const) : ("pending" as const),
+          status:
+            spot.publicationStatus === "private"
+              ? ("private" as const)
+              : (await spotIsPublished(ctx, spot))
+                ? ("active" as const)
+                : ("pending" as const),
           _id: spot._id,
           _creationTime: spot._creationTime,
           name: spot.name,
@@ -293,7 +343,9 @@ export const get = query({
     }
     const identity = await ctx.auth.getUserIdentity();
     const isOwner = identity !== null && spot.createdBy === identity.tokenIdentifier;
+    const isPrivate = spot.publicationStatus === "private";
     const isPublished = await spotIsPublished(ctx, spot);
+    // Private spots are unpublished, so this also keeps them to their owner.
     if (!isPublished && !isOwner) {
       return null;
     }
@@ -325,7 +377,8 @@ export const get = query({
       photoUrls,
       isOwner,
       isFavorite: favorite !== null,
-      isPendingReview: !isPublished,
+      isPendingReview: !isPublished && !isPrivate,
+      isPrivate,
       photoIds: isOwner ? photoIds : null,
       ...(isOwner
         ? {
@@ -341,25 +394,39 @@ export const get = query({
 export const create = mutation({
   args: spotFields.fields,
   handler: async (ctx, args) => {
+    const { visibility = "public", ...fields } = args;
+    const isPrivate = visibility === "private";
     const identity = await requireCanContribute(ctx);
-    validateSpotFields(args);
-    await assertPhotosUnclaimed(ctx, args.photoIds, null);
-    await consumeUploads(ctx, identity.tokenIdentifier, args.photoIds);
+    validateSpotFields(fields);
+    if (isPrivate) {
+      await assertPrivateAllowance(ctx, identity.tokenIdentifier, null);
+    }
+    await assertPhotosUnclaimed(ctx, fields.photoIds, null);
+    await consumeUploads(ctx, identity.tokenIdentifier, fields.photoIds);
     const id = await ctx.db.insert("spots", {
-      ...args,
-      name: args.name.trim(),
-      allowAdminPhotos: args.photoIds.length === 0 && args.allowAdminPhotos === true,
+      ...fields,
+      name: fields.name.trim(),
+      // Admins never see a private spot, so the permission is meaningless there.
+      allowAdminPhotos:
+        !isPrivate && fields.photoIds.length === 0 && fields.allowAdminPhotos === true,
       createdBy: identity.tokenIdentifier,
       createdByName: await contributorName(ctx, identity.tokenIdentifier, identity.name),
       // Only the verified Clerk role can skip review; client arguments cannot set this status.
-      publicationStatus: identity.role === "admin" ? "published" : "pending",
+      publicationStatus: isPrivate
+        ? "private"
+        : identity.role === "admin"
+          ? "published"
+          : "pending",
     });
-    await claimPhotos(ctx, args.photoIds, id);
+    await claimPhotos(ctx, fields.photoIds, id);
     const spot = await ctx.db.get("spots", id);
     if (!spot) {
       throw new Error("Spot not found after creation.");
     }
-    await recordNewSpotModeration(ctx, spot);
+    // Nobody else can see a private spot, so there is nothing to review.
+    if (!isPrivate) {
+      await recordNewSpotModeration(ctx, spot);
+    }
     return id;
   },
 });
@@ -371,7 +438,7 @@ export const update = mutation({
     expectedAdminPhotosAddedAt: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const { id, expectedAdminPhotosAddedAt, ...fields } = args;
+    const { id, expectedAdminPhotosAddedAt, visibility = "public", ...fields } = args;
     const { spot: existing, identity } = await requireOwnedSpot(ctx, id, true);
     // An editor opened before an admin upload must not silently drop the new photos.
     if (existing.adminPhotosAddedAt !== expectedAdminPhotosAddedAt) {
@@ -380,6 +447,18 @@ export const update = mutation({
       );
     }
     validateSpotFields(fields);
+    const wasPrivate = existing.publicationStatus === "private";
+    const isPrivate = visibility === "private";
+    if (isPrivate && !wasPrivate) {
+      // Going private would otherwise take a reported spot out of the queue unreviewed.
+      const moderation = await spotModerationFor(ctx, id);
+      if ((moderation?.openReportCount ?? 0) > 0) {
+        throw new Error(
+          "This spot has open reports. It can be made private once an admin has reviewed them.",
+        );
+      }
+      await assertPrivateAllowance(ctx, identity.tokenIdentifier, id);
+    }
     await assertPhotosUnclaimed(ctx, fields.photoIds, id);
     const before = new Set(existing.photoIds);
     const after = new Set(fields.photoIds);
@@ -396,24 +475,59 @@ export const update = mutation({
     await ctx.db.replace("spots", id, {
       ...fields,
       name: fields.name.trim(),
-      allowAdminPhotos: fields.photoIds.length === 0 && fields.allowAdminPhotos === true,
+      allowAdminPhotos:
+        !isPrivate && fields.photoIds.length === 0 && fields.allowAdminPhotos === true,
       adminPhotosAddedAt: existing.adminPhotosAddedAt,
       adminPhotosUnseen: fields.photoIds.length > 0 && existing.adminPhotosUnseen === true,
       createdBy: existing.createdBy,
       createdByName: existing.createdByName,
       // Only owners can edit, so an admin here is editing their own spot, which skips review
       // just as creating it did.
+      publicationStatus: isPrivate
+        ? "private"
+        : identity.role === "admin"
+          ? "published"
+          : "pending",
+    });
+    const updated = await ctx.db.get("spots", id);
+    if (!updated) {
+      throw new Error("Spot not found after update.");
+    }
+    if (isPrivate) {
+      // Open reports were ruled out above, so this only drops the review row.
+      if (!wasPrivate) {
+        await clearSpotModeration(ctx, id);
+      }
+    } else if (wasPrivate) {
+      // Its first public submission, so it queues as new rather than edited.
+      await recordNewSpotModeration(ctx, updated, Date.now());
+    } else {
+      await queueEditedSpot(
+        ctx,
+        updated,
+        identity.role === "admin" ? identity.tokenIdentifier : undefined,
+      );
+    }
+    return null;
+  },
+});
+
+/** One tap from the detail screen; the same transition as editing visibility to public. */
+export const makePublic = mutation({
+  args: { id: v.id("spots") },
+  handler: async (ctx, { id }) => {
+    const { spot, identity } = await requireOwnedSpot(ctx, id, true);
+    if (spot.publicationStatus !== "private") {
+      throw new Error("This spot is already public.");
+    }
+    await ctx.db.patch("spots", id, {
       publicationStatus: identity.role === "admin" ? "published" : "pending",
     });
     const updated = await ctx.db.get("spots", id);
     if (!updated) {
       throw new Error("Spot not found after update.");
     }
-    await queueEditedSpot(
-      ctx,
-      updated,
-      identity.role === "admin" ? identity.tokenIdentifier : undefined,
-    );
+    await recordNewSpotModeration(ctx, updated, Date.now());
     return null;
   },
 });
@@ -498,6 +612,9 @@ export const setAdminPhotoPermission = mutation({
   handler: async (ctx, { id, allowed }) => {
     const { spot } = await requireOwnedSpot(ctx, id, allowed);
     if (allowed && spot.photoIds.length > 0) throw new Error("This spot already has photos.");
+    if (allowed && spot.publicationStatus === "private") {
+      throw new Error("Admins can't see private spots, so they can't add photos to them.");
+    }
     await ctx.db.patch("spots", id, { allowAdminPhotos: allowed });
     return null;
   },
