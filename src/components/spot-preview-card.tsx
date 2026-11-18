@@ -1,7 +1,7 @@
 import { Image } from "expo-image";
 import { Pressable, Text, View } from "react-native";
 
-import { ChevronRightIcon, LockIcon } from "@/components/icons";
+import { ChevronRightIcon, HammerIcon, LockIcon } from "@/components/icons";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/cn";
 import { formatDistance } from "@/lib/geo";
@@ -24,6 +24,7 @@ type SpotPreviewCardProps = {
   mine?: boolean;
   /** Replaces the "Your spot" note: private implies yours. */
   isPrivate?: boolean;
+  needsWork?: boolean;
   /** When absent the card is static: no chevron, no button semantics. */
   onPress?: () => void;
 };
@@ -37,6 +38,7 @@ export function SpotPreviewCard({
   distanceKm,
   mine,
   isPrivate,
+  needsWork,
   onPress,
 }: SpotPreviewCardProps) {
   const subtitle = [
@@ -73,14 +75,23 @@ export function SpotPreviewCard({
             {subtitle}
           </Text>
         </View>
-        <View className="mt-1.5 flex-row items-center gap-1.5">
-          <View
-            className="h-1.5 w-1.5 rounded-full"
-            style={{ backgroundColor: BUST_FACTOR_COLORS[bustFactor] }}
-          />
-          <Text className="font-sans text-[12px] text-mute">
-            {BUST_FACTOR_LABELS[bustFactor]} bust factor
-          </Text>
+        {/* Wraps on narrow phones, where a photo leaves too little room for both groups. */}
+        <View className="mt-1.5 flex-row flex-wrap items-center gap-x-3 gap-y-1">
+          <View className="flex-row items-center gap-1.5">
+            <View
+              className="h-1.5 w-1.5 rounded-full"
+              style={{ backgroundColor: BUST_FACTOR_COLORS[bustFactor] }}
+            />
+            <Text className="font-sans text-[12px] text-mute">
+              {BUST_FACTOR_LABELS[bustFactor]} bust factor
+            </Text>
+          </View>
+          {needsWork ? (
+            <View className="flex-row items-center gap-1.5">
+              <HammerIcon size={12} color={colors.mute} />
+              <Text className="font-sans text-[12px] text-mute">Needs work</Text>
+            </View>
+          ) : null}
         </View>
       </View>
       {onPress ? <ChevronRightIcon size={18} color={colors.mute} /> : null}
