@@ -502,3 +502,61 @@ describe("private spots", () => {
     ).rejects.toThrow(/open reports/);
   });
 });
+
+describe("needs work tag", () => {
+  test("only the owner toggles it, and it doesn't send the spot back to review", async () => {
+    const t = convexTest(schema, modules);
+    const asAlice = t.withIdentity({ subject: "alice" });
+    const asBob = t.withIdentity({ subject: "bob" });
+    const asAdmin = t.withIdentity({ subject: "admin", role: "admin" });
+    await acknowledgeStandards(asAlice);
+    await acknowledgeStandards(asBob);
+    const id = await asAlice.mutation(api.spots.create, SPOT);
+    await asAdmin.mutation(api.moderation.markMeetsStandards, { spotId: id });
+    expect(await t.query(api.spots.list, {})).toMatchObject([{ needsWork: false }]);
+
+    await expect(
+      asBob.mutation(api.spots.setNeedsWork, { id, needsWork: true }),
+    ).rejects.toThrow(/person who added/);
+    await asAlice.mutation(api.spots.setNeedsWork, { id, needsWork: true });
+    expect(await t.query(api.spots.list, {})).toMatchObject([{ needsWork: true }]);
+    expect(await t.query(api.spots.get, { id })).toMatchObject({ needsWork: true });
+    expect(await asAdmin.query(api.moderation.reviewCount, {})).toBe(0);
+
+    await asAlice.mutation(api.spots.setNeedsWork, { id, needsWork: false });
+    expect(await t.query(api.spots.list, {})).toMatchObject([{ needsWork: false }]);
+  });
+
+  test("an edit keeps the tag", async () => {
+    const t = convexTest(schema, modules);
+    const asAlice = t.withIdentity({ subject: "alice" });
+    await acknowledgeStandards(asAlice);
+    const id = await asAlice.mutation(api.spots.create, { ...SPOT, needsWork: true });
+
+    await asAlice.mutation(api.spots.update, { id, ...SPOT, name: "Renamed" });
+    expect(await asAlice.query(api.spots.get, { id })).toMatchObject({
+      name: "Renamed",
+      needsWork: true,
+    });
+  });
+
+  test("a private spot can't carry the tag", async () => {
+    const t = convexTest(schema, modules);
+    const asAlice = t.withIdentity({ subject: "alice" });
+    await acknowledgeStandards(asAlice);
+    const PRIVATE = { ...SPOT, visibility: "private" as const };
+
+    await expect(
+      asAlice.mutation(api.spots.create, { ...PRIVATE, needsWork: true }),
+    ).rejects.toThrow(/private spot/);
+    const privateId = await asAlice.mutation(api.spots.create, PRIVATE);
+    await expect(
+      asAlice.mutation(api.spots.setNeedsWork, { id: privateId, needsWork: true }),
+    ).rejects.toThrow(/private spot/);
+
+    // Going private drops the tag rather than refusing the edit.
+    const id = await asAlice.mutation(api.spots.create, { ...SPOT, needsWork: true });
+    await asAlice.mutation(api.spots.update, { id, ...PRIVATE });
+    expect(await asAlice.query(api.spots.get, { id })).toMatchObject({ needsWork: false });
+  });
+});

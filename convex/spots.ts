@@ -55,6 +55,9 @@ async function requireOwnedSpot(ctx: MutationCtx, id: Id<"spots">, contributionR
   return { spot, identity };
 }
 
+const PRIVATE_NEEDS_WORK_ERROR =
+  "Only you can see a private spot, so it can't be tagged as needing work.";
+
 /**
  * Refuses one more private spot beyond the caller's allowance. `excludeId` is
  * the spot being flipped, so its current state counts on neither side.
@@ -234,12 +237,14 @@ export const list = query({
           adminPhotosUnseen: _adminPhotosUnseen,
           publicationStatus,
           deletionRequested: _deletionRequested,
+          needsWork,
           ...spot
         }) => ({
           ...spot,
           createdByName: await contributorName(ctx, createdBy, spot.createdByName, profiles),
           isMine: identity !== null && createdBy === identity.tokenIdentifier,
           isPrivate: publicationStatus === "private",
+          needsWork: needsWork === true,
           previewPhotoUrl: photoIds.length > 0 ? await ctx.storage.getUrl(photoIds[0]) : null,
         }),
       ),
@@ -368,11 +373,13 @@ export const get = query({
       createdBy: _createdBy,
       publicationStatus: _publicationStatus,
       deletionRequested: _deletionRequested,
+      needsWork,
       ...publicFields
     } = spot;
     return {
       status: "active" as const,
       ...publicFields,
+      needsWork: needsWork === true,
       createdByName: await contributorName(ctx, spot.createdBy, spot.createdByName),
       photoUrls,
       isOwner,
@@ -392,12 +399,16 @@ export const get = query({
 });
 
 export const create = mutation({
-  args: spotFields.fields,
+  // Only creation takes the tag; afterwards it changes through setNeedsWork.
+  args: { ...spotFields.fields, needsWork: v.optional(v.boolean()) },
   handler: async (ctx, args) => {
-    const { visibility = "public", ...fields } = args;
+    const { visibility = "public", needsWork = false, ...fields } = args;
     const isPrivate = visibility === "private";
     const identity = await requireCanContribute(ctx);
     validateSpotFields(fields);
+    if (isPrivate && needsWork) {
+      throw new Error(PRIVATE_NEEDS_WORK_ERROR);
+    }
     if (isPrivate) {
       await assertPrivateAllowance(ctx, identity.tokenIdentifier, null);
     }
@@ -409,6 +420,7 @@ export const create = mutation({
       // Admins never see a private spot, so the permission is meaningless there.
       allowAdminPhotos:
         !isPrivate && fields.photoIds.length === 0 && fields.allowAdminPhotos === true,
+      needsWork,
       createdBy: identity.tokenIdentifier,
       createdByName: await contributorName(ctx, identity.tokenIdentifier, identity.name),
       // Only the verified Clerk role can skip review; client arguments cannot set this status.
@@ -479,6 +491,8 @@ export const update = mutation({
         !isPrivate && fields.photoIds.length === 0 && fields.allowAdminPhotos === true,
       adminPhotosAddedAt: existing.adminPhotosAddedAt,
       adminPhotosUnseen: fields.photoIds.length > 0 && existing.adminPhotosUnseen === true,
+      // The edit form doesn't carry the tag, so keep it, unless the spot is going private.
+      needsWork: !isPrivate && existing.needsWork === true,
       createdBy: existing.createdBy,
       createdByName: existing.createdByName,
       // Only owners can edit, so an admin here is editing their own spot, which skips review
@@ -616,6 +630,22 @@ export const setAdminPhotoPermission = mutation({
       throw new Error("Admins can't see private spots, so they can't add photos to them.");
     }
     await ctx.db.patch("spots", id, { allowAdminPhotos: allowed });
+    return null;
+  },
+});
+
+/**
+ * The tag is the owner's consent rather than new spot content, so like photo
+ * permission it changes without sending the spot back to review.
+ */
+export const setNeedsWork = mutation({
+  args: { id: v.id("spots"), needsWork: v.boolean() },
+  handler: async (ctx, { id, needsWork }) => {
+    const { spot } = await requireOwnedSpot(ctx, id, needsWork);
+    if (needsWork && spot.publicationStatus === "private") {
+      throw new Error(PRIVATE_NEEDS_WORK_ERROR);
+    }
+    await ctx.db.patch("spots", id, { needsWork });
     return null;
   },
 });
