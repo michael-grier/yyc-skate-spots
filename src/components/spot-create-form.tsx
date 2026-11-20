@@ -107,6 +107,9 @@ export function SpotCreateForm({
   const editingNotes = keyboardVisible && step === "details";
 
   async function goNext() {
+    // The footer sits outside the ScrollView, so tapping Next leaves the keyboard
+    // up, and it would cover any error this step is about to show.
+    Keyboard.dismiss();
     const stepErrors = validateSpotStep(values, step);
     setErrors(stepErrors);
     if (Object.keys(stepErrors).length > 0) {
