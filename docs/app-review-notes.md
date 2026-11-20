@@ -60,7 +60,7 @@ Contributor demo: Sign in > enter the supplied email > Sign in with a password >
 
 Registration: Sign in > new email > Continue > emailed code > Verify. Apple/Google sign-in are also available. Back to sign in or switching app tabs resets the form, retaining email. Opening Mail preserves verification. Password sign-in exists only for these operator-managed demo accounts.
 
-Contributor submissions/edits stay private until admin approval. Report another user's spot via Spot not right? > Report > reason > Send report. The Dead spot reason requires 1–3 private evidence photos. Signed-out users see sign-in first, then continue directly to the report.
+Contributor submissions/edits stay private until admin approval. The owner-only Needs work tag is a fixed label with no free text, so it changes without review. Report another user's spot via Spot not right? > Report > reason > Send report. The Dead spot reason requires 1–3 private evidence photos. Signed-out users see sign-in first, then continue directly to the report.
 
 Admin demo email: [ADMIN DEMO EMAIL]
 Admin demo password: [ADMIN DEMO PASSWORD]
@@ -95,7 +95,9 @@ Standards: https://yycskatespots.com/standards
 
 YYC Skate Spots holds ordinary contributors' new spots and changed listings out of the public map, list, and spot
 pages until an administrator marks it as meeting the spot standards. The contributor and
-administrators can see the pending version while it is reviewed.
+administrators can see the pending version while it is reviewed. The one exception is the Needs work
+tag: it is a fixed, owner-only label with no free text, so turning it on or off does not send a
+listing back to review.
 
 Before their first spot submission or listing change, contributors must accept the spot standards.
 The app records the current policy version on their account, and the Convex backend rejects spot
