@@ -9,6 +9,7 @@ const mockToggleFavorite = jest.fn();
 const mockRemoveSpot = jest.fn();
 const mockMarkPhotosSeen = jest.fn();
 const mockSetPhotoPermission = jest.fn();
+const mockSetNeedsWork = jest.fn();
 const mockAuthState = { isLoaded: true, isSignedIn: false };
 const mockSpot = {
   _id: "spot-1" as Id<"spots">,
@@ -28,6 +29,7 @@ const mockSpot = {
   adminPhotosUnseen: false,
   adminPhotosAddedAt: 123,
   allowAdminPhotos: false,
+  needsWork: false,
 };
 
 jest.mock("@clerk/expo", () => ({ useAuth: () => mockAuthState }));
@@ -45,6 +47,7 @@ jest.mock("convex/react", () => {
       if (name === "favorites:toggle") return mockToggleFavorite;
       if (name === "spots:markAdminPhotosSeen") return mockMarkPhotosSeen;
       if (name === "spots:setAdminPhotoPermission") return mockSetPhotoPermission;
+      if (name === "spots:setNeedsWork") return mockSetNeedsWork;
       return mockRemoveSpot;
     },
   };
@@ -64,6 +67,8 @@ beforeEach(() => {
   mockSpot.isPendingReview = false;
   mockSpot.adminPhotosUnseen = false;
   mockSpot.allowAdminPhotos = false;
+  mockSpot.needsWork = false;
+  mockSetNeedsWork.mockResolvedValue(null);
   mockMarkPhotosSeen.mockResolvedValue(null);
   mockSetPhotoPermission.mockResolvedValue(null);
   mockToggleFavorite.mockResolvedValue(true);
@@ -146,13 +151,8 @@ test.each([false, true])(
   async (signedIn) => {
     mockAuthState.isSignedIn = signedIn;
     await render(<SpotDetailScreen />);
-    await fireEvent.press(screen.getByRole("button", { name: "Report dead spot" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Report this spot" }));
     expect(mockPush).toHaveBeenCalledWith({
-      pathname: "/spot/report/[id]",
-      params: { id: "spot-1", kind: "dead" },
-    });
-    await fireEvent.press(screen.getByRole("button", { name: "Report another problem" }));
-    expect(mockPush).toHaveBeenLastCalledWith({
       pathname: "/spot/report/[id]",
       params: { id: "spot-1" },
     });
@@ -178,4 +178,13 @@ test("lets the owner withdraw unused photo permission", async () => {
   await render(<SpotDetailScreen />);
   await fireEvent.press(screen.getByRole("button", { name: "Withdraw photo permission" }));
   expect(mockSetPhotoPermission).toHaveBeenCalledWith({ id: "spot-1", allowed: false });
+});
+
+test("lets the owner remove the needs work tag from the card", async () => {
+  mockAuthState.isSignedIn = true;
+  mockSpot.isOwner = true;
+  mockSpot.needsWork = true;
+  await render(<SpotDetailScreen />);
+  await fireEvent.press(screen.getByRole("button", { name: "Remove needs work tag" }));
+  expect(mockSetNeedsWork).toHaveBeenCalledWith({ id: "spot-1", needsWork: false });
 });

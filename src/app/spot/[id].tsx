@@ -2,7 +2,7 @@ import { useAuth } from "@clerk/expo";
 import { api } from "@convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -28,6 +28,7 @@ import { PhotoCarousel } from "@/components/photo-carousel";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Hairline } from "@/components/ui/hairline";
+import { cn } from "@/lib/cn";
 import { formatMonthYear } from "@/lib/dates";
 import { distanceKm, formatDistance } from "@/lib/geo";
 import { openDirections } from "@/lib/open-directions";
@@ -65,6 +66,55 @@ function Fact({ label, value, dotColor, column }: FactProps) {
         </Text>
       </View>
     </View>
+  );
+}
+
+type SpotRow = {
+  title: string;
+  body: string;
+  icon?: ReactNode;
+  /** The visible label is one word, so screen readers get the full action instead. */
+  action?: { label: string; accessibilityLabel: string; onPress: () => void };
+};
+
+/** Condensed rows with small actions: the owner's settings, or a visitor's options. */
+function RowCard({ label, rows }: { label: string; rows: (SpotRow | false)[] }) {
+  const visible = rows.filter((row) => row !== false);
+  if (visible.length === 0) return null;
+  return (
+    <Card className="mt-5 px-4 pb-1 pt-4">
+      <Text className="font-sans-medium text-[11px] text-mute">{label}</Text>
+      {visible.map((row, index) => (
+        <View
+          key={row.title}
+          className={cn(
+            "flex-row items-center gap-3 py-3",
+            index > 0 && "border-t border-white/10",
+          )}
+        >
+          <View className="flex-1">
+            <View className="flex-row items-center gap-1.5">
+              {row.icon}
+              <Text className="font-sans-semibold text-[14px] text-ink">{row.title}</Text>
+            </View>
+            <Text className="mt-0.5 font-sans text-[12px] leading-[17px] text-mute">
+              {row.body}
+            </Text>
+          </View>
+          {row.action ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={row.action.accessibilityLabel}
+              hitSlop={8}
+              onPress={row.action.onPress}
+              className="rounded-full border border-white/15 px-3 py-2 active:opacity-80"
+            >
+              <Text className="font-sans-semibold text-[12px] text-silver">{row.action.label}</Text>
+            </Pressable>
+          ) : null}
+        </View>
+      ))}
+    </Card>
   );
 }
 
@@ -254,7 +304,7 @@ export default function SpotDetailScreen() {
     try {
       await setNeedsWork({ id: spotId, needsWork });
     } catch {
-      Alert.alert("Couldn't update the tag", "Check your connection and try again.");
+      Alert.alert("Couldn't update the tag", "Try again.");
     }
   }
 
@@ -269,6 +319,7 @@ export default function SpotDetailScreen() {
     );
   }
 
+  const needsWorkIcon = <HammerIcon size={13} color={colors.ink} />;
   const added = `Added ${formatMonthYear(spot._creationTime)}`;
   const byline = `${added} by ${spot.isOwner ? "you" : spot.createdByName}`;
 
@@ -288,6 +339,12 @@ export default function SpotDetailScreen() {
             {spot.name}
           </Text>
           {address ? <Text className="mt-1 font-sans text-[14px] text-mute">{address}</Text> : null}
+          {spot.needsWork ? (
+            <View className="mt-2.5 flex-row items-center gap-1.5 self-start rounded-full border border-white/20 bg-white/10 px-3 py-1.5">
+              <HammerIcon size={12} color={colors.ink} />
+              <Text className="font-sans-semibold text-[12px] text-ink">Needs work</Text>
+            </View>
+          ) : null}
 
           {spot.isPendingReview ? (
             <Card className="mt-4 border-bust-medium/30 p-4">
@@ -341,27 +398,6 @@ export default function SpotDetailScreen() {
             </Card>
           ) : null}
 
-          {spot.needsWork ? (
-            <Card className="mt-4 p-4">
-              <View className="flex-row items-center gap-2">
-                <HammerIcon size={14} color={colors.ink} />
-                <Text className="font-sans-semibold text-[15px] text-ink">Needs work</Text>
-              </View>
-              <Text className="mt-1 font-sans text-[13px] leading-relaxed text-mute">
-                {spot.isOwner
-                  ? "You're open to local skaters fixing this spot up. Say what needs doing in the notes."
-                  : "The person who added this spot is open to local skaters fixing it up. Check the notes for what needs doing."}
-              </Text>
-              {spot.isOwner ? (
-                <Button
-                  label="Remove needs work tag"
-                  className="mt-4"
-                  onPress={() => void updateNeedsWork(false)}
-                />
-              ) : null}
-            </Card>
-          ) : null}
-
           <View className="mt-4 flex-row flex-wrap">
             <Fact label="Type" value={formatSpotTypes(spot.types)} column={0} />
             <Fact
@@ -390,52 +426,57 @@ export default function SpotDetailScreen() {
           ) : null}
           <Text className="mt-4 font-sans text-[12px] text-mute">{byline}</Text>
 
-          {spot.isOwner && spot.allowAdminPhotos ? (
-            <Card className="mt-5 p-4">
-              <Text className="font-sans-semibold text-[14px] text-ink">Admin photos allowed</Text>
-              <Text className="mt-2 font-sans text-[13px] text-mute">
-                YYC Skate Spots has permission to add photos to this spot if they are able to.
-              </Text>
-              <Button
-                label="Withdraw photo permission"
-                className="mt-4"
-                onPress={() => {
-                  void setAdminPhotoPermission({ id: spotId, allowed: false }).catch(() =>
-                    Alert.alert("Couldn't update permission", "Try again."),
-                  );
-                }}
-              />
-            </Card>
-          ) : null}
-          {!spot.isOwner ? (
-            <Card className="mt-6 p-4">
-              <Text className="font-sans-semibold text-[15px] text-ink">Spot not right?</Text>
-              <Text className="mt-1 font-sans text-[13px] leading-relaxed text-mute">
-                Report a dead spot with photo evidence, or let us know about another problem.
-              </Text>
-              <Button
-                label="Report dead spot"
-                className="mt-4"
-                onPress={() =>
-                  router.push({
-                    pathname: "/spot/report/[id]",
-                    params: { id: spotId, kind: "dead" },
-                  })
-                }
-              />
-              <Pressable
-                accessibilityRole="button"
-                onPress={() =>
-                  router.push({ pathname: "/spot/report/[id]", params: { id: spotId } })
-                }
-                className="mt-3 self-start py-1 active:opacity-80"
-              >
-                <Text className="font-sans-semibold text-[13px] text-silver">
-                  Report another problem
-                </Text>
-              </Pressable>
-            </Card>
-          ) : null}
+          {spot.isOwner ? (
+            <RowCard
+              label="YOUR SPOT"
+              rows={[
+                spot.needsWork && {
+                  icon: needsWorkIcon,
+                  title: "Needs work",
+                  body: "Local skaters know they can fix it up. Say what needs doing in the notes.",
+                  action: {
+                    label: "Remove",
+                    accessibilityLabel: "Remove needs work tag",
+                    onPress: () => void updateNeedsWork(false),
+                  },
+                },
+                spot.allowAdminPhotos === true && {
+                  title: "Admin photos allowed",
+                  body: "YYC Skate Spots can add photos if they are able to.",
+                  action: {
+                    label: "Withdraw",
+                    accessibilityLabel: "Withdraw photo permission",
+                    onPress: () => {
+                      void setAdminPhotoPermission({ id: spotId, allowed: false }).catch(() =>
+                        Alert.alert("Couldn't update permission", "Try again."),
+                      );
+                    },
+                  },
+                },
+              ]}
+            />
+          ) : (
+            <RowCard
+              label="THIS SPOT"
+              rows={[
+                spot.needsWork && {
+                  icon: needsWorkIcon,
+                  title: "Needs work",
+                  body: "The person who added it is open to locals fixing it up. Details in the notes.",
+                },
+                {
+                  title: "Spot not right?",
+                  body: "Report a dead spot or another problem.",
+                  action: {
+                    label: "Report",
+                    accessibilityLabel: "Report this spot",
+                    onPress: () =>
+                      router.push({ pathname: "/spot/report/[id]", params: { id: spotId } }),
+                  },
+                },
+              ]}
+            />
+          )}
         </View>
       </ScrollView>
 
@@ -479,20 +520,27 @@ export default function SpotDetailScreen() {
             accessibilityRole="button"
             accessibilityLabel="Spot options"
             onPress={() =>
-              Alert.alert(spot.name, undefined, [
-                {
-                  text: "Edit spot",
-                  onPress: () =>
-                    router.push({ pathname: "/spot/edit/[id]", params: { id: spotId } }),
-                },
-                // Nobody else sees a private spot, so there is no one to fix it up. Removing the
-                // tag lives on the Needs work card instead.
-                ...(spot.isPrivate || spot.needsWork
-                  ? []
-                  : [{ text: "Tag as needs work", onPress: confirmNeedsWork }]),
-                { text: "Delete spot", style: "destructive", onPress: confirmDelete },
-                { text: "Cancel", style: "cancel" },
-              ])
+              Alert.alert(
+                spot.name,
+                undefined,
+                [
+                  {
+                    text: "Edit spot",
+                    onPress: () =>
+                      router.push({ pathname: "/spot/edit/[id]", params: { id: spotId } }),
+                  },
+                  // Nobody else sees a private spot, so there is no one to fix it up. Removing the
+                  // tag lives on the Your spot card instead.
+                  ...(spot.isPrivate || spot.needsWork
+                    ? []
+                    : [{ text: "Tag as needs work", onPress: confirmNeedsWork }]),
+                  { text: "Delete spot", style: "destructive", onPress: confirmDelete },
+                  { text: "Cancel", style: "cancel" },
+                ],
+                // Android shows at most three buttons, so Cancel can drop off a four-button
+                // menu; tapping outside still has to close it.
+                { cancelable: true },
+              )
             }
             className="h-9 w-9 items-center justify-center rounded-full border border-white/10 active:opacity-80"
             style={{ backgroundColor: "rgba(30,32,36,0.72)" }}
