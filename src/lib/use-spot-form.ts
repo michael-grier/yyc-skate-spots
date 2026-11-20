@@ -38,6 +38,8 @@ export function useSpotForm(
   initialValues: SpotFormValues,
   onSave: SpotFormSave,
   onAcknowledgeStandards?: StandardsAcknowledge,
+  // Admins add missing photos themselves, so there is no permission to ask for.
+  skipPhotoPermission = false,
 ) {
   const { getToken } = useAuth();
   const discardUpload = useMutation(api.spots.discardUpload);
@@ -128,7 +130,11 @@ export function useSpotForm(
       return result.errors;
     }
     setErrors({});
-    if (values.photos.length === 0 && photoPermission.current === undefined) {
+    if (
+      values.photos.length === 0 &&
+      !skipPhotoPermission &&
+      photoPermission.current === undefined
+    ) {
       setPhotoPermissionOpen(true);
       return null;
     }
