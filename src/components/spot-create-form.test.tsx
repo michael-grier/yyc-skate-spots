@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
-import { Alert } from "react-native";
+import { Alert, Keyboard } from "react-native";
 
 import type { FormPhoto } from "@/lib/spot-form";
 
@@ -91,6 +91,23 @@ describe("SpotCreateForm", () => {
     // Fields belonging to later steps stay quiet, and the step does not change.
     expect(screen.queryByText("Pick a bust factor.")).not.toBeOnTheScreen();
     expect(screen.getByText("What is it?")).toBeOnTheScreen();
+  });
+
+  test("a blocked Next dismisses the keyboard so the errors are not hidden under it", async () => {
+    const dismiss = jest.spyOn(Keyboard, "dismiss");
+    await render(
+      <SpotCreateForm
+        privateQuota={{ used: 0, allowed: 3 }}
+        onCancel={jest.fn()}
+        onSave={jest.fn()}
+      />,
+    );
+
+    await fireEvent.changeText(screen.getByLabelText("Spot name"), "Test Ledge");
+    await fireEvent.press(screen.getByText("Next · Place"));
+
+    expect(await screen.findByText("Pick at least one type.")).toBeOnTheScreen();
+    expect(dismiss).toHaveBeenCalled();
   });
 
   test("walking all three steps saves the picked options and location", async () => {
