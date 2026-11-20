@@ -504,6 +504,9 @@ describe("private spots", () => {
 });
 
 describe("needs work tag", () => {
+  // A tagged spot has to show what to fix, so tagged fixtures carry notes.
+  const FIXER = { ...SPOT, notes: "Patch the crack in the landing." };
+
   test("only the owner toggles it, and it doesn't send the spot back to review", async () => {
     const t = convexTest(schema, modules);
     const asAlice = t.withIdentity({ subject: "alice" });
@@ -511,7 +514,7 @@ describe("needs work tag", () => {
     const asAdmin = t.withIdentity({ subject: "admin", role: "admin" });
     await acknowledgeStandards(asAlice);
     await acknowledgeStandards(asBob);
-    const id = await asAlice.mutation(api.spots.create, SPOT);
+    const id = await asAlice.mutation(api.spots.create, FIXER);
     await asAdmin.mutation(api.moderation.markMeetsStandards, { spotId: id });
     expect(await t.query(api.spots.list, {})).toMatchObject([{ needsWork: false }]);
 
@@ -531,9 +534,9 @@ describe("needs work tag", () => {
     const t = convexTest(schema, modules);
     const asAlice = t.withIdentity({ subject: "alice" });
     await acknowledgeStandards(asAlice);
-    const id = await asAlice.mutation(api.spots.create, { ...SPOT, needsWork: true });
+    const id = await asAlice.mutation(api.spots.create, { ...FIXER, needsWork: true });
 
-    await asAlice.mutation(api.spots.update, { id, ...SPOT, name: "Renamed" });
+    await asAlice.mutation(api.spots.update, { id, ...FIXER, name: "Renamed" });
     expect(await asAlice.query(api.spots.get, { id })).toMatchObject({
       name: "Renamed",
       needsWork: true,
@@ -555,8 +558,30 @@ describe("needs work tag", () => {
     ).rejects.toThrow(/private spot/);
 
     // Going private drops the tag rather than refusing the edit.
-    const id = await asAlice.mutation(api.spots.create, { ...SPOT, needsWork: true });
+    const id = await asAlice.mutation(api.spots.create, { ...FIXER, needsWork: true });
     await asAlice.mutation(api.spots.update, { id, ...PRIVATE });
     expect(await asAlice.query(api.spots.get, { id })).toMatchObject({ needsWork: false });
+  });
+
+  test("the tag needs notes or photos showing what to fix", async () => {
+    const t = convexTest(schema, modules);
+    const asAlice = t.withIdentity({ subject: "alice" });
+    await acknowledgeStandards(asAlice);
+
+    await expect(
+      asAlice.mutation(api.spots.create, { ...SPOT, notes: "  ", needsWork: true }),
+    ).rejects.toThrow(/notes, or add photos/);
+    const photoId = await uploadAs(t, asAlice, "crack");
+    await asAlice.mutation(api.spots.create, { ...SPOT, photoIds: [photoId], needsWork: true });
+
+    const bareId = await asAlice.mutation(api.spots.create, SPOT);
+    await expect(
+      asAlice.mutation(api.spots.setNeedsWork, { id: bareId, needsWork: true }),
+    ).rejects.toThrow(/notes, or add photos/);
+
+    const taggedId = await asAlice.mutation(api.spots.create, { ...FIXER, needsWork: true });
+    await expect(
+      asAlice.mutation(api.spots.update, { id: taggedId, ...SPOT }),
+    ).rejects.toThrow(/Remove the tag/);
   });
 });

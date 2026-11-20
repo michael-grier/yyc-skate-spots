@@ -11,6 +11,7 @@ import {
   spotModerationFor,
 } from "./moderationModel";
 import { PRIVATE_SPOTS_PER_PUBLISHED, privateSpotAllowance } from "./privateSpots";
+import { describesWork } from "./needsWork";
 import { contributorName, type profileFor } from "./profileModel";
 import { bustFactor, spotType, surface } from "./schema";
 
@@ -57,6 +58,8 @@ async function requireOwnedSpot(ctx: MutationCtx, id: Id<"spots">, contributionR
 
 const PRIVATE_NEEDS_WORK_ERROR =
   "Only you can see a private spot, so it can't be tagged as needing work.";
+const NEEDS_WORK_DETAILS_ERROR =
+  "Describe what needs doing in the notes, or add photos, before tagging a spot as needing work.";
 
 /**
  * Refuses one more private spot beyond the caller's allowance. `excludeId` is
@@ -409,6 +412,9 @@ export const create = mutation({
     if (isPrivate && needsWork) {
       throw new Error(PRIVATE_NEEDS_WORK_ERROR);
     }
+    if (needsWork && !describesWork(fields.notes, fields.photoIds.length)) {
+      throw new Error(NEEDS_WORK_DETAILS_ERROR);
+    }
     if (isPrivate) {
       await assertPrivateAllowance(ctx, identity.tokenIdentifier, null);
     }
@@ -461,6 +467,12 @@ export const update = mutation({
     validateSpotFields(fields);
     const wasPrivate = existing.publicationStatus === "private";
     const isPrivate = visibility === "private";
+    const keepsNeedsWork = !isPrivate && existing.needsWork === true;
+    if (keepsNeedsWork && !describesWork(fields.notes, fields.photoIds.length)) {
+      throw new Error(
+        "This spot is tagged as needing work, so it needs notes or photos showing the fix. Remove the tag to clear both.",
+      );
+    }
     if (isPrivate && !wasPrivate) {
       // Going private would otherwise take a reported spot out of the queue unreviewed.
       const moderation = await spotModerationFor(ctx, id);
@@ -492,7 +504,7 @@ export const update = mutation({
       adminPhotosAddedAt: existing.adminPhotosAddedAt,
       adminPhotosUnseen: fields.photoIds.length > 0 && existing.adminPhotosUnseen === true,
       // The edit form doesn't carry the tag, so keep it, unless the spot is going private.
-      needsWork: !isPrivate && existing.needsWork === true,
+      needsWork: keepsNeedsWork,
       createdBy: existing.createdBy,
       createdByName: existing.createdByName,
       // Only owners can edit, so an admin here is editing their own spot, which skips review
@@ -644,6 +656,9 @@ export const setNeedsWork = mutation({
     const { spot } = await requireOwnedSpot(ctx, id, needsWork);
     if (needsWork && spot.publicationStatus === "private") {
       throw new Error(PRIVATE_NEEDS_WORK_ERROR);
+    }
+    if (needsWork && !describesWork(spot.notes, spot.photoIds.length)) {
+      throw new Error(NEEDS_WORK_DETAILS_ERROR);
     }
     await ctx.db.patch("spots", id, { needsWork });
     return null;
