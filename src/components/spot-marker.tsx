@@ -2,7 +2,7 @@ import { Text, View } from "react-native";
 import { Marker } from "react-native-maps";
 
 import { BoardMark } from "@/components/board-mark";
-import { LockIcon } from "@/components/icons";
+import { HammerIcon, LockIcon } from "@/components/icons";
 import { colors, mapColors } from "@/theme/colors";
 
 type SpotMarkerProps = {
@@ -12,6 +12,8 @@ type SpotMarkerProps = {
   selected: boolean;
   /** One of the signed-in user's private spots: a lock in a neon ring so it stands out. */
   isPrivate?: boolean;
+  /** Tagged by its owner as needing work: a hammer in place of the board. Never private. */
+  needsWork?: boolean;
   /** Name shown under the disc, used while a search is active. */
   label?: string;
   onPress: (id: string) => void;
@@ -27,11 +29,15 @@ const LABEL_HEIGHT = 22;
 
 type MarkerDiscProps = {
   isPrivate: boolean;
+  needsWork: boolean;
   selected: boolean;
 };
 
-/** Marker face; private spots swap the board for a lock inside a ringed disc. */
-function MarkerDisc({ isPrivate, selected }: MarkerDiscProps) {
+/**
+ * Marker face; private spots swap the board for a lock inside a ringed disc, and
+ * spots that need work swap it for a hammer on the standard disc.
+ */
+function MarkerDisc({ isPrivate, needsWork, selected }: MarkerDiscProps) {
   if (isPrivate) {
     return (
       <View
@@ -59,7 +65,11 @@ function MarkerDisc({ isPrivate, selected }: MarkerDiscProps) {
         borderWidth: 1,
       }}
     >
-      <BoardMark size={selected ? 17 : 14} strokeWidth={2.4} color={colors.pinSelectedInk} />
+      {needsWork ? (
+        <HammerIcon size={selected ? 17 : 14} color={colors.pinSelectedInk} />
+      ) : (
+        <BoardMark size={selected ? 17 : 14} strokeWidth={2.4} color={colors.pinSelectedInk} />
+      )}
     </View>
   );
 }
@@ -74,6 +84,7 @@ export function SpotMarker({
   longitude,
   selected,
   isPrivate,
+  needsWork,
   label,
   onPress,
 }: SpotMarkerProps) {
@@ -84,7 +95,7 @@ export function SpotMarker({
     <Marker
       // Custom marker views are rasterized once (tracksViewChanges off) for
       // scroll performance, so remount on a look change to capture it.
-      key={`${id}-${state}-${isPrivate ? "private" : "public"}-${label ?? ""}`}
+      key={`${id}-${state}-${isPrivate ? "private" : "public"}-${needsWork ? "work" : ""}-${label ?? ""}`}
       identifier={id}
       coordinate={{ latitude, longitude }}
       anchor={{ x: 0.5, y: anchorY }}
@@ -101,10 +112,14 @@ export function SpotMarker({
           <View
             className={`${isPrivate ? "h-14 w-14" : "h-[52px] w-[52px]"} items-center justify-center rounded-full bg-white/15`}
           >
-            <MarkerDisc isPrivate={isPrivate === true} selected />
+            <MarkerDisc isPrivate={isPrivate === true} needsWork={needsWork === true} selected />
           </View>
         ) : (
-          <MarkerDisc isPrivate={isPrivate === true} selected={false} />
+          <MarkerDisc
+            isPrivate={isPrivate === true}
+            needsWork={needsWork === true}
+            selected={false}
+          />
         )}
         {label ? (
           <View

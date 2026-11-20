@@ -73,6 +73,7 @@ describe("FilterSheet", () => {
       types: ["ledge" as const],
       bustFactors: ["low" as const],
       hasPhotos: true,
+      needsWork: true,
     };
     const { onChange, result } = renderSheet(active);
     await result;

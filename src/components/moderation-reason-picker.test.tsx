@@ -13,7 +13,7 @@ describe("ModerationReasonPicker", () => {
   });
 
   test("exposes the selected reason to assistive technology", async () => {
-    await render(<ModerationReasonPicker value="not_a_spot" onChange={jest.fn()} />);
+    await render(<ModerationReasonPicker value="gone_or_unusable" onChange={jest.fn()} />);
 
     expect(screen.getAllByRole("radio")[0].props.accessibilityState).toEqual({ checked: true });
   });

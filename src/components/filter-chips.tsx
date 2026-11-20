@@ -45,6 +45,11 @@ function activePills(filters: SpotFilters) {
       label: "Has photos",
       cleared: { ...filters, hasPhotos: false },
     },
+    filters.needsWork && {
+      key: "needs-work",
+      label: "Needs work",
+      cleared: { ...filters, needsWork: false },
+    },
   ].filter((pill) => pill !== false);
 }
 

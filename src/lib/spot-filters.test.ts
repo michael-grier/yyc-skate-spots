@@ -17,6 +17,7 @@ const SPOTS = [
     types: ["ledge", "stairs"],
     bustFactor: "medium",
     previewPhotoUrl: "https://example.com/harmony.jpg",
+    needsWork: false,
     latitude: 51.049144,
     longitude: -114.063528,
   },
@@ -25,6 +26,7 @@ const SPOTS = [
     types: ["curb"],
     bustFactor: "low",
     previewPhotoUrl: null,
+    needsWork: true,
     latitude: 51.0841944,
     longitude: -114.1868889,
   },
@@ -33,6 +35,7 @@ const SPOTS = [
     types: ["stairs"],
     bustFactor: "high",
     previewPhotoUrl: "https://example.com/chinatown.jpg",
+    needsWork: false,
     latitude: 51.050971,
     longitude: -114.065359,
   },
@@ -70,6 +73,11 @@ describe("applyFilters", () => {
     expect(names(result)).toEqual(["Harmony Park", "Chinatown 12 Stair"]);
   });
 
+  test("needs work keeps only tagged spots", () => {
+    const result = applyFilters([...SPOTS], { ...DEFAULT_FILTERS, needsWork: true }, null);
+    expect(names(result)).toEqual(["Bowness Curbs"]);
+  });
+
   test("distance keeps spots within the radius of the user", () => {
     // Bowness is ~9 km from downtown; the other two are under 1 km.
     const result = applyFilters([...SPOTS], { ...DEFAULT_FILTERS, maxDistanceKm: 5 }, DOWNTOWN);
@@ -85,7 +93,14 @@ describe("applyFilters", () => {
   test("filters combine with AND", () => {
     const result = applyFilters(
       [...SPOTS],
-      { query: "", maxDistanceKm: 5, types: ["stairs"], bustFactors: ["high"], hasPhotos: true },
+      {
+        query: "",
+        maxDistanceKm: 5,
+        types: ["stairs"],
+        bustFactors: ["high"],
+        hasPhotos: true,
+        needsWork: false,
+      },
       DOWNTOWN,
     );
     expect(names(result)).toEqual(["Chinatown 12 Stair"]);
@@ -103,8 +118,9 @@ describe("countActiveFilters", () => {
         types: ["ledge"],
         bustFactors: ["low"],
         hasPhotos: true,
+        needsWork: true,
       }),
-    ).toBe(4);
+    ).toBe(5);
   });
 });
 

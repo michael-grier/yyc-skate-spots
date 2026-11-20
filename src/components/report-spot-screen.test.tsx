@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react-nativ
 
 import ReportSpotScreen from "@/app/spot/report/[id]";
 
-const mockParams: { id: string; kind?: string } = { id: "spot-1", kind: "dead" };
+const mockParams = { id: "spot-1" };
 const mockAuth = { isLoaded: true, isSignedIn: true, getToken: async () => "token" };
 const mockBack = jest.fn();
 const mockSpot = { _id: "spot-1", name: "Rails", status: "active", isOwner: false };
@@ -42,7 +42,6 @@ jest.mock("@/lib/spot-photos", () => ({
 
 beforeEach(() => {
   jest.resetAllMocks();
-  mockParams.kind = "dead";
   mockAuth.isLoaded = true;
   mockAuth.isSignedIn = true;
   mockSpot.isOwner = false;
@@ -52,8 +51,7 @@ beforeEach(() => {
   mockDiscardUpload.mockResolvedValue(null);
 });
 
-test.each(["dead", undefined])("sign-in continues to the selected %s report", async (kind) => {
-  mockParams.kind = kind;
+test("sign-in continues to the report form", async () => {
   mockAuth.isSignedIn = false;
   await render(<ReportSpotScreen />);
   expect(screen.getByText("Sign-in form")).toBeOnTheScreen();
@@ -64,14 +62,9 @@ test.each(["dead", undefined])("sign-in continues to the selected %s report", as
   await screen.rerender(<ReportSpotScreen />);
   expect(screen.queryByText("Sign-in form")).toBeNull();
   expect(screen.getByText("Rails")).toBeOnTheScreen();
-  if (kind === "dead") {
-    expect(screen.getByRole("button", { name: "Add photos" })).toBeOnTheScreen();
-    expect(screen.getByRole("button", { name: "Send report" })).toBeDisabled();
-  } else {
-    await fireEvent.press(screen.getByText("Something else"));
-    await fireEvent.press(screen.getByRole("button", { name: "Send report" }));
-    expect(mockCreateReport).toHaveBeenCalledWith({ spotId: "spot-1", reason: "other" });
-  }
+  await fireEvent.press(screen.getByText("Something else"));
+  await fireEvent.press(screen.getByRole("button", { name: "Send report" }));
+  expect(mockCreateReport).toHaveBeenCalledWith({ spotId: "spot-1", reason: "other" });
 });
 
 test("sign-in can be cancelled with Back without submitting a report", async () => {
@@ -94,8 +87,8 @@ test("signing in as the spot owner does not reveal a report form", async () => {
 
 test("requires a photo before sending a dead-spot report", async () => {
   await render(<ReportSpotScreen />);
+  await fireEvent.press(screen.getByText("Dead spot"));
   expect(screen.getByRole("button", { name: "Send report" })).toBeDisabled();
-  expect(screen.queryAllByRole("radio")).toHaveLength(0);
   mockPickPhotos.mockResolvedValueOnce([]);
   await fireEvent.press(screen.getByRole("button", { name: "Add photos" }));
   await waitFor(() => expect(screen.getByRole("button", { name: "Add photos" })).toBeEnabled());
@@ -123,6 +116,7 @@ test("cleans up partial uploads and keeps the photos available for retry", async
     .mockResolvedValueOnce("storage-1")
     .mockRejectedValueOnce(new Error("Upload failed"));
   await render(<ReportSpotScreen />);
+  await fireEvent.press(screen.getByText("Dead spot"));
   await fireEvent.press(screen.getByRole("button", { name: "Add photos" }));
   await waitFor(() => expect(screen.getByRole("button", { name: "Send report" })).toBeEnabled());
   await fireEvent.press(screen.getByRole("button", { name: "Send report" }));
@@ -141,7 +135,6 @@ test("cleans up partial uploads and keeps the photos available for retry", async
 });
 
 test("keeps reports for other problems available without photos", async () => {
-  mockParams.kind = undefined;
   await render(<ReportSpotScreen />);
   await fireEvent.press(screen.getByText("Something else"));
   await fireEvent.press(screen.getByRole("button", { name: "Send report" }));

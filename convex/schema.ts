@@ -70,6 +70,9 @@ export default defineSchema({
     allowAdminPhotos: v.optional(v.boolean()),
     adminPhotosAddedAt: v.optional(v.number()),
     adminPhotosUnseen: v.optional(v.boolean()),
+    // Owner consent for locals to fix the spot up. Never set on a private spot,
+    // since nobody else can see it. Absent on older spots means not tagged.
+    needsWork: v.optional(v.boolean()),
     // Clerk identity tokenIdentifier — the ownership key for edit/delete.
     createdBy: v.string(),
     // Legacy/provider fallback. Queries prefer the current name in profiles.
