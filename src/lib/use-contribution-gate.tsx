@@ -28,15 +28,17 @@ export function useContributionGate() {
 
   function runGated(action: GatedAction) {
     const status = latestViewer.current;
-    if (status?.isBanned) {
+    // Callers hold their controls back until `ready`, so this only drops a tap made
+    // after the status went away again (a sign-out mid-flow).
+    if (!status) return;
+    if (status.isBanned) {
       Alert.alert(
         "Changing spots is unavailable",
         "Your contribution access was removed after repeated spots did not meet the standards.",
       );
       return;
     }
-    // While the viewer loads, let the server decide rather than block the tap.
-    if (status && !status.hasAcknowledgedStandards) {
+    if (!status.hasAcknowledgedStandards) {
       setPending(() => action);
       return;
     }
@@ -71,5 +73,12 @@ export function useContributionGate() {
     />
   );
 
-  return { runGated, standardsSheet, isBanned: viewer?.isBanned === true };
+  return {
+    runGated,
+    standardsSheet,
+    // Until the status loads, a banned or unaccepted owner would get the server's
+    // redacted error, so gated controls wait for it.
+    ready: viewer !== undefined,
+    isBanned: viewer?.isBanned === true,
+  };
 }

@@ -130,7 +130,7 @@ export default function SpotDetailScreen() {
   const setAdminPhotoPermission = useMutation(api.spots.setAdminPhotoPermission);
   const makePublic = useMutation(api.spots.makePublic);
   const setNeedsWork = useMutation(api.spots.setNeedsWork);
-  const { runGated, standardsSheet, isBanned } = useContributionGate();
+  const { runGated, standardsSheet, ready: gateReady, isBanned } = useContributionGate();
   const [publishing, setPublishing] = useState(false);
   const unreadPhotoSpotId =
     spot?.status === "active" && spot.isOwner && spot.adminPhotosUnseen ? spot._id : undefined;
@@ -397,7 +397,7 @@ export default function SpotDetailScreen() {
               </Text>
               <Button
                 label={publishing ? "Making public…" : "Make public"}
-                disabled={publishing}
+                disabled={publishing || !gateReady}
                 className="mt-4"
                 onPress={() =>
                   Alert.alert(
@@ -547,8 +547,9 @@ export default function SpotDetailScreen() {
                       router.push({ pathname: "/spot/edit/[id]", params: { id: spotId } }),
                   },
                   // Nobody else sees a private spot, so there is no one to fix it up, and a banned
-                  // owner can't tag. Removing the tag lives on the Your spot card instead.
-                  ...(spot.isPrivate || spot.needsWork || isBanned
+                  // owner can't tag; the item waits until that status has loaded. Removing the tag
+                  // lives on the Your spot card instead.
+                  ...(spot.isPrivate || spot.needsWork || isBanned || !gateReady
                     ? []
                     : [{ text: "Tag as needs work", onPress: confirmNeedsWork }]),
                   { text: "Delete spot", style: "destructive", onPress: confirmDelete },
