@@ -125,6 +125,13 @@ describe("SpotCreateForm", () => {
     await fireEvent.press(screen.getByText("Next · Details"));
     await fireEvent.press(screen.getByText("Low"));
     await fireEvent.press(screen.getByText("Needs work"));
+    // A tagged spot has to say what needs fixing before it can be saved.
+    await fireEvent.press(screen.getByText("Save spot"));
+    expect(
+      screen.getByText("Describe what needs doing here, or add photos of it."),
+    ).toBeOnTheScreen();
+    expect(onSave).not.toHaveBeenCalled();
+    await fireEvent.changeText(screen.getByLabelText("Notes"), "Patch the crack");
     await fireEvent.press(screen.getByText("Save spot"));
     const dismissPermission = screen.getByTestId("photo-permission-sheet").props.onDismiss;
     await fireEvent.press(screen.getByText("Save without permission"));
@@ -136,6 +143,7 @@ describe("SpotCreateForm", () => {
         visibility: "public",
         allowAdminPhotos: false,
         needsWork: true,
+        notes: "Patch the crack",
         types: ["ledge"],
         bustFactor: "low",
         latitude: 51.05,
@@ -253,10 +261,7 @@ test("dismissing photo permission cancels saving, while allowing it saves once a
   await act(() => dismissPermission());
   await act(() => dismissPermission());
   expect(onSave).toHaveBeenCalledTimes(1);
-  expect(onSave).toHaveBeenCalledWith(
-    expect.objectContaining({ allowAdminPhotos: true }),
-    [],
-  );
+  expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ allowAdminPhotos: true }), []);
 });
 
 test("admins save a photo-less spot without being asked for photo permission", async () => {
@@ -275,8 +280,5 @@ test("admins save a photo-less spot without being asked for photo permission", a
   await fireEvent.press(screen.getByText("Low"));
   await fireEvent.press(screen.getByText("Save spot"));
 
-  expect(onSave).toHaveBeenCalledWith(
-    expect.objectContaining({ allowAdminPhotos: false }),
-    [],
-  );
+  expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ allowAdminPhotos: false }), []);
 });

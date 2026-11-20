@@ -246,7 +246,7 @@ export function NeedsWorkField({
       <Segmented options={NEEDS_WORK_OPTIONS} value={value} onChange={onChange} />
       <Text className="mt-2.5 px-1 font-sans text-[12px] leading-[18px] text-mute">
         {value
-          ? "Some work is required to make the spot skateable, describe what needs to be done in the notes."
+          ? "Some work is required to make the spot skateable, and you're happy for locals to fix it up. Describe what needs to be done in the notes or photos."
           : "The spot is currently skateable, no repairs are needed."}
       </Text>
     </Field>

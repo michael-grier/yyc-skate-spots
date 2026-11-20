@@ -45,6 +45,7 @@ import {
 import { useKeyboardVisible } from "@/lib/use-keyboard-visible";
 import { useDuplicateCheck } from "@/lib/use-duplicate-check";
 import { type StandardsAcknowledge, useSpotForm } from "@/lib/use-spot-form";
+import { describesWork } from "@convex/needsWork";
 import { colors } from "@/theme/colors";
 
 const STEP_COPY: Record<SpotFormStep, { title: string; action: string }> = {
@@ -146,6 +147,16 @@ export function SpotCreateForm({
   }
 
   async function handleSave() {
+    // The server refuses the tag without a description too; catching it here keeps the
+    // skater on this step with the reason under Notes.
+    if (
+      needsWork &&
+      values.visibility === "public" &&
+      !describesWork(values.notes, values.photos.length)
+    ) {
+      setErrors({ notes: "Describe what needs doing here, or add photos of it." });
+      return;
+    }
     const blocking = await save();
     // A field can still fail here — a name trimmed to nothing, say — so send the
     // skater back to the step that owns it rather than to a dead Save button.
