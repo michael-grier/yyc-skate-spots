@@ -40,6 +40,8 @@ import {
   formatSpotTypes,
 } from "@/lib/spot-labels";
 import { reportReasonLabel } from "@/lib/spot-standards";
+import { describesWork } from "@convex/needsWork";
+import { useContributionGate } from "@/lib/use-contribution-gate";
 import { useSpotAddress } from "@/lib/use-spot-address";
 import { useUserLocation } from "@/lib/use-user-location";
 import { colors } from "@/theme/colors";
@@ -128,6 +130,7 @@ export default function SpotDetailScreen() {
   const setAdminPhotoPermission = useMutation(api.spots.setAdminPhotoPermission);
   const makePublic = useMutation(api.spots.makePublic);
   const setNeedsWork = useMutation(api.spots.setNeedsWork);
+  const { runGated, standardsSheet, isBanned } = useContributionGate();
   const [publishing, setPublishing] = useState(false);
   const unreadPhotoSpotId =
     spot?.status === "active" && spot.isOwner && spot.adminPhotosUnseen ? spot._id : undefined;
@@ -233,6 +236,8 @@ export default function SpotDetailScreen() {
   // Captured here because TS narrowing of `spot` doesn't reach the closures below.
   const spotId = spot._id;
   const spotName = spot.name;
+  const spotNotes = spot.notes;
+  const spotPhotoCount = spot.photoUrls.length;
   const isPrivate = spot.isPrivate;
   const destination = { name: spotName, latitude: spot.latitude, longitude: spot.longitude };
 
@@ -309,14 +314,39 @@ export default function SpotDetailScreen() {
   }
 
   function confirmNeedsWork() {
+    if (!describesWork(spotNotes, spotPhotoCount)) {
+      Alert.alert(
+        "Show what needs doing first",
+        "Add notes or photos that show what needs fixing, then tag the spot.",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Edit spot",
+            onPress: () => router.push({ pathname: "/spot/edit/[id]", params: { id: spotId } }),
+          },
+        ],
+      );
+      return;
+    }
     Alert.alert(
       "Tag as needing work?",
-      "It tells local skaters you're open to them fixing it up. Say what needs doing in the notes.",
+      "It tells local skaters you're open to them fixing it up.",
       [
         { text: "Cancel", style: "cancel" },
-        { text: "Tag it", onPress: () => void updateNeedsWork(true) },
+        { text: "Tag it", onPress: () => runGated(() => updateNeedsWork(true)) },
       ],
     );
+  }
+
+  async function publish() {
+    setPublishing(true);
+    try {
+      await makePublic({ id: spotId });
+    } catch {
+      Alert.alert("Couldn't make it public", "Check your connection and try again.");
+    } finally {
+      setPublishing(false);
+    }
   }
 
   const needsWorkIcon = <HammerIcon size={13} color={colors.ink} />;
@@ -375,22 +405,7 @@ export default function SpotDetailScreen() {
                     "It goes to an admin for review, then onto the map for everyone.",
                     [
                       { text: "Cancel", style: "cancel" },
-                      {
-                        text: "Make public",
-                        onPress: async () => {
-                          setPublishing(true);
-                          try {
-                            await makePublic({ id: spotId });
-                          } catch {
-                            Alert.alert(
-                              "Couldn't make it public",
-                              "Check your connection and try again.",
-                            );
-                          } finally {
-                            setPublishing(false);
-                          }
-                        },
-                      },
+                      { text: "Make public", onPress: () => runGated(publish) },
                     ],
                   )
                 }
@@ -462,7 +477,9 @@ export default function SpotDetailScreen() {
                 spot.needsWork && {
                   icon: needsWorkIcon,
                   title: "Needs work",
-                  body: "The person who added it is open to locals fixing it up. Details in the notes.",
+                  body: `The person who added it is open to locals fixing it up. ${
+                    spot.notes?.trim() ? "Details in the notes." : "Refer to photos for details."
+                  }`,
                 },
                 {
                   title: "Spot not right?",
@@ -529,9 +546,9 @@ export default function SpotDetailScreen() {
                     onPress: () =>
                       router.push({ pathname: "/spot/edit/[id]", params: { id: spotId } }),
                   },
-                  // Nobody else sees a private spot, so there is no one to fix it up. Removing the
-                  // tag lives on the Your spot card instead.
-                  ...(spot.isPrivate || spot.needsWork
+                  // Nobody else sees a private spot, so there is no one to fix it up, and a banned
+                  // owner can't tag. Removing the tag lives on the Your spot card instead.
+                  ...(spot.isPrivate || spot.needsWork || isBanned
                     ? []
                     : [{ text: "Tag as needs work", onPress: confirmNeedsWork }]),
                   { text: "Delete spot", style: "destructive", onPress: confirmDelete },
@@ -560,6 +577,7 @@ export default function SpotDetailScreen() {
           onPress={() => void handleDirections()}
         />
       </View>
+      {standardsSheet}
     </View>
   );
 }

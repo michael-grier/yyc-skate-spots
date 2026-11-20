@@ -1,5 +1,5 @@
 import type { Id } from "@convex/_generated/dataModel";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import { Alert, Share } from "react-native";
 
 import SpotDetailScreen from "@/app/spot/[id]";
@@ -10,6 +10,8 @@ const mockRemoveSpot = jest.fn();
 const mockMarkPhotosSeen = jest.fn();
 const mockSetPhotoPermission = jest.fn();
 const mockSetNeedsWork = jest.fn();
+const mockAcknowledgeStandards = jest.fn();
+const mockViewer = { isBanned: false, hasAcknowledgedStandards: true };
 const mockAuthState = { isLoaded: true, isSignedIn: false };
 const mockSpot = {
   _id: "spot-1" as Id<"spots">,
@@ -30,6 +32,7 @@ const mockSpot = {
   adminPhotosAddedAt: 123,
   allowAdminPhotos: false,
   needsWork: false,
+  notes: undefined as string | undefined,
 };
 
 jest.mock("@clerk/expo", () => ({ useAuth: () => mockAuthState }));
@@ -41,13 +44,15 @@ jest.mock("expo-router", () => ({
 jest.mock("convex/react", () => {
   const { getFunctionName } = jest.requireActual<typeof import("convex/server")>("convex/server");
   return {
-    useQuery: () => mockSpot,
+    useQuery: (reference: Parameters<typeof getFunctionName>[0]) =>
+      getFunctionName(reference) === "moderation:viewer" ? mockViewer : mockSpot,
     useMutation: (reference: Parameters<typeof getFunctionName>[0]) => {
       const name = getFunctionName(reference);
       if (name === "favorites:toggle") return mockToggleFavorite;
       if (name === "spots:markAdminPhotosSeen") return mockMarkPhotosSeen;
       if (name === "spots:setAdminPhotoPermission") return mockSetPhotoPermission;
       if (name === "spots:setNeedsWork") return mockSetNeedsWork;
+      if (name === "moderation:acknowledgeStandards") return mockAcknowledgeStandards;
       return mockRemoveSpot;
     },
   };
@@ -68,7 +73,10 @@ beforeEach(() => {
   mockSpot.adminPhotosUnseen = false;
   mockSpot.allowAdminPhotos = false;
   mockSpot.needsWork = false;
+  mockSpot.notes = undefined;
+  mockViewer.hasAcknowledgedStandards = true;
   mockSetNeedsWork.mockResolvedValue(null);
+  mockAcknowledgeStandards.mockResolvedValue(null);
   mockMarkPhotosSeen.mockResolvedValue(null);
   mockSetPhotoPermission.mockResolvedValue(null);
   mockToggleFavorite.mockResolvedValue(true);
@@ -187,4 +195,26 @@ test("lets the owner remove the needs work tag from the card", async () => {
   await render(<SpotDetailScreen />);
   await fireEvent.press(screen.getByRole("button", { name: "Remove needs work tag" }));
   expect(mockSetNeedsWork).toHaveBeenCalledWith({ id: "spot-1", needsWork: false });
+});
+
+test("asks for the current standards before tagging, then tags", async () => {
+  const alertSpy = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+  mockAuthState.isSignedIn = true;
+  mockSpot.isOwner = true;
+  mockSpot.notes = "Patch the crack in the landing.";
+  mockViewer.hasAcknowledgedStandards = false;
+  await render(<SpotDetailScreen />);
+
+  await fireEvent.press(screen.getByRole("button", { name: "Spot options" }));
+  const menu = alertSpy.mock.calls[0][2];
+  await act(() => menu?.find((action) => action.text === "Tag as needs work")?.onPress?.());
+  const confirm = alertSpy.mock.calls[1][2];
+  await act(() => confirm?.find((action) => action.text === "Tag it")?.onPress?.());
+  expect(mockSetNeedsWork).not.toHaveBeenCalled();
+
+  await fireEvent.press(screen.getByRole("button", { name: "Agree and submit" }));
+  await waitFor(() =>
+    expect(mockSetNeedsWork).toHaveBeenCalledWith({ id: "spot-1", needsWork: true }),
+  );
+  expect(mockAcknowledgeStandards).toHaveBeenCalledTimes(1);
 });
