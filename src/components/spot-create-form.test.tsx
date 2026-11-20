@@ -241,3 +241,26 @@ test("dismissing photo permission cancels saving, while allowing it saves once a
     undefined,
   );
 });
+
+test("admins save a photo-less spot without being asked for photo permission", async () => {
+  const onSave = jest.fn().mockResolvedValue(undefined);
+  await render(
+    <SpotCreateForm
+      privateQuota={{ used: 0, allowed: 3 }}
+      onCancel={jest.fn()}
+      onSave={onSave}
+      skipPhotoPermission
+    />,
+  );
+  await fillBasics();
+  await fireEvent.press(screen.getByText("Set test location"));
+  await fireEvent.press(screen.getByText("Next · Details"));
+  await fireEvent.press(screen.getByText("Low"));
+  await fireEvent.press(screen.getByText("Save spot"));
+
+  expect(onSave).toHaveBeenCalledWith(
+    expect.objectContaining({ allowAdminPhotos: false }),
+    [],
+    undefined,
+  );
+});

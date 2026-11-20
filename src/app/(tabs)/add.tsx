@@ -91,6 +91,7 @@ export default function AddSpotScreen() {
         router.push({ pathname: "/spot/[id]", params: { id } });
       }}
       privateQuota={privateQuota}
+      skipPhotoPermission={moderation.isAdmin}
       onAcknowledgeStandards={
         moderation.hasAcknowledgedStandards
           ? undefined

@@ -42,6 +42,7 @@ type SpotEditFormProps = {
   onSave: SpotFormSave;
   onAcknowledgeStandards?: StandardsAcknowledge;
   privateQuota: PrivateSpotQuota | undefined;
+  skipPhotoPermission?: boolean;
 };
 
 /** Other people's favourites of the spot vanish with it, so that is said before it happens. */
@@ -148,6 +149,7 @@ export function SpotEditForm({
   onSave,
   onAcknowledgeStandards,
   privateQuota,
+  skipPhotoPermission,
 }: SpotEditFormProps) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -171,7 +173,7 @@ export function SpotEditForm({
     save,
     closeStandards,
     acknowledgeStandardsAndSave,
-  } = useSpotForm(initialValues, onSave, onAcknowledgeStandards);
+  } = useSpotForm(initialValues, onSave, onAcknowledgeStandards, skipPhotoPermission);
   const { confirmNotDuplicate, duplicateSheet } = useDuplicateCheck(spotId);
 
   async function saveChanges() {

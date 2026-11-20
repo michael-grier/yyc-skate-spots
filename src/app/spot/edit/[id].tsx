@@ -71,6 +71,7 @@ export default function EditSpotScreen() {
           router.back();
         }}
         privateQuota={privateQuota}
+        skipPhotoPermission={moderation.isAdmin}
         onAcknowledgeStandards={
           moderation.hasAcknowledgedStandards
             ? undefined

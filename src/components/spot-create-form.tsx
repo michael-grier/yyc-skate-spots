@@ -55,6 +55,7 @@ type SpotCreateFormProps = {
   onSave: SpotFormSave;
   onAcknowledgeStandards?: StandardsAcknowledge;
   privateQuota: PrivateSpotQuota | undefined;
+  skipPhotoPermission?: boolean;
 };
 
 /**
@@ -68,6 +69,7 @@ export function SpotCreateForm({
   onSave,
   onAcknowledgeStandards,
   privateQuota,
+  skipPhotoPermission,
 }: SpotCreateFormProps) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -93,7 +95,7 @@ export function SpotCreateForm({
     save,
     closeStandards,
     acknowledgeStandardsAndSave,
-  } = useSpotForm(EMPTY_SPOT_FORM, onSave, onAcknowledgeStandards);
+  } = useSpotForm(EMPTY_SPOT_FORM, onSave, onAcknowledgeStandards, skipPhotoPermission);
   const { confirmNotDuplicate, duplicateSheet } = useDuplicateCheck();
 
   const stepIndex = SPOT_FORM_STEPS.indexOf(step);
