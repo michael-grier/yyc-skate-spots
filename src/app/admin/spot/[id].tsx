@@ -24,6 +24,8 @@ export default function AdminSpotReviewScreen() {
   const isAdmin = viewer?.isAdmin === true;
   const spot = useQuery(api.moderation.getSpot, isAdmin ? { id } : "skip");
   const markMeetsStandards = useMutation(api.moderation.markMeetsStandards);
+  const acceptFix = useMutation(api.spotWork.accept);
+  const rejectFix = useMutation(api.spotWork.reject);
   const banContributor = useMutation(api.moderation.banContributor);
   const unbanContributor = useMutation(api.moderation.unbanContributor);
   const [working, setWorking] = useState(false);
@@ -39,6 +41,35 @@ export default function AdminSpotReviewScreen() {
       <BackIcon size={18} color={colors.ink} />
     </Pressable>
   );
+
+  function confirmFixDecision(approve: boolean) {
+    if (!spot?.workSubmission) return;
+    const spotId = spot._id;
+    const by = spot.workSubmission.submitterName;
+    Alert.alert(
+      approve ? "Approve this fix?" : "Reject this fix?",
+      approve
+        ? `The Needs work tag comes off for good, and the photos are added to the spot credited to ${by}.`
+        : "The photos are deleted, and someone else can send a fix.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: approve ? "Approve" : "Reject",
+          style: approve ? "default" : "destructive",
+          onPress: async () => {
+            setWorking(true);
+            try {
+              await (approve ? acceptFix : rejectFix)({ spotId });
+            } catch {
+              Alert.alert("Couldn't save the decision", "Check your connection and try again.");
+            } finally {
+              setWorking(false);
+            }
+          },
+        },
+      ],
+    );
+  }
 
   function confirmApproval() {
     if (!spot) return;
@@ -157,7 +188,7 @@ export default function AdminSpotReviewScreen() {
                 backgroundColor:
                   spot.reports.length > 0
                     ? colors.bust.high
-                    : spot.review.needsReview
+                    : spot.review.needsReview || spot.workSubmission
                       ? colors.bust.medium
                       : colors.bust.low,
               }}
@@ -169,7 +200,9 @@ export default function AdminSpotReviewScreen() {
                   ? spot.review.attentionReason === "edited"
                     ? "EDITED · NEEDS REVIEW"
                     : "NEW · NEEDS REVIEW"
-                  : "REVIEWED"}
+                  : spot.workSubmission
+                    ? "WORK SUBMITTED"
+                    : "REVIEWED"}
             </Text>
           </View>
           <Text className="mt-2 font-sans-semibold text-[26px] tracking-tight text-ink">
@@ -214,6 +247,45 @@ export default function AdminSpotReviewScreen() {
                 }
               />
             </Card>
+          ) : null}
+          {spot.workSubmission ? (
+            <>
+              <Text className="mt-7 mb-2 px-1 font-sans-medium text-[11px] text-mute">
+                WORK SUBMITTED
+              </Text>
+              <Card className="border-bust-medium/30 p-4">
+                <Text className="font-sans-semibold text-[14px] text-ink">
+                  Sent by {spot.workSubmission.submitterName} ·{" "}
+                  {formatMonthYear(spot.workSubmission._creationTime)}
+                </Text>
+                {spot.workSubmission.details ? (
+                  <Text className="mt-1 font-sans text-[13px] leading-relaxed text-mute">
+                    {spot.workSubmission.details}
+                  </Text>
+                ) : null}
+                <View className="mt-3">
+                  <EvidencePhotos urls={spot.workSubmission.photoUrls} />
+                </View>
+                <Text className="mt-3 font-sans text-[12px] leading-relaxed text-mute">
+                  Approving removes the Needs work tag for good and adds these photos to the spot,
+                  credited to {spot.workSubmission.submitterName}. Rejecting deletes them. Neither
+                  changes the spot’s own review.
+                </Text>
+                <Button
+                  label={working ? "Working…" : "Approve fix"}
+                  disabled={working}
+                  onPress={() => confirmFixDecision(true)}
+                  className="mt-3"
+                />
+                <Button
+                  label="Reject"
+                  variant="danger"
+                  disabled={working}
+                  onPress={() => confirmFixDecision(false)}
+                  className="mt-2"
+                />
+              </Card>
+            </>
           ) : null}
           <Text className="mt-7 mb-2 px-1 font-sans-medium text-[11px] text-mute">
             REPORTS ({spot.reports.length})
