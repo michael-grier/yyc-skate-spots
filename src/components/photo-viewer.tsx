@@ -22,7 +22,8 @@ import Animated, {
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { BackIcon, CloseIcon } from "@/components/icons";
+import { BackIcon, CloseIcon, HammerIcon } from "@/components/icons";
+import type { PhotoCredit } from "@/components/photo-carousel";
 import { type Size, containedSize } from "@/lib/photo-fit";
 import { colors } from "@/theme/colors";
 import { TOOLBAR_HEIGHT } from "@/theme/layout";
@@ -41,6 +42,7 @@ type PhotoViewerProps = {
   visible: boolean;
   onIndexChange: (index: number) => void;
   onClose: () => void;
+  credit?: PhotoCredit;
 };
 
 /** Full-screen photo inspection with paging, pinch zoom, and constrained panning. */
@@ -51,6 +53,7 @@ export function PhotoViewer({
   visible,
   onIndexChange,
   onClose,
+  credit,
 }: PhotoViewerProps) {
   const insets = useSafeAreaInsets();
   const window = useWindowDimensions();
@@ -305,10 +308,7 @@ export function PhotoViewer({
                       style={{ width: viewportWidth, height: viewportHeight }}
                     >
                       <Animated.View
-                        style={[
-                          { width: image.width, height: image.height },
-                          animatedImageStyle,
-                        ]}
+                        style={[{ width: image.width, height: image.height }, animatedImageStyle]}
                       >
                         <Image
                           source={{ uri: url }}
@@ -350,7 +350,19 @@ export function PhotoViewer({
             className="items-center justify-start gap-2 pt-1"
             style={{ height: insets.bottom + FOOTER_HEIGHT, paddingBottom: insets.bottom }}
           >
-            <Text className="font-sans text-[11px] text-white/60">Pinch or double-tap to zoom</Text>
+            {/* The credit takes the hint's place, so the footer keeps its height. */}
+            {credit && safeIndex >= credit.fromIndex ? (
+              <View className="flex-row items-center gap-1.5">
+                <HammerIcon size={11} color={colors.ink} />
+                <Text className="font-sans-semibold text-[12px] text-ink">
+                  {credit.label} · {credit.date}
+                </Text>
+              </View>
+            ) : (
+              <Text className="font-sans text-[11px] text-white/60">
+                Pinch or double-tap to zoom
+              </Text>
+            )}
             <View className="flex-row gap-3">
               <Pressable
                 accessibilityRole="button"

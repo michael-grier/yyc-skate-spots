@@ -12,7 +12,7 @@ import {
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 
 import { BoardMark } from "@/components/board-mark";
-import { ExpandIcon } from "@/components/icons";
+import { ExpandIcon, HammerIcon } from "@/components/icons";
 import { PhotoViewer } from "@/components/photo-viewer";
 import { colors } from "@/theme/colors";
 
@@ -21,16 +21,20 @@ export const CAROUSEL_HEIGHT = 320;
 export const ACTIVE_DOT_COLOR = "rgba(255,255,255,0.9)";
 export const INACTIVE_DOT_COLOR = "rgba(255,255,255,0.35)";
 
+/** Marks the photos from `fromIndex` on as someone else's fix, credited to them. */
+export type PhotoCredit = { fromIndex: number; label: string; date: string };
+
 type PhotoCarouselProps = {
   urls: string[];
   /** Used for the images' accessibility labels. */
   spotName: string;
   /** The public detail page uses a taller carousel with full-screen inspection. */
   variant?: "compact" | "gallery";
+  credit?: PhotoCredit;
 };
 
 /** Full-bleed paged photos that fade into the screen background. */
-export function PhotoCarousel({ urls, spotName, variant = "compact" }: PhotoCarouselProps) {
+export function PhotoCarousel({ urls, spotName, variant = "compact", credit }: PhotoCarouselProps) {
   const { width, height } = useWindowDimensions();
   const scrollRef = useRef<ScrollView>(null);
   const [index, setIndex] = useState(0);
@@ -108,6 +112,15 @@ export function PhotoCarousel({ urls, spotName, variant = "compact" }: PhotoCaro
                 }
                 style={{ width, height: carouselHeight }}
               />
+              {credit && i >= credit.fromIndex ? (
+                <View
+                  pointerEvents="none"
+                  className="absolute bottom-4 left-4 flex-row items-center gap-1.5 rounded-full border border-white/15 bg-black/60 px-3 py-2"
+                >
+                  <HammerIcon size={12} color={colors.ink} />
+                  <Text className="font-sans-semibold text-[11px] text-ink">{credit.label}</Text>
+                </View>
+              ) : null}
             </Pressable>
           ))}
         </ScrollView>
@@ -166,6 +179,7 @@ export function PhotoCarousel({ urls, spotName, variant = "compact" }: PhotoCaro
           visible={viewerIndex >= 0}
           onIndexChange={handleViewerIndexChange}
           onClose={() => setViewerUrl(null)}
+          credit={credit}
         />
       ) : null}
     </View>
