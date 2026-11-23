@@ -64,6 +64,8 @@ describe("account deletion", () => {
     const ids = await t.run(async (ctx) => {
       const ownedPhoto = await ctx.storage.store(new Blob(["owned photo"]));
       const pendingUpload = await ctx.storage.store(new Blob(["pending upload"]));
+      const fixPhoto = await ctx.storage.store(new Blob(["alice's fix"]));
+      const fixOnOwnedSpot = await ctx.storage.store(new Blob(["someone's fix"]));
       const ownedSpot = await ctx.db.insert("spots", {
         name: "Alice's spot",
         types: ["ledge"],
@@ -90,6 +92,11 @@ describe("account deletion", () => {
         reason: "other",
       });
       await ctx.db.insert("favorites", { userId: "other-user", spotId: ownedSpot });
+      await ctx.db.insert("spotWork", {
+        spotId: ownedSpot,
+        submittedBy: "other-user",
+        photoIds: [fixOnOwnedSpot],
+      });
 
       const otherSpot = await ctx.db.insert("spots", {
         name: "Someone else's spot",
@@ -100,6 +107,13 @@ describe("account deletion", () => {
         photoIds: [],
         createdBy: "other-user",
         publicationStatus: "published",
+        workCompletedAt: Date.now(),
+      });
+      await ctx.db.insert("spotWork", {
+        spotId: otherSpot,
+        submittedBy: USER_IDENTIFIER,
+        photoIds: [fixPhoto],
+        acceptedAt: Date.now(),
       });
       const otherReview = await ctx.db.insert("spotModeration", {
         spotId: otherSpot,
@@ -162,6 +176,8 @@ describe("account deletion", () => {
       return {
         ownedPhoto,
         pendingUpload,
+        fixPhoto,
+        fixOnOwnedSpot,
         ownedSpot,
         otherSpot,
         otherReview,
@@ -184,6 +200,11 @@ describe("account deletion", () => {
       expect(await ctx.db.get("spots", ids.otherSpot)).not.toBeNull();
       expect(await ctx.storage.getUrl(ids.ownedPhoto)).toBeNull();
       expect(await ctx.storage.getUrl(ids.pendingUpload)).toBeNull();
+      // Alice's fix goes with her account; the fix on her spot goes with the spot.
+      expect(await ctx.db.query("spotWork").collect()).toEqual([]);
+      expect(await ctx.storage.getUrl(ids.fixPhoto)).toBeNull();
+      expect(await ctx.storage.getUrl(ids.fixOnOwnedSpot)).toBeNull();
+      expect(await ctx.db.get("spots", ids.otherSpot)).toHaveProperty("workCompletedAt");
       expect(await ctx.db.query("favorites").collect()).toEqual([]);
       expect(await ctx.db.query("spotPhotos").collect()).toEqual([]);
       expect(await ctx.db.query("uploads").collect()).toEqual([]);
