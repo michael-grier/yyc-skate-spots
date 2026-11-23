@@ -1,5 +1,5 @@
 import type { ColorValue } from "react-native";
-import Svg, { Circle, Path } from "react-native-svg";
+import Svg, { Circle, G, Path, Rect } from "react-native-svg";
 
 type IconProps = { size?: number; color: ColorValue };
 
@@ -276,6 +276,18 @@ export function LockIcon({ size = 24, color }: IconProps) {
     >
       <Path d="M7.5 10.5h9a2 2 0 0 1 2 2V19a2 2 0 0 1-2 2h-9a2 2 0 0 1-2-2v-6.5a2 2 0 0 1 2-2z" />
       <Path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" />
+    </Svg>
+  );
+}
+
+/** Marks a spot whose owner has tagged it as needing work. Tilted 45° to echo the board mark. */
+export function HammerIcon({ size = 24, color }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <G transform="rotate(45 12 12)">
+        <Path d="M12 9.5V21.5" stroke={color} strokeWidth={2.8} strokeLinecap="round" />
+        <Rect x={5.5} y={3} width={13} height={6.5} rx={1.6} fill={color} />
+      </G>
     </Svg>
   );
 }

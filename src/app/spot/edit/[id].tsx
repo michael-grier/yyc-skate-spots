@@ -1,5 +1,6 @@
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
+import { describesWork } from "@convex/needsWork";
 import { useMutation, useQuery } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { ActivityIndicator, Text, View } from "react-native";
@@ -67,6 +68,16 @@ export default function EditSpotScreen() {
         initialValues={spotToFormValues({ ...spot, photoIds: spot.photoIds })}
         onCancel={() => router.back()}
         onSave={async (payload, photoIds, expectedAdminPhotosAddedAt) => {
+          // The server refuses this too, but production hides its reason; the form shows this one.
+          if (
+            spot.needsWork &&
+            payload.visibility === "public" &&
+            !describesWork(payload.notes, photoIds.length)
+          ) {
+            throw new Error(
+              "This spot is tagged as needing work, so keep notes or photos that show the fix.",
+            );
+          }
           await updateSpot({ id: spotId, ...payload, photoIds, expectedAdminPhotosAddedAt });
           router.back();
         }}

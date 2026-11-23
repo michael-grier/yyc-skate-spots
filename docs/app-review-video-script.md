@@ -173,9 +173,9 @@ Stop recording after showing the results. Remain signed in as administrator.
 
 ### Report content from another account
 
-Sign out. Open the disposable account's approved spot, then **Report another problem**.
-Use password sign-in for the contributor reviewer account and show that the selected report
-opens automatically after sign-in.
+Sign out. Open the disposable account's approved spot, then **Spot not right? > Report**.
+Use password sign-in for the contributor reviewer account and show that the report opens
+automatically after sign-in.
 
 Briefly select **Dead spot** to show the requirement for 1–3 evidence photos. Do not submit a false dead-spot
 claim. Switch to **Something else** and enter:

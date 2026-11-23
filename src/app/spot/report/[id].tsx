@@ -38,15 +38,13 @@ const UPLOAD_HOST = resolveConvexSiteUrl(
 
 /** Signed-in report form; the mutation independently checks identity and ownership. */
 export default function ReportSpotScreen() {
-  const { id, kind } = useLocalSearchParams<{ id: string; kind?: string }>();
+  const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { isLoaded, isSignedIn, getToken } = useAuth();
   const spot = useQuery(api.spots.get, { id });
   const createReport = useMutation(api.reports.create);
-  const [reason, setReason] = useState<ReportReason | null>(
-    kind === "dead" ? "gone_or_unusable" : null,
-  );
+  const [reason, setReason] = useState<ReportReason | null>(null);
   const isDeadReport = reason === "gone_or_unusable";
   const [photos, setPhotos] = useState<FormPhoto[]>([]);
   const [picking, setPicking] = useState(false);
@@ -138,7 +136,7 @@ export default function ReportSpotScreen() {
         <BackIcon size={18} color={colors.ink} />
       </Pressable>
       <Text className="font-sans-semibold text-[20px] tracking-tight text-ink">
-        {kind === "dead" ? "Report dead spot" : "Report spot"}
+        Report spot
       </Text>
     </View>
   );
@@ -154,7 +152,7 @@ export default function ReportSpotScreen() {
   }
 
   if (!isSignedIn) {
-    // Keep the spot and report kind in this route while Clerk completes any sign-in method.
+    // Keep the spot in this route while Clerk completes any sign-in method.
     // Back leaves this route; successful sign-in reveals the original report form.
     return (
       <View className="flex-1 bg-base">
@@ -223,23 +221,19 @@ export default function ReportSpotScreen() {
         >
           <Text className="font-sans-semibold text-[18px] text-ink">{spot.name}</Text>
           <Text className="mt-1 font-sans text-[14px] leading-relaxed text-mute">
-            {kind === "dead"
-              ? "Skate-stopped, demolished, or permanently blocked? Help keep the map up to date."
-              : "Choose the closest reason. Reports are not shown to the contributor."}
+            Choose the closest reason. Reports are not shown to the contributor.
           </Text>
 
-          {kind !== "dead" ? (
-            <View className="mt-5" pointerEvents={submitting ? "none" : "auto"}>
-              <ModerationReasonPicker
-                value={reason}
-                onChange={(selectedReason) => {
-                  if (busy.current) return;
-                  setReason(selectedReason);
-                  setError(null);
-                }}
-              />
-            </View>
-          ) : null}
+          <View className="mt-5" pointerEvents={submitting ? "none" : "auto"}>
+            <ModerationReasonPicker
+              value={reason}
+              onChange={(selectedReason) => {
+                if (busy.current) return;
+                setReason(selectedReason);
+                setError(null);
+              }}
+            />
+          </View>
 
           {isDeadReport ? (
             <View className="mt-5">

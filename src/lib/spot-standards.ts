@@ -1,6 +1,13 @@
 import spotStandards from "./spot-standards.json";
 
+// Dead spot leads because it's the most common report, and the spot page has no
+// separate dead-spot shortcut any more.
 export const REPORT_REASONS = [
+  {
+    value: "gone_or_unusable",
+    label: "Dead spot",
+    description: "The feature was removed, is permanently blocked, or needs more than a small fix to skate.",
+  },
   {
     value: "not_a_spot",
     label: "Not a skate spot",
@@ -15,11 +22,6 @@ export const REPORT_REASONS = [
     value: "private_or_sensitive",
     label: "Private or sensitive location",
     description: "It exposes a private home or another location that should not be mapped.",
-  },
-  {
-    value: "gone_or_unusable",
-    label: "Dead spot",
-    description: "The feature was removed, blocked permanently, or can no longer be skated.",
   },
   {
     value: "inappropriate_content",

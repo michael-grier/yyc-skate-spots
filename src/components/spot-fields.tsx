@@ -228,6 +228,31 @@ export function VisibilityField({
   );
 }
 
+const NEEDS_WORK_OPTIONS = [
+  { value: false, label: "Skateable as is" },
+  { value: true, label: "Needs work" },
+];
+
+/** Public spots only: the tag is consent for other skaters, and nobody else sees a private one. */
+export function NeedsWorkField({
+  value,
+  onChange,
+}: {
+  value: boolean;
+  onChange: (value: boolean) => void;
+}) {
+  return (
+    <Field label="NEEDS WORK" hint="optional">
+      <Segmented options={NEEDS_WORK_OPTIONS} value={value} onChange={onChange} />
+      <Text className="mt-2.5 px-1 font-sans text-[12px] leading-[18px] text-mute">
+        {value
+          ? "Some work is required to make the spot skateable, and you're happy for locals to fix it up. Describe what needs to be done in the notes or photos."
+          : "The spot is currently skateable, no repairs are needed."}
+      </Text>
+    </Field>
+  );
+}
+
 export function PhotoStrip({
   photos,
   onAdd,

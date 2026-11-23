@@ -6,7 +6,7 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from "rea
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { EvidencePhotos } from "@/components/evidence-photos";
-import { BackIcon } from "@/components/icons";
+import { BackIcon, HammerIcon } from "@/components/icons";
 import { PhotoCarousel } from "@/components/photo-carousel";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -183,6 +183,15 @@ export default function AdminSpotReviewScreen() {
             {spot.latitude.toFixed(5)}, {spot.longitude.toFixed(5)} · Added{" "}
             {formatMonthYear(spot._creationTime)}
           </Text>
+          {/* The standards remove unskateable spots, so a consented fixer-upper must be visible here. */}
+          {spot.needsWork ? (
+            <View className="mt-2 flex-row items-center gap-1.5">
+              <HammerIcon size={12} color={colors.ink} />
+              <Text className="font-sans-medium text-[12px] text-ink">
+                Contributor tagged it as needing work
+              </Text>
+            </View>
+          ) : null}
           {spot.notes ? (
             <Text className="mt-4 font-sans text-[14px] leading-relaxed text-ink/90">
               {spot.notes}

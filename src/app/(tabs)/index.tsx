@@ -275,6 +275,7 @@ function MapContent() {
               key={item.id}
               {...item}
               selected={item.id === selectedId}
+              needsWork={spotsById.get(item.id)?.needsWork}
               label={query ? spotsById.get(item.id)?.name : undefined}
               // Markers stop the map's own press, so they close search themselves.
               onPress={(id) => {
@@ -383,6 +384,7 @@ function MapContent() {
             distanceKm={coords ? distanceKm(coords, selectedSpot) : undefined}
             mine={selectedSpot.isMine}
             isPrivate={selectedSpot.isPrivate}
+            needsWork={selectedSpot.needsWork}
             onPress={() =>
               router.push({ pathname: "/spot/[id]", params: { id: selectedSpot._id } })
             }
