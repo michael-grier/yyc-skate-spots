@@ -23,6 +23,8 @@ import type * as profiles from "../profiles.js";
 import type * as reportPhotos from "../reportPhotos.js";
 import type * as reports from "../reports.js";
 import type * as seed from "../seed.js";
+import type * as spotWork from "../spotWork.js";
+import type * as spotWorkModel from "../spotWorkModel.js";
 import type * as spots from "../spots.js";
 
 import type {
@@ -47,6 +49,8 @@ declare const fullApi: ApiFromModules<{
   reportPhotos: typeof reportPhotos;
   reports: typeof reports;
   seed: typeof seed;
+  spotWork: typeof spotWork;
+  spotWorkModel: typeof spotWorkModel;
   spots: typeof spots;
 }>;
 

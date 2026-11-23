@@ -15,6 +15,7 @@ import {
   spotModerationFor,
 } from "./moderationModel";
 import { contributorName, type profileFor } from "./profileModel";
+import { clearSpotWork, spotWorkFor } from "./spotWorkModel";
 import { reportReason } from "./schema";
 import { MAX_SPOTS_LISTED, releasePhotos, scheduleSpotDeletion } from "./spots";
 
@@ -109,15 +110,22 @@ async function queueSpots(ctx: QueryCtx) {
     .take(MAX_SPOTS_LISTED);
 }
 
-/** How many queued spots need review, matching the queue's Needs review filter. */
+/** How many queued spots need an admin decision: the Needs review filter plus pending fixes. */
 export const reviewCount = query({
   args: {},
   handler: async (ctx) => {
     await requireAdmin(ctx);
     const spots = await queueSpots(ctx);
-    const rows = await Promise.all(spots.map((spot) => spotModerationFor(ctx, spot._id)));
-    // Spots from before moderation rows existed count as unreviewed, as in the queue.
-    return rows.filter((row) => row?.needsReview ?? true).length;
+    const waiting = await Promise.all(
+      spots.map(async (spot) => {
+        const moderation = await spotModerationFor(ctx, spot._id);
+        // Spots from before moderation rows existed count as unreviewed, as in the queue.
+        if (moderation?.needsReview ?? true) return true;
+        const work = await spotWorkFor(ctx, spot._id);
+        return work !== null && work.acceptedAt === undefined;
+      }),
+    );
+    return waiting.filter(Boolean).length;
   },
 });
 
@@ -131,10 +139,14 @@ export const listSpots = query({
     const profiles = new Map<string, ReturnType<typeof profileFor>>();
     // Indexed lookups keep metadata aligned with the selected spots even after
     // the moderation tables grow beyond the queue's display limit.
-    const [moderationRows, contributorRows] = await Promise.all([
+    const [moderationRows, contributorRows, workRows] = await Promise.all([
       Promise.all(activeSpots.map((spot) => spotModerationFor(ctx, spot._id))),
       Promise.all(creatorIdentifiers.map((identifier) => userModerationFor(ctx, identifier))),
+      Promise.all(activeSpots.map((spot) => spotWorkFor(ctx, spot._id))),
     ]);
+    const pendingWorkSpots = new Set(
+      workRows.flatMap((row) => (row && row.acceptedAt === undefined ? [row.spotId] : [])),
+    );
     const moderationBySpot = new Map(
       moderationRows.filter((row) => row !== null).map((row) => [row.spotId, row]),
     );
@@ -161,6 +173,7 @@ export const listSpots = query({
             creatorIsBanned: contributor?.isBanned ?? false,
             creatorModerationId: contributor?._id ?? null,
             canAddAdminPhotos: allowAdminPhotos === true && photoIds.length === 0,
+            workSubmitted: pendingWorkSpots.has(spot._id),
             previewPhotoUrl: photoIds.length > 0 ? await ctx.storage.getUrl(photoIds[0]) : null,
             review: reviewState({ ...spot, photoIds, createdBy }, moderationBySpot.get(spot._id)),
           };
@@ -181,7 +194,7 @@ export const getSpot = query({
     if (!spot || spot.deletionRequested || spot.publicationStatus === "private") {
       return null;
     }
-    const [moderation, contributor, reports] = await Promise.all([
+    const [moderation, contributor, reports, work] = await Promise.all([
       ctx.db
         .query("spotModeration")
         .withIndex("by_spotId", (q) => q.eq("spotId", spot._id))
@@ -192,6 +205,7 @@ export const getSpot = query({
         .withIndex("by_spotId", (q) => q.eq("spotId", spot._id))
         .order("desc")
         .take(MAX_OPEN_REPORTS_PER_SPOT),
+      spotWorkFor(ctx, spot._id),
     ]);
     const photoUrls = (
       await Promise.all(spot.photoIds.map((photoId) => ctx.storage.getUrl(photoId)))
@@ -211,6 +225,18 @@ export const getSpot = query({
       photoUrls,
       canAddAdminPhotos: spot.allowAdminPhotos === true && spot.photoIds.length === 0,
       review: reviewState(spot, moderation ?? undefined),
+      // Only a pending fix needs a decision; an approved one is part of the public spot.
+      workSubmission:
+        work && work.acceptedAt === undefined
+          ? {
+              _creationTime: work._creationTime,
+              details: work.details,
+              submitterName: await creatorLabel(ctx, work.submittedBy, undefined),
+              photoUrls: (
+                await Promise.all(work.photoIds.map((id) => ctx.storage.getUrl(id)))
+              ).filter((url): url is string => url !== null),
+            }
+          : null,
       creator: {
         name: await creatorLabel(ctx, spot.createdBy, spot.createdByName),
         confirmedRemovalCount: contributor?.confirmedRemovalCount ?? 0,
@@ -288,6 +314,7 @@ export const removeSpot = mutation({
       throw new Error(`Removal details must be at most ${MAX_REMOVAL_DETAILS_LENGTH} characters.`);
     }
     const reportCount = await clearSpotModeration(ctx, spot._id);
+    await clearSpotWork(ctx, spot._id);
     await releasePhotos(ctx, spot.photoIds);
     await scheduleSpotDeletion(ctx, spot._id);
 
