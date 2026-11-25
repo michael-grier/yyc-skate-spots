@@ -117,10 +117,16 @@ export function PhotoCarousel({ urls, spotName, variant = "compact", credit }: P
               {credit && i >= credit.fromIndex ? (
                 <View
                   pointerEvents="none"
-                  className="absolute bottom-4 left-4 flex-row items-center gap-1.5 rounded-full border border-white/15 bg-black/60 px-3 py-2"
+                  // Capped so a long name stops short of the View pill on the right.
+                  className="absolute bottom-4 left-4 max-w-[60%] flex-row items-center gap-1.5 rounded-full border border-white/15 bg-black/60 px-3 py-2"
                 >
                   <HammerIcon size={12} color={colors.ink} />
-                  <Text className="font-sans-semibold text-[11px] text-ink">{credit.label}</Text>
+                  <Text
+                    numberOfLines={1}
+                    className="shrink font-sans-semibold text-[11px] text-ink"
+                  >
+                    {credit.label}
+                  </Text>
                 </View>
               ) : null}
             </Pressable>

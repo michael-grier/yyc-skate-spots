@@ -352,9 +352,10 @@ export function PhotoViewer({
           >
             {/* The credit takes the hint's place, so the footer keeps its height. */}
             {credit && safeIndex >= credit.fromIndex ? (
-              <View className="flex-row items-center gap-1.5">
+              <View className="max-w-full flex-row items-center gap-1.5 px-4">
                 <HammerIcon size={11} color={colors.ink} />
-                <Text className="font-sans-semibold text-[12px] text-ink">
+                {/* One line keeps the fixed-height footer from pushing the zoom buttons down. */}
+                <Text numberOfLines={1} className="shrink font-sans-semibold text-[12px] text-ink">
                   {credit.label} · {credit.date}
                 </Text>
               </View>

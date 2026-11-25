@@ -183,7 +183,7 @@ export default function FixSpotScreen() {
           <Text className="font-sans-semibold text-[17px] text-ink">Nothing to fix here</Text>
           <Text className="mt-2 text-center font-sans text-[14px] text-mute">
             {spot?.status === "active" && spot.isOwner
-              ? "It's your spot. Once it's fixed, remove the tag from the spot page."
+              ? "It's your spot, so there's no fix for you to send."
               : "The spot no longer needs work, or someone has already sent photos of a fix."}
           </Text>
         </View>

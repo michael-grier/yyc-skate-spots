@@ -355,7 +355,8 @@ export default function SpotDetailScreen() {
   const fixedRow = fix !== null && {
     icon: needsWorkIcon,
     title: `Fixed up by ${fix.by}`,
-    body: `${formatMonthYear(fix.at)}. The last ${
+    // With no photos of its own, the gallery is only the fix, so "the last" would mislead.
+    body: `${formatMonthYear(fix.at)}. ${spot.photoUrls.length === 0 ? "The" : "The last"} ${
       fix.photoUrls.length === 1 ? "photo shows" : `${fix.photoUrls.length} photos show`
     } the fix.`,
   };

@@ -61,7 +61,11 @@ export default function AdminSpotReviewScreen() {
             try {
               await (approve ? acceptFix : rejectFix)({ workId });
             } catch {
-              Alert.alert("Couldn't save the decision", "Check your connection and try again.");
+              // Production hides the server's reason, and another admin may have decided first.
+              Alert.alert(
+                "Couldn't save the decision",
+                "Another admin may have reviewed this fix already, or the connection dropped.",
+              );
             } finally {
               setWorking(false);
             }

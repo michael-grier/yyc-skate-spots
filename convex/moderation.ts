@@ -110,7 +110,7 @@ async function queueSpots(ctx: QueryCtx) {
     .take(MAX_SPOTS_LISTED);
 }
 
-/** How many queued spots need an admin decision: the Needs review filter plus pending fixes. */
+/** How many queued spots need an admin decision; the queue's Needs review filter matches it. */
 export const reviewCount = query({
   args: {},
   handler: async (ctx) => {
