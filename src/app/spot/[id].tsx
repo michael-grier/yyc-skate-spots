@@ -216,6 +216,14 @@ export default function SpotDetailScreen() {
             <Text className="mt-2 font-sans-semibold text-[16px] text-ink">
               {reportReasonLabel(spot.reason)}
             </Text>
+            {spot.ownerMessage ? (
+              <View className="mt-3 border-l-2 border-white/20 pl-3">
+                <Text className="font-sans-medium text-[11px] text-mute">FROM YYC SKATE SPOTS</Text>
+                <Text className="mt-1 font-sans text-[14px] leading-relaxed text-ink">
+                  {spot.ownerMessage}
+                </Text>
+              </View>
+            ) : null}
             <Text className="mt-2 font-sans text-[13px] leading-relaxed text-mute">
               {spot.strikeNumber === 0
                 ? "No strike was added to your contribution record."
