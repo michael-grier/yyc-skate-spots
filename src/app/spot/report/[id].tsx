@@ -273,7 +273,7 @@ export default function ReportSpotScreen() {
             </View>
           ) : null}
 
-          <View onLayout={onFieldLayout}>
+          <View onLayout={onFieldLayout()}>
             <Text className="mt-5 mb-2 px-1 font-sans-medium text-[11px] text-mute">
               DETAILS (OPTIONAL)
             </Text>

@@ -41,7 +41,7 @@ export default function AdminRemoveSpotScreen() {
   const [ownerMessage, setOwnerMessage] = useState("");
   const [details, setDetails] = useState("");
   const [showDetails, setShowDetails] = useState(false);
-  const { scrollRef, onFieldLayout } = useRevealFieldOnKeyboard();
+  const { scrollRef, onFieldLayout, onFieldFocus } = useRevealFieldOnKeyboard();
   const [working, setWorking] = useState(false);
   const [result, setResult] = useState<RemovalResult | null>(null);
   const [banApplied, setBanApplied] = useState(false);
@@ -283,7 +283,7 @@ export default function AdminRemoveSpotScreen() {
               No contributor strike will be added for a dead spot.
             </Text>
           ) : null}
-          <View onLayout={onFieldLayout}>
+          <View onLayout={onFieldLayout("message")}>
             <Text className="mt-5 mb-2 px-1 font-sans-medium text-[11px] text-mute">
               MESSAGE TO CONTRIBUTOR (OPTIONAL)
             </Text>
@@ -291,6 +291,7 @@ export default function AdminRemoveSpotScreen() {
               <TextInput
                 value={ownerMessage}
                 onChangeText={setOwnerMessage}
+                onFocus={onFieldFocus("message")}
                 maxLength={MAX_TEXT_LENGTH}
                 placeholder="What was wrong with this spot?"
                 placeholderTextColor={colors.mute}
@@ -310,41 +311,43 @@ export default function AdminRemoveSpotScreen() {
                 {ownerMessage.length}/{MAX_TEXT_LENGTH}
               </Text>
             </View>
-
-            {showDetails ? (
-              <>
-                <Text className="mt-5 mb-2 px-1 font-sans-medium text-[11px] text-mute">
-                  INTERNAL NOTE (OPTIONAL)
-                </Text>
-                <Card className="px-4 py-3">
-                  <TextInput
-                    value={details}
-                    onChangeText={setDetails}
-                    maxLength={MAX_TEXT_LENGTH}
-                    placeholder="Only administrators see this"
-                    placeholderTextColor={colors.mute}
-                    multiline
-                    textAlignVertical="top"
-                    accessibilityLabel="Internal note"
-                    className="min-h-[96px] max-h-[160px] font-sans text-[14px] leading-relaxed text-ink"
-                    style={{ paddingVertical: 0 }}
-                  />
-                </Card>
-                <Text className="mt-1.5 px-1 text-right font-sans text-[11px] text-mute">
-                  {details.length}/{MAX_TEXT_LENGTH}
-                </Text>
-              </>
-            ) : (
-              <Pressable
-                accessibilityRole="button"
-                hitSlop={8}
-                onPress={() => setShowDetails(true)}
-                className="mt-4 self-start px-1 active:opacity-80"
-              >
-                <Text className="font-sans-medium text-[13px] text-mute">+ Add internal note</Text>
-              </Pressable>
-            )}
           </View>
+
+          {showDetails ? (
+            <View onLayout={onFieldLayout("note")}>
+              <Text className="mt-5 mb-2 px-1 font-sans-medium text-[11px] text-mute">
+                INTERNAL NOTE (OPTIONAL)
+              </Text>
+              <Card className="px-4 py-3">
+                <TextInput
+                  value={details}
+                  onChangeText={setDetails}
+                  onFocus={onFieldFocus("note")}
+                  autoFocus
+                  maxLength={MAX_TEXT_LENGTH}
+                  placeholder="Only administrators see this"
+                  placeholderTextColor={colors.mute}
+                  multiline
+                  textAlignVertical="top"
+                  accessibilityLabel="Internal note"
+                  className="min-h-[96px] max-h-[160px] font-sans text-[14px] leading-relaxed text-ink"
+                  style={{ paddingVertical: 0 }}
+                />
+              </Card>
+              <Text className="mt-1.5 px-1 text-right font-sans text-[11px] text-mute">
+                {details.length}/{MAX_TEXT_LENGTH}
+              </Text>
+            </View>
+          ) : (
+            <Pressable
+              accessibilityRole="button"
+              hitSlop={8}
+              onPress={() => setShowDetails(true)}
+              className="mt-4 self-start px-1 active:opacity-80"
+            >
+              <Text className="font-sans-medium text-[13px] text-mute">+ Add internal note</Text>
+            </Pressable>
+          )}
 
           {error ? (
             <Text className="mt-3 font-sans text-[13px] text-bust-high">{error}</Text>
