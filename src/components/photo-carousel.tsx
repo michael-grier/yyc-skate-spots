@@ -91,7 +91,9 @@ export function PhotoCarousel({ urls, spotName, variant = "compact", credit }: P
               accessibilityRole={variant === "gallery" ? "button" : undefined}
               accessibilityLabel={
                 variant === "gallery"
-                  ? `Open ${spotName}, photo ${i + 1} of ${urls.length}`
+                  ? `Open ${spotName}, photo ${i + 1} of ${urls.length}${
+                      credit && i >= credit.fromIndex ? `, ${credit.label}` : ""
+                    }`
                   : undefined
               }
               disabled={variant !== "gallery"}

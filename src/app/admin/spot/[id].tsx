@@ -44,7 +44,7 @@ export default function AdminSpotReviewScreen() {
 
   function confirmFixDecision(approve: boolean) {
     if (!spot?.workSubmission) return;
-    const spotId = spot._id;
+    const workId = spot.workSubmission._id;
     const by = spot.workSubmission.submitterName;
     Alert.alert(
       approve ? "Approve this fix?" : "Reject this fix?",
@@ -59,7 +59,7 @@ export default function AdminSpotReviewScreen() {
           onPress: async () => {
             setWorking(true);
             try {
-              await (approve ? acceptFix : rejectFix)({ spotId });
+              await (approve ? acceptFix : rejectFix)({ workId });
             } catch {
               Alert.alert("Couldn't save the decision", "Check your connection and try again.");
             } finally {

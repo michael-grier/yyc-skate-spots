@@ -37,9 +37,14 @@ function reviewLabel(spot: QueueSpot) {
   return spot.workSubmitted ? "Work submitted" : "Reviewed";
 }
 
+// Matches the profile's review count, so the default filter shows every spot that count includes.
+function needsDecision(spot: QueueSpot) {
+  return spot.review.needsReview || spot.workSubmitted;
+}
+
 function reviewColor(spot: QueueSpot) {
   if (spot.review.openReportCount > 0) return colors.bust.high;
-  if (spot.review.needsReview || spot.workSubmitted) return colors.bust.medium;
+  if (needsDecision(spot)) return colors.bust.medium;
   return colors.bust.low;
 }
 
@@ -110,7 +115,7 @@ export default function AdminQueueScreen() {
     if (filter === "needs_photos") return spots.filter((spot) => spot.canAddAdminPhotos);
     if (filter === "reported") return spots.filter((spot) => spot.review.openReportCount > 0);
     if (filter === "work_done") return spots.filter((spot) => spot.workSubmitted);
-    if (filter === "needs_review") return spots.filter((spot) => spot.review.needsReview);
+    if (filter === "needs_review") return spots.filter(needsDecision);
     return spots;
   }, [filter, spots]);
 
@@ -162,7 +167,7 @@ export default function AdminQueueScreen() {
   }
 
   const reportedCount = spots?.filter((spot) => spot.review.openReportCount > 0).length ?? 0;
-  const needsReviewCount = spots?.filter((spot) => spot.review.needsReview).length ?? 0;
+  const needsReviewCount = spots?.filter(needsDecision).length ?? 0;
 
   return (
     <View className="flex-1 bg-base">

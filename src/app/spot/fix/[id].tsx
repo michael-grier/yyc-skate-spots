@@ -1,5 +1,5 @@
 import { useAuth } from "@clerk/expo";
-import { MAX_FIX_PHOTOS } from "@convex/constants";
+import { MAX_FIX_DETAILS_LENGTH, MAX_FIX_PHOTOS } from "@convex/constants";
 import type { Id } from "@convex/_generated/dataModel";
 import { api } from "@convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
@@ -29,7 +29,6 @@ import { useContributionGate } from "@/lib/use-contribution-gate";
 import { useRevealFieldOnKeyboard } from "@/lib/use-reveal-field-on-keyboard";
 import { colors } from "@/theme/colors";
 
-const MAX_DETAILS_LENGTH = 500;
 const UPLOAD_HOST = resolveConvexSiteUrl(
   process.env.EXPO_PUBLIC_CONVEX_URL ?? "",
   process.env.EXPO_PUBLIC_CONVEX_SITE_URL,
@@ -167,8 +166,15 @@ export default function FixSpotScreen() {
     );
   }
 
-  // A fix already waiting, or a tag removed meanwhile, leaves nothing to send.
-  if (spot === null || spot.status !== "active" || !spot.needsWork || spot.pendingFix !== null) {
+  // A fix already waiting, or a tag removed meanwhile, leaves nothing to send. Owners can
+  // reach this by signing in here, but the server only takes fixes from someone else.
+  if (
+    spot === null ||
+    spot.status !== "active" ||
+    spot.isOwner ||
+    !spot.needsWork ||
+    spot.pendingFix !== null
+  ) {
     return (
       <View className="flex-1 bg-base">
         <Stack.Screen options={{ headerShown: false }} />
@@ -176,7 +182,9 @@ export default function FixSpotScreen() {
         <View className="flex-1 items-center justify-center px-8">
           <Text className="font-sans-semibold text-[17px] text-ink">Nothing to fix here</Text>
           <Text className="mt-2 text-center font-sans text-[14px] text-mute">
-            The spot no longer needs work, or someone has already sent photos of a fix.
+            {spot?.status === "active" && spot.isOwner
+              ? "It's your spot. Once it's fixed, remove the tag from the spot page."
+              : "The spot no longer needs work, or someone has already sent photos of a fix."}
           </Text>
         </View>
       </View>
@@ -249,7 +257,7 @@ export default function FixSpotScreen() {
                 value={details}
                 editable={!submitting}
                 onChangeText={setDetails}
-                maxLength={MAX_DETAILS_LENGTH}
+                maxLength={MAX_FIX_DETAILS_LENGTH}
                 placeholder="Patched the crack, moved the rock…"
                 placeholderTextColor={colors.mute}
                 multiline
@@ -260,7 +268,7 @@ export default function FixSpotScreen() {
               />
             </Card>
             <Text className="mt-1.5 px-1 text-right font-sans text-[11px] text-mute">
-              {details.length}/{MAX_DETAILS_LENGTH}
+              {details.length}/{MAX_FIX_DETAILS_LENGTH}
             </Text>
           </View>
 

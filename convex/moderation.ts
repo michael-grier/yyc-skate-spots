@@ -121,6 +121,8 @@ export const reviewCount = query({
         const moderation = await spotModerationFor(ctx, spot._id);
         // Spots from before moderation rows existed count as unreviewed, as in the queue.
         if (moderation?.needsReview ?? true) return true;
+        // A pending fix keeps its spot tagged, so untagged spots can't have one.
+        if (!spot.needsWork) return false;
         const work = await spotWorkFor(ctx, spot._id);
         return work !== null && work.acceptedAt === undefined;
       }),
@@ -142,7 +144,7 @@ export const listSpots = query({
     const [moderationRows, contributorRows, workRows] = await Promise.all([
       Promise.all(activeSpots.map((spot) => spotModerationFor(ctx, spot._id))),
       Promise.all(creatorIdentifiers.map((identifier) => userModerationFor(ctx, identifier))),
-      Promise.all(activeSpots.map((spot) => spotWorkFor(ctx, spot._id))),
+      Promise.all(activeSpots.map((spot) => (spot.needsWork ? spotWorkFor(ctx, spot._id) : null))),
     ]);
     const pendingWorkSpots = new Set(
       workRows.flatMap((row) => (row && row.acceptedAt === undefined ? [row.spotId] : [])),
@@ -229,6 +231,7 @@ export const getSpot = query({
       workSubmission:
         work && work.acceptedAt === undefined
           ? {
+              _id: work._id,
               _creationTime: work._creationTime,
               details: work.details,
               submitterName: await creatorLabel(ctx, work.submittedBy, undefined),

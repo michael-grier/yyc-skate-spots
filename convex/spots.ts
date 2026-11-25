@@ -211,9 +211,11 @@ export async function scheduleSpotDeletion(ctx: MutationCtx, spotId: Id<"spots">
 }
 
 /** The first owner photo, or for a spot with none, the first photo of its approved fix. */
-async function previewPhotoUrl(ctx: QueryCtx, spotId: Id<"spots">, photoIds: Id<"_storage">[]) {
-  if (photoIds.length > 0) return await ctx.storage.getUrl(photoIds[0]);
-  const work = await spotWorkFor(ctx, spotId);
+async function previewPhotoUrl(ctx: QueryCtx, spot: Doc<"spots">) {
+  if (spot.photoIds.length > 0) return await ctx.storage.getUrl(spot.photoIds[0]);
+  // Skipping unfixed spots keeps the map from re-running on every pending fix.
+  if (spot.workCompletedAt === undefined) return null;
+  const work = await spotWorkFor(ctx, spot._id);
   return work?.acceptedAt !== undefined && work.photoIds.length > 0
     ? await ctx.storage.getUrl(work.photoIds[0])
     : null;
@@ -251,9 +253,9 @@ export const list = query({
       }
     }
     return Promise.all(
-      visibleSpots.map(
-        async ({
-          photoIds,
+      visibleSpots.map(async (fullSpot) => {
+        const {
+          photoIds: _photoIds,
           createdBy,
           allowAdminPhotos: _allowAdminPhotos,
           adminPhotosAddedAt: _adminPhotosAddedAt,
@@ -261,16 +263,18 @@ export const list = query({
           publicationStatus,
           deletionRequested: _deletionRequested,
           needsWork,
+          workCompletedAt: _workCompletedAt,
           ...spot
-        }) => ({
+        } = fullSpot;
+        return {
           ...spot,
           createdByName: await contributorName(ctx, createdBy, spot.createdByName, profiles),
           isMine: identity !== null && createdBy === identity.tokenIdentifier,
           isPrivate: publicationStatus === "private",
           needsWork: needsWork === true,
-          previewPhotoUrl: await previewPhotoUrl(ctx, spot._id, photoIds),
-        }),
-      ),
+          previewPhotoUrl: await previewPhotoUrl(ctx, fullSpot),
+        };
+      }),
     );
   },
 });
@@ -524,7 +528,7 @@ export const update = mutation({
           "This spot has open reports. It can be made private once an admin has reviewed them.",
         );
       }
-      // Someone has already done the work, so hiding the spot would take their credit away.
+      // Someone has done the work, so hiding the spot before an admin decides would bury it.
       const work = await spotWorkFor(ctx, id);
       if (work && work.acceptedAt === undefined) {
         throw new Error(

@@ -474,10 +474,7 @@ export default function SpotDetailScreen() {
                         // Someone has done the work, so the tag stays until an admin decides.
                         icon: needsWorkIcon,
                         title: "Needs work",
-                        body:
-                          spot.pendingFix === "mine"
-                            ? "Your photos of the fix are waiting for an admin to check them."
-                            : "Someone sent photos of a fix. An admin is checking them.",
+                        body: "Someone sent photos of a fix. An admin is checking them.",
                       }
                     : {
                         icon: needsWorkIcon,

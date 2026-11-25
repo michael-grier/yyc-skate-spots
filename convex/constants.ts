@@ -12,3 +12,4 @@ export const MAX_REPORT_PHOTOS = 3;
 
 // A fix is a few photos of the finished work, not a second gallery.
 export const MAX_FIX_PHOTOS = 3;
+export const MAX_FIX_DETAILS_LENGTH = 500;

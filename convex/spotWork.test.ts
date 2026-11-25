@@ -42,9 +42,16 @@ async function setup() {
   return { t, asAlice, asSam, asAdmin, spotId };
 }
 
+/** The pending fix's ID, as the admin review screen gets it. */
+async function pendingWorkId(asAdmin: Identity, spotId: Id<"spots">) {
+  const spot = await asAdmin.query(api.moderation.getSpot, { id: spotId });
+  if (!spot?.workSubmission) throw new Error("Expected a pending fix.");
+  return spot.workSubmission._id;
+}
+
 describe("I fixed it", () => {
   test("a fix needs a published, tagged spot and 1–3 of the sender's own photos", async () => {
-    const { t, asAlice, asSam, spotId } = await setup();
+    const { t, asAlice, asSam, asAdmin, spotId } = await setup();
     const photo = await uploadAs(t, asSam, "after");
 
     await expect(asSam.mutation(api.spotWork.submit, { spotId, photoIds: [] })).rejects.toThrow(
@@ -64,10 +71,15 @@ describe("I fixed it", () => {
       asSam.mutation(api.spotWork.submit, { spotId: untaggedId, photoIds: [photo] }),
     ).rejects.toThrow(/not found|isn't tagged/);
 
-    await asSam.mutation(api.spotWork.submit, { spotId, photoIds: [photo], details: " Bondo. " });
-    const second = await uploadAs(t, asAlice, "second fix");
+    const ownersPhoto = await uploadAs(t, asAlice, "own fix");
     await expect(
-      asAlice.mutation(api.spotWork.submit, { spotId, photoIds: [second] }),
+      asAlice.mutation(api.spotWork.submit, { spotId, photoIds: [ownersPhoto] }),
+    ).rejects.toThrow(/your own spot/);
+
+    await asSam.mutation(api.spotWork.submit, { spotId, photoIds: [photo], details: " Bondo. " });
+    const second = await uploadAs(t, asAdmin, "second fix");
+    await expect(
+      asAdmin.mutation(api.spotWork.submit, { spotId, photoIds: [second] }),
     ).rejects.toThrow(/already sent/);
   });
 
@@ -99,9 +111,10 @@ describe("I fixed it", () => {
     expect(await asAdmin.query(api.moderation.getSpot, { id: spotId })).toMatchObject({
       workSubmission: { photoUrls: [expect.any(String)] },
     });
-    await expect(asSam.mutation(api.spotWork.accept, { spotId })).rejects.toThrow(/Administrator/);
+    const workId = await pendingWorkId(asAdmin, spotId);
+    await expect(asSam.mutation(api.spotWork.accept, { workId })).rejects.toThrow(/Administrator/);
 
-    await asAdmin.mutation(api.spotWork.accept, { spotId });
+    await asAdmin.mutation(api.spotWork.accept, { workId });
     const spot = await t.query(api.spots.get, { id: spotId });
     expect(spot).toMatchObject({
       needsWork: false,
@@ -128,7 +141,8 @@ describe("I fixed it", () => {
     const photo = await uploadAs(t, asSam, "after");
     await asSam.mutation(api.spotWork.submit, { spotId, photoIds: [photo] });
 
-    await asAdmin.mutation(api.spotWork.reject, { spotId });
+    const workId = await pendingWorkId(asAdmin, spotId);
+    await asAdmin.mutation(api.spotWork.reject, { workId });
     expect(await t.run((ctx) => ctx.storage.getUrl(photo))).toBeNull();
     expect(await t.query(api.spots.get, { id: spotId })).toMatchObject({
       needsWork: true,
@@ -137,5 +151,7 @@ describe("I fixed it", () => {
     });
     const retry = await uploadAs(t, asSam, "better fix");
     await asSam.mutation(api.spotWork.submit, { spotId, photoIds: [retry] });
+    // A second admin still looking at the rejected fix can't approve its replacement.
+    await expect(asAdmin.mutation(api.spotWork.accept, { workId })).rejects.toThrow(/reviewed/);
   });
 });
