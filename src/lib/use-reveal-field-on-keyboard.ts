@@ -44,8 +44,12 @@ export function useRevealFieldOnKeyboard() {
     (name = DEFAULT_FIELD) =>
       (event: LayoutChangeEvent) => {
         fieldYs.current.set(name, event.nativeEvent.layout.y);
+        // A field focused on mount can report focus before its layout.
+        if (keyboardVisible.current && focusedField.current === name) {
+          reveal();
+        }
       },
-    [],
+    [reveal],
   );
 
   const onFieldFocus = useCallback(
