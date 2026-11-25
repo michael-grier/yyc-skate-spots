@@ -24,7 +24,7 @@ import type { ReportReason } from "@/lib/spot-standards";
 import { useRevealFieldOnKeyboard } from "@/lib/use-reveal-field-on-keyboard";
 import { colors } from "@/theme/colors";
 
-const MAX_DETAILS_LENGTH = 500;
+const MAX_TEXT_LENGTH = 500;
 type RemovalResult = FunctionReturnType<typeof api.moderation.removeSpot>;
 
 /** Final admin removal form, separated from review so deletion requires an explicit reason. */
@@ -38,7 +38,9 @@ export default function AdminRemoveSpotScreen() {
   const removeSpot = useMutation(api.moderation.removeSpot);
   const banContributor = useMutation(api.moderation.banContributor);
   const [reason, setReason] = useState<ReportReason | null>(null);
+  const [ownerMessage, setOwnerMessage] = useState("");
   const [details, setDetails] = useState("");
+  const [showDetails, setShowDetails] = useState(false);
   const { scrollRef, onFieldLayout } = useRevealFieldOnKeyboard();
   const [working, setWorking] = useState(false);
   const [result, setResult] = useState<RemovalResult | null>(null);
@@ -70,7 +72,11 @@ export default function AdminRemoveSpotScreen() {
     }
     Alert.alert(
       `Remove ${spot.name}?`,
-      "The spot and its photos will be deleted. The contributor will receive a private removal notice.",
+      `The spot and its photos will be deleted. The contributor will receive a private removal notice. ${
+        reason === "gone_or_unusable"
+          ? "No strike is added for a dead spot."
+          : "This adds a strike to their record."
+      }`,
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -84,6 +90,7 @@ export default function AdminRemoveSpotScreen() {
                 await removeSpot({
                   spotId: spot._id,
                   reason,
+                  ...(ownerMessage.trim() ? { ownerMessage: ownerMessage.trim() } : {}),
                   ...(details.trim() ? { details: details.trim() } : {}),
                 }),
               );
@@ -253,8 +260,8 @@ export default function AdminRemoveSpotScreen() {
             <Text className="font-sans-medium text-[11px] text-bust-high">REMOVING</Text>
             <Text className="mt-1 font-sans-semibold text-[18px] text-ink">{spot.name}</Text>
             <Text className="mt-2 font-sans text-[13px] leading-relaxed text-mute">
-              Choose why this spot is being removed. This reason appears in the contributor’s
-              private removal notice. Dead-spot removal does not add a strike.
+              Choose why this spot is being removed. The reason and your message appear in the
+              contributor’s private removal notice. Dead-spot removal does not add a strike.
             </Text>
           </Card>
 
@@ -276,25 +283,65 @@ export default function AdminRemoveSpotScreen() {
           ) : null}
           <View onLayout={onFieldLayout}>
             <Text className="mt-5 mb-2 px-1 font-sans-medium text-[11px] text-mute">
-              INTERNAL DETAILS (OPTIONAL)
+              MESSAGE TO CONTRIBUTOR (OPTIONAL)
             </Text>
             <Card className="px-4 py-3">
               <TextInput
-                value={details}
-                onChangeText={setDetails}
-                maxLength={MAX_DETAILS_LENGTH}
-                placeholder="Notes for the moderation record"
+                value={ownerMessage}
+                onChangeText={setOwnerMessage}
+                maxLength={MAX_TEXT_LENGTH}
+                placeholder="What was wrong with this spot?"
                 placeholderTextColor={colors.mute}
                 multiline
                 textAlignVertical="top"
-                accessibilityLabel="Internal removal details"
+                accessibilityLabel="Message to contributor"
+                accessibilityHint="The contributor sees this word for word"
                 className="min-h-[96px] max-h-[160px] font-sans text-[14px] leading-relaxed text-ink"
                 style={{ paddingVertical: 0 }}
               />
             </Card>
-            <Text className="mt-1.5 px-1 text-right font-sans text-[11px] text-mute">
-              {details.length}/{MAX_DETAILS_LENGTH}
-            </Text>
+            <View className="mt-1.5 flex-row justify-between px-1">
+              <Text className="font-sans text-[11px] text-mute">
+                They’ll see this word for word.
+              </Text>
+              <Text className="font-sans text-[11px] text-mute">
+                {ownerMessage.length}/{MAX_TEXT_LENGTH}
+              </Text>
+            </View>
+
+            {showDetails ? (
+              <>
+                <Text className="mt-5 mb-2 px-1 font-sans-medium text-[11px] text-mute">
+                  INTERNAL NOTE (OPTIONAL)
+                </Text>
+                <Card className="px-4 py-3">
+                  <TextInput
+                    value={details}
+                    onChangeText={setDetails}
+                    maxLength={MAX_TEXT_LENGTH}
+                    placeholder="Only administrators see this"
+                    placeholderTextColor={colors.mute}
+                    multiline
+                    textAlignVertical="top"
+                    accessibilityLabel="Internal note"
+                    className="min-h-[96px] max-h-[160px] font-sans text-[14px] leading-relaxed text-ink"
+                    style={{ paddingVertical: 0 }}
+                  />
+                </Card>
+                <Text className="mt-1.5 px-1 text-right font-sans text-[11px] text-mute">
+                  {details.length}/{MAX_TEXT_LENGTH}
+                </Text>
+              </>
+            ) : (
+              <Pressable
+                accessibilityRole="button"
+                hitSlop={8}
+                onPress={() => setShowDetails(true)}
+                className="mt-4 self-start px-1 active:opacity-80"
+              >
+                <Text className="font-sans-medium text-[13px] text-mute">+ Add internal note</Text>
+              </Pressable>
+            )}
           </View>
 
           {error ? (

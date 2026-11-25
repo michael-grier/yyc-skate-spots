@@ -5,9 +5,10 @@ import { Keyboard, type LayoutChangeEvent, type ScrollView } from "react-native"
 const TOP_MARGIN = 12;
 
 /**
- * Scrolls a form's only text field to the top of its ScrollView once the keyboard is up. iOS
+ * Scrolls a form's text field to the top of its ScrollView once the keyboard is up. iOS
  * keeps the caret visible only at focus, so a multiline field that grows would otherwise type
- * under the keyboard. Attach `onFieldLayout` to a direct child of the ScrollView's content.
+ * under the keyboard. Attach `onFieldLayout` to a direct child of the ScrollView's content;
+ * a form with several fields wraps them in that one child.
  */
 export function useRevealFieldOnKeyboard() {
   const scrollRef = useRef<ScrollView>(null);
