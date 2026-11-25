@@ -72,11 +72,13 @@ export default function AdminRemoveSpotScreen() {
     }
     Alert.alert(
       `Remove ${spot.name}?`,
-      `The spot and its photos will be deleted. The contributor will receive a private removal notice. ${
-        reason === "gone_or_unusable"
-          ? "No strike is added for a dead spot."
-          : "This adds a strike to their record."
-      }`,
+      spot.creator.isSeeded
+        ? "The spot and its photos will be deleted."
+        : `The spot and its photos will be deleted. The contributor will receive a private removal notice. ${
+            reason === "gone_or_unusable"
+              ? "No strike is added for a dead spot."
+              : "This adds a strike to their record."
+          }`,
       [
         { text: "Cancel", style: "cancel" },
         {

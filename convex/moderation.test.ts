@@ -196,7 +196,7 @@ describe("spot moderation", () => {
         expect.arrayContaining([expect.objectContaining({ _id: id, creatorName: label })]),
       );
       expect(await admin.query(api.moderation.getSpot, { id })).toMatchObject({
-        creator: { name: label },
+        creator: { name: label, isSeeded: owner === "seed" },
       });
       await admin.mutation(api.moderation.markMeetsStandards, { spotId: id });
       const publicSpot = await t.query(api.spots.get, { id });

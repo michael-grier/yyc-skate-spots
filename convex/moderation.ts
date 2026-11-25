@@ -213,6 +213,8 @@ export const getSpot = query({
       review: reviewState(spot, moderation ?? undefined),
       creator: {
         name: await creatorLabel(ctx, spot.createdBy, spot.createdByName),
+        // Seed rows have no account, so removal adds no strike and sends no notice.
+        isSeeded: spot.createdBy === SEED_OWNER,
         confirmedRemovalCount: contributor?.confirmedRemovalCount ?? 0,
         isBanned: contributor?.isBanned ?? false,
         moderationId: contributor?._id ?? null,
