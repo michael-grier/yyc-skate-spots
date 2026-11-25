@@ -415,13 +415,15 @@ export const get = query({
       publicationStatus: _publicationStatus,
       deletionRequested: _deletionRequested,
       needsWork,
-      workCompletedAt: _workCompletedAt,
+      workCompletedAt,
       ...publicFields
     } = spot;
     return {
       status: "active" as const,
       ...publicFields,
       needsWork: needsWork === true,
+      // Unlike fix, this outlives the sender's account, so it alone says the tag is retired.
+      isFixed: workCompletedAt !== undefined,
       fix,
       pendingFix,
       createdByName: await contributorName(ctx, spot.createdBy, spot.createdByName),

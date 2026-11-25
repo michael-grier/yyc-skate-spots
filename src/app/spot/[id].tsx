@@ -599,10 +599,10 @@ export default function SpotDetailScreen() {
                     onPress: () =>
                       router.push({ pathname: "/spot/edit/[id]", params: { id: spotId } }),
                   },
-                  // Nobody else sees a private spot, so there is no one to fix it up, and a banned
-                  // owner can't tag; the item waits until that status has loaded. Removing the tag
-                  // lives on the Your spot card instead.
-                  ...(spot.isPrivate || spot.needsWork || isBanned || !gateReady
+                  // Nobody else sees a private spot, so there is no one to fix it up, a fixed spot
+                  // can't be tagged again, and a banned owner can't tag; the item waits until that
+                  // status has loaded. Removing the tag lives on the Your spot card instead.
+                  ...(spot.isPrivate || spot.needsWork || spot.isFixed || isBanned || !gateReady
                     ? []
                     : [{ text: "Tag as needs work", onPress: confirmNeedsWork }]),
                   { text: "Delete spot", style: "destructive", onPress: confirmDelete },
