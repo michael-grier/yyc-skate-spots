@@ -73,6 +73,9 @@ export default defineSchema({
     // Owner consent for locals to fix the spot up. Never set on a private spot,
     // since nobody else can see it. Absent on older spots means not tagged.
     needsWork: v.optional(v.boolean()),
+    // Set when an admin approves a fix. The tag can't be set again afterwards, so
+    // each spot is fixed up at most once.
+    workCompletedAt: v.optional(v.number()),
     // Clerk identity tokenIdentifier — the ownership key for edit/delete.
     createdBy: v.string(),
     // Legacy/provider fallback. Queries prefer the current name in profiles.
@@ -107,6 +110,19 @@ export default defineSchema({
     storageId: v.id("_storage"),
     spotId: v.id("spots"),
   }).index("by_storageId", ["storageId"]),
+
+  // Photos of a fix someone made to a tagged spot. A spot has at most one row: pending
+  // until an admin decides, then kept (with acceptedAt) as the credit for the approved
+  // photos. Rejected fixes are deleted. Bounded by MAX_FIX_PHOTOS in convex/constants.ts.
+  spotWork: defineTable({
+    spotId: v.id("spots"),
+    submittedBy: v.string(),
+    photoIds: v.array(v.id("_storage")),
+    details: v.optional(v.string()),
+    acceptedAt: v.optional(v.number()),
+  })
+    .index("by_spotId", ["spotId"])
+    .index("by_submittedBy", ["submittedBy"]),
 
   // Who uploaded each not-yet-attached file. A row is created right after
   // the upload and consumed when the photo is attached to a spot, so only

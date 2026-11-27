@@ -19,6 +19,7 @@ import { deleteReport } from "./reportPhotos";
 import { profileFor } from "./profileModel";
 import { appleClientId } from "./schema";
 import { releasePhotos, scheduleSpotDeletion } from "./spots";
+import { clearSpotWork, deleteSpotWork } from "./spotWorkModel";
 
 const CLERK_API_ORIGIN = "https://api.clerk.com";
 const APPLE_AUTH_ORIGIN = "https://appleid.apple.com";
@@ -327,6 +328,7 @@ export const cleanupBatch = internalMutation({
     if (activeSpot) {
       await releasePhotos(ctx, activeSpot.photoIds);
       await clearSpotModeration(ctx, activeSpot._id);
+      await clearSpotWork(ctx, activeSpot._id);
       await scheduleSpotDeletion(ctx, activeSpot._id);
       return false;
     }
@@ -382,6 +384,19 @@ export const cleanupBatch = internalMutation({
       for (const upload of reportUploads) {
         await ctx.storage.delete(upload.storageId);
         await ctx.db.delete("reportUploads", upload._id);
+      }
+      return false;
+    }
+
+    // Fix photos on other people's spots are this account's content too. An approved
+    // fix keeps its spot's workCompletedAt, so the tag stays retired without the credit.
+    const fixes = await ctx.db
+      .query("spotWork")
+      .withIndex("by_submittedBy", (q) => q.eq("submittedBy", userIdentifier))
+      .take(DELETE_BATCH_SIZE);
+    if (fixes.length > 0) {
+      for (const fix of fixes) {
+        await deleteSpotWork(ctx, fix);
       }
       return false;
     }

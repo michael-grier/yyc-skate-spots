@@ -24,6 +24,9 @@ export default function AdminSpotReviewScreen() {
   const isAdmin = viewer?.isAdmin === true;
   const spot = useQuery(api.moderation.getSpot, isAdmin ? { id } : "skip");
   const markMeetsStandards = useMutation(api.moderation.markMeetsStandards);
+  const acceptFix = useMutation(api.spotWork.accept);
+  const rejectFix = useMutation(api.spotWork.reject);
+  const removeApprovedFix = useMutation(api.spotWork.removeApproved);
   const banContributor = useMutation(api.moderation.banContributor);
   const unbanContributor = useMutation(api.moderation.unbanContributor);
   const [working, setWorking] = useState(false);
@@ -39,6 +42,68 @@ export default function AdminSpotReviewScreen() {
       <BackIcon size={18} color={colors.ink} />
     </Pressable>
   );
+
+  function confirmFixDecision(approve: boolean) {
+    if (!spot?.workSubmission) return;
+    const workId = spot.workSubmission._id;
+    const by = spot.workSubmission.submitterName;
+    Alert.alert(
+      approve ? "Approve this fix?" : "Reject this fix?",
+      approve
+        ? `The Needs work tag comes off for good, and the photos are added to the spot credited to ${by}.`
+        : "The photos are deleted, and someone else can send a fix.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: approve ? "Approve" : "Reject",
+          style: approve ? "default" : "destructive",
+          onPress: async () => {
+            setWorking(true);
+            try {
+              await (approve ? acceptFix : rejectFix)({ workId });
+            } catch {
+              // Production hides the server's reason, and another admin may have decided first.
+              Alert.alert(
+                "Couldn't save the decision",
+                "Another admin may have reviewed this fix already, or the connection dropped.",
+              );
+            } finally {
+              setWorking(false);
+            }
+          },
+        },
+      ],
+    );
+  }
+
+  function confirmRemoveFix() {
+    if (!spot?.approvedFix) return;
+    const workId = spot.approvedFix._id;
+    Alert.alert(
+      "Remove the fix photos?",
+      `The photos and ${spot.approvedFix.submitterName}'s credit are deleted. The spot stays fixed.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Remove",
+          style: "destructive",
+          onPress: async () => {
+            setWorking(true);
+            try {
+              await removeApprovedFix({ workId });
+            } catch {
+              Alert.alert(
+                "Couldn't remove the photos",
+                "Another admin may have removed them already, or the connection dropped.",
+              );
+            } finally {
+              setWorking(false);
+            }
+          },
+        },
+      ],
+    );
+  }
 
   function confirmApproval() {
     if (!spot) return;
@@ -157,7 +222,7 @@ export default function AdminSpotReviewScreen() {
                 backgroundColor:
                   spot.reports.length > 0
                     ? colors.bust.high
-                    : spot.review.needsReview
+                    : spot.review.needsReview || spot.workSubmission
                       ? colors.bust.medium
                       : colors.bust.low,
               }}
@@ -169,7 +234,9 @@ export default function AdminSpotReviewScreen() {
                   ? spot.review.attentionReason === "edited"
                     ? "EDITED · NEEDS REVIEW"
                     : "NEW · NEEDS REVIEW"
-                  : "REVIEWED"}
+                  : spot.workSubmission
+                    ? "WORK SUBMITTED"
+                    : "REVIEWED"}
             </Text>
           </View>
           <Text className="mt-2 font-sans-semibold text-[26px] tracking-tight text-ink">
@@ -214,6 +281,73 @@ export default function AdminSpotReviewScreen() {
                 }
               />
             </Card>
+          ) : null}
+          {spot.workSubmission ? (
+            <>
+              <Text className="mt-7 mb-2 px-1 font-sans-medium text-[11px] text-mute">
+                WORK SUBMITTED
+              </Text>
+              <Card className="border-bust-medium/30 p-4">
+                <Text className="font-sans-semibold text-[14px] text-ink">
+                  Sent by {spot.workSubmission.submitterName} ·{" "}
+                  {formatMonthYear(spot.workSubmission._creationTime)}
+                </Text>
+                {spot.workSubmission.details ? (
+                  <Text className="mt-1 font-sans text-[13px] leading-relaxed text-mute">
+                    {spot.workSubmission.details}
+                  </Text>
+                ) : null}
+                <View className="mt-3">
+                  <EvidencePhotos urls={spot.workSubmission.photoUrls} />
+                </View>
+                <Text className="mt-3 font-sans text-[12px] leading-relaxed text-mute">
+                  Approving removes the Needs work tag for good and adds these photos to the spot,
+                  credited to {spot.workSubmission.submitterName}. Rejecting deletes them. Neither
+                  changes the spot’s own review.
+                </Text>
+                <Button
+                  label={working ? "Working…" : "Approve fix"}
+                  disabled={working}
+                  onPress={() => confirmFixDecision(true)}
+                  className="mt-3"
+                />
+                <Button
+                  label="Reject"
+                  variant="danger"
+                  disabled={working}
+                  onPress={() => confirmFixDecision(false)}
+                  className="mt-2"
+                />
+              </Card>
+            </>
+          ) : null}
+          {spot.approvedFix ? (
+            <>
+              <Text className="mt-7 mb-2 px-1 font-sans-medium text-[11px] text-mute">
+                FIXED UP
+              </Text>
+              <Card className="p-4">
+                <Text className="font-sans-semibold text-[14px] text-ink">
+                  Fixed up by {spot.approvedFix.submitterName} ·{" "}
+                  {formatMonthYear(spot.approvedFix.acceptedAt)}
+                </Text>
+                <View className="mt-3">
+                  <EvidencePhotos urls={spot.approvedFix.photoUrls} />
+                </View>
+                <Text className="mt-3 font-sans text-[12px] leading-relaxed text-mute">
+                  These photos are public on the spot. Removing them deletes the photos and the
+                  credit, and the spot stays fixed. Nobody gets a strike. Meets standards closes
+                  every open report, so check any others before using it to close one about these.
+                </Text>
+                <Button
+                  label={working ? "Working…" : "Remove fix photos"}
+                  variant="danger"
+                  disabled={working}
+                  onPress={confirmRemoveFix}
+                  className="mt-3"
+                />
+              </Card>
+            </>
           ) : null}
           <Text className="mt-7 mb-2 px-1 font-sans-medium text-[11px] text-mute">
             REPORTS ({spot.reports.length})
@@ -280,18 +414,26 @@ export default function AdminSpotReviewScreen() {
           </Card>
 
           <Text className="mt-7 mb-2 px-1 font-sans-medium text-[11px] text-mute">DECISION</Text>
+          {/* A reviewed spot, such as one just fixed up, has nothing left to approve, but an
+              admin can still remove it. Reports put a spot back in review. */}
           <Card className="p-4">
-            <Text className="font-sans-semibold text-[15px] text-ink">Finish this review</Text>
-            <Text className="mt-1 font-sans text-[12px] leading-relaxed text-mute">
-              Approving publishes the current version and clears its reports. Removal deletes the
-              spot. Dead-spot removal does not add a contributor strike.
+            <Text className="font-sans-semibold text-[15px] text-ink">
+              {spot.review.needsReview ? "Finish this review" : "Already reviewed"}
             </Text>
-            <Button
-              label={working ? "Working…" : "Meets standards"}
-              onPress={confirmApproval}
-              disabled={working}
-              className="mt-4"
-            />
+            <Text className="mt-1 font-sans text-[12px] leading-relaxed text-mute">
+              {spot.review.needsReview
+                ? "Approving publishes the current version and clears its reports. Removal deletes the spot."
+                : "This version passed review. Removal deletes the spot."}{" "}
+              Dead-spot removal does not add a contributor strike.
+            </Text>
+            {spot.review.needsReview ? (
+              <Button
+                label={working ? "Working…" : "Meets standards"}
+                onPress={confirmApproval}
+                disabled={working}
+                className="mt-4"
+              />
+            ) : null}
             <Button
               label="Remove spot"
               variant="danger"
@@ -299,7 +441,7 @@ export default function AdminSpotReviewScreen() {
               onPress={() =>
                 router.push({ pathname: "/admin/spot/remove/[id]", params: { id: spot._id } })
               }
-              className="mt-2"
+              className={spot.review.needsReview ? "mt-2" : "mt-4"}
             />
           </Card>
 

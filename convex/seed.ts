@@ -2,6 +2,7 @@ import type { Doc } from "./_generated/dataModel";
 import { env, internalMutation, mutation, type MutationCtx } from "./_generated/server";
 import { requireIdentity } from "./auth";
 import { MODERATION_FIXTURE_OWNER, SEED_OWNER } from "./constants";
+import { deleteSpotWork } from "./spotWorkModel";
 
 const MODERATION_FIXTURE_REPORTER = "seed:moderation-reporter";
 const BANNED_USER_FIXTURE_ADMIN = "seed:banned-user-scenario";
@@ -27,7 +28,7 @@ function requireTestFixturesEnabled() {
 /** Deletes one fixture spot and its bounded child rows. */
 async function deleteFixtureSpot(ctx: MutationCtx, spot: Doc<"spots">) {
   let deletedRecords = 0;
-  const [reports, moderationRows, favorites] = await Promise.all([
+  const [reports, moderationRows, favorites, fixes] = await Promise.all([
     ctx.db
       .query("spotReports")
       .withIndex("by_spotId", (q) => q.eq("spotId", spot._id))
@@ -40,7 +41,15 @@ async function deleteFixtureSpot(ctx: MutationCtx, spot: Doc<"spots">) {
       .query("favorites")
       .withIndex("by_spotId_and_userId", (q) => q.eq("spotId", spot._id))
       .take(MAX_MODERATION_FIXTURE_ROWS),
+    ctx.db
+      .query("spotWork")
+      .withIndex("by_spotId", (q) => q.eq("spotId", spot._id))
+      .take(MAX_MODERATION_FIXTURE_ROWS),
   ]);
+  for (const fix of fixes) {
+    await deleteSpotWork(ctx, fix);
+    deletedRecords += 1;
+  }
   for (const row of [...reports, ...moderationRows, ...favorites]) {
     await ctx.db.delete(row._id);
     deletedRecords += 1;

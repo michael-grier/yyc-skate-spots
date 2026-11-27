@@ -1,7 +1,13 @@
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
-import { internalMutation, mutation, query, type MutationCtx } from "./_generated/server";
+import {
+  internalMutation,
+  mutation,
+  query,
+  type MutationCtx,
+  type QueryCtx,
+} from "./_generated/server";
 import { requireAdmin, requireCanContribute, requireIdentity } from "./auth";
 import {
   clearSpotModeration,
@@ -13,6 +19,7 @@ import {
 import { PRIVATE_SPOTS_PER_PUBLISHED, privateSpotAllowance } from "./privateSpots";
 import { describesWork } from "./needsWork";
 import { contributorName, type profileFor } from "./profileModel";
+import { clearSpotWork, spotWorkFor } from "./spotWorkModel";
 import { bustFactor, spotType, surface } from "./schema";
 
 // Caps chosen so a spot document stays far under Convex's 1MB limit and
@@ -163,7 +170,11 @@ async function uploadRef(ctx: MutationCtx, storageId: Id<"_storage">) {
  * the caller did not upload themselves. Together with assertPhotosUnclaimed
  * this means a storage id can only ever be attached by its uploader.
  */
-async function consumeUploads(ctx: MutationCtx, uploader: string, photoIds: Id<"_storage">[]) {
+export async function consumeUploads(
+  ctx: MutationCtx,
+  uploader: string,
+  photoIds: Id<"_storage">[],
+) {
   for (const photoId of photoIds) {
     const upload = await uploadRef(ctx, photoId);
     if (!upload || upload.uploadedBy !== uploader) {
@@ -199,6 +210,17 @@ export async function scheduleSpotDeletion(ctx: MutationCtx, spotId: Id<"spots">
   await ctx.scheduler.runAfter(0, internal.spots.removeFavoriteBatch, { spotId });
 }
 
+/** The first owner photo, or for a spot with none, the first photo of its approved fix. */
+async function previewPhotoUrl(ctx: QueryCtx, spot: Doc<"spots">) {
+  if (spot.photoIds.length > 0) return await ctx.storage.getUrl(spot.photoIds[0]);
+  // Skipping unfixed spots keeps the map from re-running on every pending fix.
+  if (spot.workCompletedAt === undefined) return null;
+  const work = await spotWorkFor(ctx, spot._id);
+  return work?.acceptedAt !== undefined && work.photoIds.length > 0
+    ? await ctx.storage.getUrl(work.photoIds[0])
+    : null;
+}
+
 /**
  * Published spots, plus the caller's private ones, with a first-photo URL for
  * the map's preview card. Raw photoIds and the owner's identity key never
@@ -231,9 +253,9 @@ export const list = query({
       }
     }
     return Promise.all(
-      visibleSpots.map(
-        async ({
-          photoIds,
+      visibleSpots.map(async (fullSpot) => {
+        const {
+          photoIds: _photoIds,
           createdBy,
           allowAdminPhotos: _allowAdminPhotos,
           adminPhotosAddedAt: _adminPhotosAddedAt,
@@ -241,16 +263,18 @@ export const list = query({
           publicationStatus,
           deletionRequested: _deletionRequested,
           needsWork,
+          workCompletedAt: _workCompletedAt,
           ...spot
-        }) => ({
+        } = fullSpot;
+        return {
           ...spot,
           createdByName: await contributorName(ctx, createdBy, spot.createdByName, profiles),
           isMine: identity !== null && createdBy === identity.tokenIdentifier,
           isPrivate: publicationStatus === "private",
           needsWork: needsWork === true,
-          previewPhotoUrl: photoIds.length > 0 ? await ctx.storage.getUrl(photoIds[0]) : null,
-        }),
-      ),
+          previewPhotoUrl: await previewPhotoUrl(ctx, fullSpot),
+        };
+      }),
     );
   },
 });
@@ -369,6 +393,24 @@ export const get = query({
     const photoUrls = (
       await Promise.all(spot.photoIds.map((photoId) => ctx.storage.getUrl(photoId)))
     ).filter((url): url is string => url !== null);
+    // The fix's photos stay apart from photoUrls, which the owner's edit form pairs with photoIds.
+    const work = await spotWorkFor(ctx, spot._id);
+    const fix =
+      work?.acceptedAt === undefined
+        ? null
+        : {
+            by: await contributorName(ctx, work.submittedBy),
+            at: work.acceptedAt,
+            photoUrls: (
+              await Promise.all(work.photoIds.map((photoId) => ctx.storage.getUrl(photoId)))
+            ).filter((url): url is string => url !== null),
+          };
+    const pendingFix =
+      work && work.acceptedAt === undefined
+        ? identity?.tokenIdentifier === work.submittedBy
+          ? ("mine" as const)
+          : ("other" as const)
+        : null;
     const {
       photoIds,
       allowAdminPhotos,
@@ -378,12 +420,17 @@ export const get = query({
       publicationStatus: _publicationStatus,
       deletionRequested: _deletionRequested,
       needsWork,
+      workCompletedAt,
       ...publicFields
     } = spot;
     return {
       status: "active" as const,
       ...publicFields,
       needsWork: needsWork === true,
+      // Unlike fix, this outlives the sender's account, so it alone says the tag is retired.
+      isFixed: workCompletedAt !== undefined,
+      fix,
+      pendingFix,
       createdByName: await contributorName(ctx, spot.createdBy, spot.createdByName),
       photoUrls,
       isOwner,
@@ -482,6 +529,13 @@ export const update = mutation({
           "This spot has open reports. It can be made private once an admin has reviewed them.",
         );
       }
+      // Someone has done the work, so hiding the spot before an admin decides would bury it.
+      const work = await spotWorkFor(ctx, id);
+      if (work && work.acceptedAt === undefined) {
+        throw new Error(
+          "Someone sent photos of a fix for this spot. It can be made private once an admin has reviewed them.",
+        );
+      }
       await assertPrivateAllowance(ctx, identity.tokenIdentifier, id);
     }
     await assertPhotosUnclaimed(ctx, fields.photoIds, id);
@@ -503,6 +557,7 @@ export const update = mutation({
       allowAdminPhotos:
         !isPrivate && fields.photoIds.length === 0 && fields.allowAdminPhotos === true,
       adminPhotosAddedAt: existing.adminPhotosAddedAt,
+      workCompletedAt: existing.workCompletedAt,
       adminPhotosUnseen: fields.photoIds.length > 0 && existing.adminPhotosUnseen === true,
       // The edit form doesn't carry the tag, so keep it, unless the spot is going private.
       needsWork: keepsNeedsWork,
@@ -565,6 +620,7 @@ export const remove = mutation({
     const { spot } = await requireOwnedSpot(ctx, args.id);
     await releasePhotos(ctx, spot.photoIds);
     await clearSpotModeration(ctx, args.id);
+    await clearSpotWork(ctx, args.id);
     await scheduleSpotDeletion(ctx, args.id);
     return null;
   },
@@ -660,6 +716,18 @@ export const setNeedsWork = mutation({
     }
     if (needsWork && !describesWork(spot.notes, spot.photoIds.length)) {
       throw new Error(NEEDS_WORK_DETAILS_ERROR);
+    }
+    if (needsWork && spot.workCompletedAt !== undefined) {
+      throw new Error("This spot has already been fixed up, so it can't be tagged again.");
+    }
+    if (!needsWork) {
+      // The work is already done by then; removing the tag would only take the credit away.
+      const work = await spotWorkFor(ctx, id);
+      if (work && work.acceptedAt === undefined) {
+        throw new Error(
+          "Someone sent photos of a fix for this spot. The tag can't be removed while an admin reviews them.",
+        );
+      }
     }
     await ctx.db.patch("spots", id, { needsWork });
     return null;

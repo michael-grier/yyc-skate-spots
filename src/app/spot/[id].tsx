@@ -97,7 +97,8 @@ function RowCard({ label, rows }: { label: string; rows: (SpotRow | false)[] }) 
           <View className="flex-1">
             <View className="flex-row items-center gap-1.5">
               {row.icon}
-              <Text className="font-sans-semibold text-[14px] text-ink">{row.title}</Text>
+              {/* shrink lets a long "Fixed up by" name wrap inside the card. */}
+              <Text className="shrink font-sans-semibold text-[14px] text-ink">{row.title}</Text>
             </View>
             <Text className="mt-0.5 font-sans text-[12px] leading-[17px] text-mute">
               {row.body}
@@ -358,6 +359,16 @@ export default function SpotDetailScreen() {
   }
 
   const needsWorkIcon = <HammerIcon size={13} color={colors.ink} />;
+  const fix = spot.fix;
+  // Kept after the tag comes off, as the record of who did the work.
+  const fixedRow = fix !== null && {
+    icon: needsWorkIcon,
+    title: `Fixed up by ${fix.by}`,
+    // With no photos of its own, the gallery is only the fix, so "the last" would mislead.
+    body: `${formatMonthYear(fix.at)}. ${spot.photoUrls.length === 0 ? "The" : "The last"} ${
+      fix.photoUrls.length === 1 ? "photo shows" : `${fix.photoUrls.length} photos show`
+    } the fix.`,
+  };
   const added = `Added ${formatMonthYear(spot._creationTime)}`;
   const byline = `${added} by ${spot.isOwner ? "you" : spot.createdByName}`;
 
@@ -370,7 +381,20 @@ export default function SpotDetailScreen() {
           paddingBottom: insets.bottom + 104,
         }}
       >
-        <PhotoCarousel urls={spot.photoUrls} spotName={spot.name} variant="gallery" />
+        <PhotoCarousel
+          urls={fix ? [...spot.photoUrls, ...fix.photoUrls] : spot.photoUrls}
+          spotName={spot.name}
+          variant="gallery"
+          credit={
+            fix
+              ? {
+                  fromIndex: spot.photoUrls.length,
+                  label: `Fixed up by ${fix.by}`,
+                  date: formatMonthYear(fix.at),
+                }
+              : undefined
+          }
+        />
 
         <View className="px-5">
           <Text className="font-sans-semibold text-[26px] tracking-tight text-ink">
@@ -453,16 +477,25 @@ export default function SpotDetailScreen() {
             <RowCard
               label="YOUR SPOT"
               rows={[
-                spot.needsWork && {
-                  icon: needsWorkIcon,
-                  title: "Needs work",
-                  body: "Local skaters know they can fix it up. Say what needs doing in the notes.",
-                  action: {
-                    label: "Remove",
-                    accessibilityLabel: "Remove needs work tag",
-                    onPress: () => void updateNeedsWork(false),
-                  },
-                },
+                fixedRow,
+                spot.needsWork &&
+                  (spot.pendingFix
+                    ? {
+                        // Someone has done the work, so the tag stays until an admin decides.
+                        icon: needsWorkIcon,
+                        title: "Needs work",
+                        body: "Someone sent photos of a fix. An admin is checking them.",
+                      }
+                    : {
+                        icon: needsWorkIcon,
+                        title: "Needs work",
+                        body: "Local skaters know they can fix it up. Say what needs doing in the notes.",
+                        action: {
+                          label: "Remove",
+                          accessibilityLabel: "Remove needs work tag",
+                          onPress: () => void updateNeedsWork(false),
+                        },
+                      }),
                 spot.allowAdminPhotos === true && {
                   title: "Admin photos allowed",
                   body: "YYC Skate Spots can add photos if they are able to.",
@@ -482,13 +515,32 @@ export default function SpotDetailScreen() {
             <RowCard
               label="THIS SPOT"
               rows={[
-                spot.needsWork && {
-                  icon: needsWorkIcon,
-                  title: "Needs work",
-                  body: `The person who added it is open to locals fixing it up. ${
-                    spot.notes?.trim() ? "Details in the notes." : "Refer to photos for details."
-                  }`,
-                },
+                fixedRow,
+                spot.needsWork &&
+                  (spot.pendingFix
+                    ? {
+                        icon: needsWorkIcon,
+                        title: "Needs work",
+                        body:
+                          spot.pendingFix === "mine"
+                            ? "Your photos of the fix are waiting for an admin to check them."
+                            : "Someone sent photos of a fix. It's waiting for review.",
+                      }
+                    : {
+                        icon: needsWorkIcon,
+                        title: "Needs work",
+                        body: `The person who added it is open to locals fixing it up. ${
+                          spot.notes?.trim()
+                            ? "Details in the notes."
+                            : "Refer to photos for details."
+                        }`,
+                        action: {
+                          label: "I fixed it",
+                          accessibilityLabel: "Send photos of your fix",
+                          onPress: () =>
+                            router.push({ pathname: "/spot/fix/[id]", params: { id: spotId } }),
+                        },
+                      }),
                 {
                   title: "Spot not right?",
                   body: "Report a dead spot or another problem.",
@@ -554,10 +606,10 @@ export default function SpotDetailScreen() {
                     onPress: () =>
                       router.push({ pathname: "/spot/edit/[id]", params: { id: spotId } }),
                   },
-                  // Nobody else sees a private spot, so there is no one to fix it up, and a banned
-                  // owner can't tag; the item waits until that status has loaded. Removing the tag
-                  // lives on the Your spot card instead.
-                  ...(spot.isPrivate || spot.needsWork || isBanned || !gateReady
+                  // Nobody else sees a private spot, so there is no one to fix it up, a fixed spot
+                  // can't be tagged again, and a banned owner can't tag; the item waits until that
+                  // status has loaded. Removing the tag lives on the Your spot card instead.
+                  ...(spot.isPrivate || spot.needsWork || spot.isFixed || isBanned || !gateReady
                     ? []
                     : [{ text: "Tag as needs work", onPress: confirmNeedsWork }]),
                   { text: "Delete spot", style: "destructive", onPress: confirmDelete },

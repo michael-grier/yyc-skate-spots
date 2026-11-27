@@ -16,12 +16,13 @@ import { formatMonthYear } from "@/lib/dates";
 import { formatSpotTypes } from "@/lib/spot-labels";
 import { colors } from "@/theme/colors";
 
-type QueueFilter = "needs_review" | "reported" | "needs_photos" | "all";
+type QueueFilter = "needs_review" | "reported" | "work_done" | "needs_photos" | "all";
 type QueueSpot = FunctionReturnType<typeof api.moderation.listSpots>[number];
 
 const FILTERS: { value: QueueFilter; label: string }[] = [
   { value: "needs_review", label: "Needs review" },
   { value: "reported", label: "Reported" },
+  { value: "work_done", label: "Work done" },
   { value: "needs_photos", label: "Needs photos" },
   { value: "all", label: "All" },
 ];
@@ -30,16 +31,21 @@ function reviewLabel(spot: QueueSpot) {
   if (spot.review.openReportCount > 0) {
     return `${spot.review.openReportCount} report${spot.review.openReportCount === 1 ? "" : "s"}`;
   }
-  if (!spot.review.needsReview) {
-    return "Reviewed";
+  if (spot.review.needsReview) {
+    return spot.review.attentionReason === "edited" ? "Edited" : "New";
   }
-  return spot.review.attentionReason === "edited" ? "Edited" : "New";
+  return spot.workSubmitted ? "Work submitted" : "Reviewed";
+}
+
+// Matches the profile's review count, so the default filter shows every spot that count includes.
+function needsDecision(spot: QueueSpot) {
+  return spot.review.needsReview || spot.workSubmitted;
 }
 
 function reviewColor(spot: QueueSpot) {
   if (spot.review.openReportCount > 0) return colors.bust.high;
-  if (!spot.review.needsReview) return colors.bust.low;
-  return colors.bust.medium;
+  if (needsDecision(spot)) return colors.bust.medium;
+  return colors.bust.low;
 }
 
 /** Photo-led row from the approved queue direction. */
@@ -108,7 +114,8 @@ export default function AdminQueueScreen() {
     if (!spots) return [];
     if (filter === "needs_photos") return spots.filter((spot) => spot.canAddAdminPhotos);
     if (filter === "reported") return spots.filter((spot) => spot.review.openReportCount > 0);
-    if (filter === "needs_review") return spots.filter((spot) => spot.review.needsReview);
+    if (filter === "work_done") return spots.filter((spot) => spot.workSubmitted);
+    if (filter === "needs_review") return spots.filter(needsDecision);
     return spots;
   }, [filter, spots]);
 
@@ -160,7 +167,7 @@ export default function AdminQueueScreen() {
   }
 
   const reportedCount = spots?.filter((spot) => spot.review.openReportCount > 0).length ?? 0;
-  const needsReviewCount = spots?.filter((spot) => spot.review.needsReview).length ?? 0;
+  const needsReviewCount = spots?.filter(needsDecision).length ?? 0;
 
   return (
     <View className="flex-1 bg-base">
@@ -235,9 +242,11 @@ export default function AdminQueueScreen() {
                     ? reportedCount
                     : option.value === "needs_review"
                       ? needsReviewCount
-                      : option.value === "needs_photos"
-                        ? spots?.filter((spot) => spot.canAddAdminPhotos).length
-                        : spots?.length;
+                      : option.value === "work_done"
+                        ? spots?.filter((spot) => spot.workSubmitted).length
+                        : option.value === "needs_photos"
+                          ? spots?.filter((spot) => spot.canAddAdminPhotos).length
+                          : spots?.length;
                 return (
                   <Chip
                     key={option.value}

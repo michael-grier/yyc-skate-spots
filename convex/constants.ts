@@ -9,3 +9,7 @@ export const MODERATION_FIXTURE_OWNER = "seed:moderation-workflow";
 export const COMMUNITY_STANDARDS_VERSION = 1;
 
 export const MAX_REPORT_PHOTOS = 3;
+
+// A fix is a few photos of the finished work, not a second gallery.
+export const MAX_FIX_PHOTOS = 3;
+export const MAX_FIX_DETAILS_LENGTH = 500;

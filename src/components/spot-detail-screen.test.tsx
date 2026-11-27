@@ -32,7 +32,10 @@ const mockSpot = {
   adminPhotosAddedAt: 123,
   allowAdminPhotos: false,
   needsWork: false,
+  isFixed: false,
   notes: undefined as string | undefined,
+  fix: null,
+  pendingFix: null as "mine" | "other" | null,
 };
 
 jest.mock("@clerk/expo", () => ({ useAuth: () => mockAuthState }));
@@ -73,7 +76,9 @@ beforeEach(() => {
   mockSpot.adminPhotosUnseen = false;
   mockSpot.allowAdminPhotos = false;
   mockSpot.needsWork = false;
+  mockSpot.isFixed = false;
   mockSpot.notes = undefined;
+  mockSpot.pendingFix = null;
   mockViewer.hasAcknowledgedStandards = true;
   mockSetNeedsWork.mockResolvedValue(null);
   mockAcknowledgeStandards.mockResolvedValue(null);
@@ -217,4 +222,35 @@ test("asks for the current standards before tagging, then tags", async () => {
     expect(mockSetNeedsWork).toHaveBeenCalledWith({ id: "spot-1", needsWork: true }),
   );
   expect(mockAcknowledgeStandards).toHaveBeenCalledTimes(1);
+});
+
+test("a fixed spot can't be tagged again", async () => {
+  const alertSpy = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+  mockAuthState.isSignedIn = true;
+  mockSpot.isOwner = true;
+  mockSpot.notes = "Patch the crack in the landing.";
+  mockSpot.isFixed = true;
+  await render(<SpotDetailScreen />);
+  await fireEvent.press(screen.getByRole("button", { name: "Spot options" }));
+  const menu = alertSpy.mock.calls[0][2];
+  expect(menu?.some((action) => action.text === "Tag as needs work")).toBe(false);
+});
+
+test("a visitor opens the fix form from a tagged spot", async () => {
+  mockSpot.needsWork = true;
+  await render(<SpotDetailScreen />);
+  await fireEvent.press(screen.getByRole("button", { name: "Send photos of your fix" }));
+  expect(mockPush).toHaveBeenCalledWith({ pathname: "/spot/fix/[id]", params: { id: "spot-1" } });
+});
+
+test("the owner can't remove the tag while a fix waits for review", async () => {
+  mockAuthState.isSignedIn = true;
+  mockSpot.isOwner = true;
+  mockSpot.needsWork = true;
+  mockSpot.pendingFix = "other";
+  await render(<SpotDetailScreen />);
+  expect(
+    screen.getByText("Someone sent photos of a fix. An admin is checking them."),
+  ).toBeOnTheScreen();
+  expect(screen.queryByRole("button", { name: "Remove needs work tag" })).toBeNull();
 });

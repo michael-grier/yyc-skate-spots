@@ -78,6 +78,11 @@ export default function EditSpotScreen() {
               "This spot is tagged as needing work, so keep notes or photos that show the fix.",
             );
           }
+          if (spot.pendingFix !== null && payload.visibility === "private") {
+            throw new Error(
+              "Someone sent photos of a fix for this spot. It can be made private once an admin has reviewed them.",
+            );
+          }
           await updateSpot({ id: spotId, ...payload, photoIds, expectedAdminPhotosAddedAt });
           router.back();
         }}
