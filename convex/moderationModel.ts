@@ -76,7 +76,7 @@ export function nextReviewVersion(previous: number | undefined) {
 
 /**
  * Invalidates open decision screens without touching queue state, for changes a reviewer must
- * see but that aren't a new submission. A spot with no review row has nothing to invalidate.
+ * see but that aren't a new submission.
  */
 export async function bumpReviewVersion(ctx: MutationCtx, spotId: Id<"spots">) {
   const moderation = await spotModerationFor(ctx, spotId);
@@ -84,6 +84,9 @@ export async function bumpReviewVersion(ctx: MutationCtx, spotId: Id<"spots">) {
     await ctx.db.patch("spotModeration", moderation._id, {
       reviewVersion: nextReviewVersion(moderation.reviewVersion),
     });
+  } else {
+    // Decisions read a missing row as version 0, so it needs a row to carry a newer one.
+    await syncReviewState(ctx, spotId);
   }
 }
 
@@ -112,6 +115,10 @@ export async function syncReviewState(
   if (!spot) {
     throw new Error("Spot not found.");
   }
+  const moderation = await spotModerationFor(ctx, spotId);
+  // A rollout-era spot with no row was never reviewed. The queue has always listed it as new,
+  // so its first row keeps it there until an admin decides, even though it stays live.
+  const neverReviewed = spot.publicationStatus === undefined && moderation === null;
   let status = spot.publicationStatus;
   if (status === undefined) {
     // A rollout-era spot reads its status through this row, which the sync is about to change.
@@ -124,12 +131,13 @@ export async function syncReviewState(
       .withIndex("by_spotId", (q) => q.eq("spotId", spotId))
       .take(MAX_OPEN_REPORTS_PER_SPOT)
   ).length;
-  const moderation = await spotModerationFor(ctx, spotId);
   const submissionReason =
     fields.submissionReason ?? (moderation ? legacySubmissionReason(moderation) : "new");
+  const attention = reviewAttention(status, openReportCount, submissionReason);
   const state = {
     ...fields,
-    ...reviewAttention(status, openReportCount, submissionReason),
+    ...attention,
+    needsReview: attention.needsReview || neverReviewed,
     submissionReason,
     openReportCount,
     reviewVersion: nextReviewVersion(moderation?.reviewVersion),

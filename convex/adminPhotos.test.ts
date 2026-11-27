@@ -178,4 +178,27 @@ describe("admin spot photos", () => {
       expect(await t.run((ctx) => ctx.db.query("spotPhotos").collect())).toEqual([]);
     },
   );
+
+  test("a photo upload makes a decision prepared before it stale, even on a spot with no review row", async () => {
+    const { t, owner, admin, photoId } = await setup();
+    // A spot from before review rows existed: public reads see it as live, the queue as unreviewed.
+    const id = await t.run((ctx) =>
+      ctx.db.insert("spots", { ...fields, createdBy: "clerk|owner", allowAdminPhotos: true }),
+    );
+    const seen = (await admin.query(api.moderation.getSpot, { id }))?.review.reviewVersion;
+    expect(seen).toBe(0);
+
+    await admin.mutation(api.spots.addAdminPhotos, { id, photoIds: [photoId] });
+    await expect(
+      admin.mutation(api.moderation.removeSpot, {
+        spotId: id,
+        reason: "other",
+        expectedReviewVersion: seen,
+      }),
+    ).rejects.toThrow(/changed while you were reviewing/);
+    // Both views hold: still live for everyone, still waiting in the queue.
+    expect(await owner.query(api.spots.get, { id })).not.toBeNull();
+    expect(await t.query(api.spots.get, { id })).not.toBeNull();
+    expect((await admin.query(api.moderation.getSpot, { id }))?.review.needsReview).toBe(true);
+  });
 });
