@@ -7,13 +7,20 @@ import {
   standardsAcknowledgementFor,
   userModerationFor,
 } from "./auth";
-import { COMMUNITY_STANDARDS_VERSION, SEED_OWNER } from "./constants";
 import {
+  COMMUNITY_STANDARDS_VERSION,
+  MAX_CHANGES_MESSAGE_LENGTH,
+  MIN_CHANGES_MESSAGE_LENGTH,
+  SEED_OWNER,
+} from "./constants";
+import {
+  assertReviewVersion,
   clearSpotModeration,
   deleteOpenReports,
   MAX_OPEN_REPORTS_PER_SPOT,
   spotIsPublished,
   spotModerationFor,
+  syncReviewState,
 } from "./moderationModel";
 import { insertNotice } from "./noticeModel";
 import { contributorName, type profileFor } from "./profileModel";
@@ -43,6 +50,8 @@ function reviewState(spot: Doc<"spots">, moderation: Doc<"spotModeration"> | und
     lastSubmittedAt: moderation?.lastSubmittedAt ?? spot._creationTime,
     openReportCount: moderation?.openReportCount ?? 0,
     reviewedAt: moderation?.reviewedAt,
+    // Decisions send this back, so one made on a stale screen is refused.
+    reviewVersion: moderation?.reviewVersion ?? 0,
   };
 }
 
@@ -235,7 +244,13 @@ export const getSpot = query({
       ...fields,
       photoUrls,
       canAddAdminPhotos: spot.allowAdminPhotos === true && spot.photoIds.length === 0,
-      review: reviewState(spot, moderation ?? undefined),
+      // Request changes is only for spots that aren't live; rollout-era rows resolve here.
+      isLive: await spotIsPublished(ctx, spot),
+      review: {
+        ...reviewState(spot, moderation ?? undefined),
+        requestedChanges: moderation?.requestedChanges ?? null,
+        ownerNote: moderation?.ownerNote ?? null,
+      },
       // A pending fix needs a decision; an approved one is public, so admins can still take it down.
       approvedFix:
         fix && work?.acceptedAt !== undefined ? { ...fix, acceptedAt: work.acceptedAt } : null,
@@ -268,13 +283,19 @@ export const getSpot = query({
 
 /** Clears open reports and records that the current version passed review. */
 export const markMeetsStandards = mutation({
-  args: { spotId: v.id("spots") },
+  args: { spotId: v.id("spots"), expectedReviewVersion: v.optional(v.number()) },
   handler: async (ctx, args) => {
     const identity = await requireAdmin(ctx);
     const spot = await ctx.db.get("spots", args.spotId);
     // A spot made private after an admin opened it is theirs alone again.
     if (!spot || spot.deletionRequested || spot.publicationStatus === "private") {
       throw new Error("Spot not found.");
+    }
+    assertReviewVersion(await spotModerationFor(ctx, spot._id), args.expectedReviewVersion);
+    if (spot.publicationStatus === "needs_changes") {
+      throw new Error(
+        "This spot is waiting on its contributor. Review it again once they resubmit.",
+      );
     }
     const wasPublished = await spotIsPublished(ctx, spot);
     await ctx.db.patch("spots", spot._id, { publicationStatus: "published" });
@@ -299,25 +320,62 @@ export const markMeetsStandards = mutation({
         });
       }
     }
-    const moderation = await spotModerationFor(ctx, args.spotId);
-    const reviewedAt = Date.now();
-    if (moderation) {
-      await ctx.db.patch("spotModeration", moderation._id, {
-        needsReview: false,
-        openReportCount: 0,
-        reviewedAt,
-        reviewedBy: identity.tokenIdentifier,
-      });
-    } else {
-      await ctx.db.insert("spotModeration", {
+    // A published spot's request is settled, so the next review starts clean.
+    await syncReviewState(ctx, spot._id, {
+      reviewedAt: Date.now(),
+      reviewedBy: identity.tokenIdentifier,
+      requestedChanges: undefined,
+      ownerNote: undefined,
+    });
+    return null;
+  },
+});
+
+/**
+ * Sends a spot waiting for review back to its owner with a message, instead of removing it.
+ * It stays off the map and adds no strike. Reports on it wait for the resubmission.
+ */
+export const requestChanges = mutation({
+  args: {
+    spotId: v.id("spots"),
+    expectedReviewVersion: v.optional(v.number()),
+    message: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await requireAdmin(ctx);
+    const spot = await ctx.db.get("spots", args.spotId);
+    if (!spot || spot.deletionRequested || spot.publicationStatus === "private") {
+      throw new Error("Spot not found.");
+    }
+    assertReviewVersion(await spotModerationFor(ctx, spot._id), args.expectedReviewVersion);
+    // A live spot is never taken down this way; that is what removal is for.
+    if (spot.publicationStatus === "needs_changes" || (await spotIsPublished(ctx, spot))) {
+      throw new Error("Only a spot waiting for review can be sent back for changes.");
+    }
+    const message = args.message.trim();
+    if (
+      message.length < MIN_CHANGES_MESSAGE_LENGTH ||
+      message.length > MAX_CHANGES_MESSAGE_LENGTH
+    ) {
+      throw new Error(
+        `Tell the contributor what to change in ${MIN_CHANGES_MESSAGE_LENGTH}–${MAX_CHANGES_MESSAGE_LENGTH} characters.`,
+      );
+    }
+    const at = Date.now();
+    await ctx.db.patch("spots", spot._id, { publicationStatus: "needs_changes" });
+    await syncReviewState(ctx, spot._id, {
+      requestedChanges: { message, at },
+      ownerNote: undefined,
+      reviewedAt: at,
+      reviewedBy: identity.tokenIdentifier,
+    });
+    if (spot.createdBy !== identity.tokenIdentifier) {
+      await insertNotice(ctx, {
+        recipient: spot.createdBy,
+        kind: "spot_changes_requested",
         spotId: spot._id,
-        spotCreationTime: spot._creationTime,
-        needsReview: false,
-        attentionReason: "new",
-        lastSubmittedAt: spot._creationTime,
-        openReportCount: 0,
-        reviewedAt,
-        reviewedBy: identity.tokenIdentifier,
+        spotName: spot.name,
+        message,
       });
     }
     return null;
@@ -331,6 +389,7 @@ export const removeSpot = mutation({
     reason: reportReason,
     details: v.optional(v.string()),
     ownerMessage: v.optional(v.string()),
+    expectedReviewVersion: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const identity = await requireAdmin(ctx);
@@ -339,6 +398,7 @@ export const removeSpot = mutation({
     if (!spot || spot.deletionRequested || spot.publicationStatus === "private") {
       throw new Error("Spot not found.");
     }
+    assertReviewVersion(await spotModerationFor(ctx, spot._id), args.expectedReviewVersion);
     const details = args.details?.trim();
     if (details && details.length > MAX_REMOVAL_TEXT_LENGTH) {
       throw new Error(`Removal details must be at most ${MAX_REMOVAL_TEXT_LENGTH} characters.`);

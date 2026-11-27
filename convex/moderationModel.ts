@@ -21,6 +21,131 @@ export async function spotIsPublished(ctx: QueryCtx | MutationCtx, spot: Doc<"sp
   return moderation?.needsReview !== true;
 }
 
+type PublicationStatus = NonNullable<Doc<"spots">["publicationStatus"]>;
+type SubmissionReason = NonNullable<Doc<"spotModeration">["submissionReason"]>;
+type ReviewFields = Partial<
+  Pick<
+    Doc<"spotModeration">,
+    | "submissionReason"
+    | "lastSubmittedAt"
+    | "reviewedAt"
+    | "reviewedBy"
+    | "requestedChanges"
+    | "ownerNote"
+  >
+>;
+
+/**
+ * What the admin queue shows for a spot. Reports on a spot sent back for changes wait for the
+ * resubmission, so the admin still sees them then and reporters hear only the final outcome.
+ */
+export function reviewAttention(
+  status: PublicationStatus,
+  openReportCount: number,
+  submissionReason: SubmissionReason,
+) {
+  const reportsWaiting = openReportCount > 0 && status !== "needs_changes";
+  return {
+    needsReview: status === "pending" || reportsWaiting,
+    attentionReason: reportsWaiting ? ("reported" as const) : submissionReason,
+  };
+}
+
+/**
+ * Rows from before submissionReason kept only attentionReason, which a report overwrote. For
+ * those, a submission that never moved past creation was new; any later one was an edit.
+ */
+export function legacySubmissionReason(
+  moderation: Pick<
+    Doc<"spotModeration">,
+    "submissionReason" | "attentionReason" | "lastSubmittedAt" | "spotCreationTime"
+  >,
+): SubmissionReason {
+  if (moderation.submissionReason) return moderation.submissionReason;
+  if (moderation.attentionReason !== "reported") return moderation.attentionReason;
+  return moderation.lastSubmittedAt === moderation.spotCreationTime ? "new" : "edited";
+}
+
+/**
+ * Time-based, so a row recreated after the spot was private can't repeat a version that a
+ * screen from before then still holds.
+ */
+export function nextReviewVersion(previous: number | undefined) {
+  return Math.max(Date.now(), (previous ?? 0) + 1);
+}
+
+/**
+ * Invalidates open decision screens without touching queue state, for changes a reviewer must
+ * see but that aren't a new submission. A spot with no review row has nothing to invalidate.
+ */
+export async function bumpReviewVersion(ctx: MutationCtx, spotId: Id<"spots">) {
+  const moderation = await spotModerationFor(ctx, spotId);
+  if (moderation) {
+    await ctx.db.patch("spotModeration", moderation._id, {
+      reviewVersion: nextReviewVersion(moderation.reviewVersion),
+    });
+  }
+}
+
+/** Refuses a decision made on a screen showing an older review state. */
+export function assertReviewVersion(
+  moderation: Doc<"spotModeration"> | null,
+  expected: number | undefined,
+) {
+  // Optional for one release, until every admin build sends it.
+  if (expected !== undefined && (moderation?.reviewVersion ?? 0) !== expected) {
+    throw new Error("This spot changed while you were reviewing it. Check it again, then decide.");
+  }
+}
+
+/**
+ * The only writer of needsReview and attentionReason. Derives both from the spot's status and
+ * open reports, applies `fields`, and bumps the review version. Call after any change to a
+ * non-private spot's status, reports, or submission.
+ */
+export async function syncReviewState(
+  ctx: MutationCtx,
+  spotId: Id<"spots">,
+  fields: ReviewFields = {},
+) {
+  const spot = await ctx.db.get("spots", spotId);
+  if (!spot) {
+    throw new Error("Spot not found.");
+  }
+  let status = spot.publicationStatus;
+  if (status === undefined) {
+    // A rollout-era spot reads its status through this row, which the sync is about to change.
+    status = (await spotIsPublished(ctx, spot)) ? "published" : "pending";
+    await ctx.db.patch("spots", spot._id, { publicationStatus: status });
+  }
+  const openReportCount = (
+    await ctx.db
+      .query("spotReports")
+      .withIndex("by_spotId", (q) => q.eq("spotId", spotId))
+      .take(MAX_OPEN_REPORTS_PER_SPOT)
+  ).length;
+  const moderation = await spotModerationFor(ctx, spotId);
+  const submissionReason =
+    fields.submissionReason ?? (moderation ? legacySubmissionReason(moderation) : "new");
+  const state = {
+    ...fields,
+    ...reviewAttention(status, openReportCount, submissionReason),
+    submissionReason,
+    openReportCount,
+    reviewVersion: nextReviewVersion(moderation?.reviewVersion),
+  };
+  if (moderation) {
+    await ctx.db.patch("spotModeration", moderation._id, state);
+  } else {
+    await ctx.db.insert("spotModeration", {
+      spotId,
+      spotCreationTime: spot._creationTime,
+      lastSubmittedAt: spot._creationTime,
+      ...state,
+    });
+  }
+}
+
 /**
  * Records review state atomically with creation, including admin self-approval.
  * `submittedAt` is later than creation when a private spot is first made public.
@@ -31,43 +156,42 @@ export async function recordNewSpotModeration(
   submittedAt = spot._creationTime,
 ) {
   const published = spot.publicationStatus === "published";
-  await ctx.db.insert("spotModeration", {
-    spotId: spot._id,
-    spotCreationTime: spot._creationTime,
-    needsReview: !published,
-    attentionReason: "new",
+  await syncReviewState(ctx, spot._id, {
+    submissionReason: "new",
     lastSubmittedAt: submittedAt,
-    openReportCount: 0,
     ...(published ? { reviewedAt: submittedAt, reviewedBy: spot.createdBy } : {}),
   });
 }
 
 /**
- * Returns an edited spot to the queue without losing any open report count. An admin's edit to
- * their own spot counts as reviewed by them, as their new spots do, unless reports still await a
- * decision.
+ * Returns an edited spot to the queue. A spot sent back for changes comes back as resubmitted,
+ * with the owner's note. An admin's edit to their own spot counts as reviewed by them, as their
+ * new spots do, unless reports still await a decision.
  */
-export async function queueEditedSpot(ctx: MutationCtx, spot: Doc<"spots">, adminEditor?: string) {
+export async function queueEditedSpot(
+  ctx: MutationCtx,
+  spot: Doc<"spots">,
+  {
+    adminEditor,
+    resubmitted,
+    ownerNote,
+  }: {
+    adminEditor?: string;
+    resubmitted: boolean;
+    ownerNote?: string;
+  },
+) {
   const moderation = await spotModerationFor(ctx, spot._id);
   const now = Date.now();
-  const openReportCount = moderation?.openReportCount ?? 0;
-  const selfReviewed = adminEditor !== undefined && openReportCount === 0;
-  const review = {
-    needsReview: !selfReviewed,
-    attentionReason: openReportCount > 0 ? ("reported" as const) : ("edited" as const),
+  const selfReviewed = adminEditor !== undefined && (moderation?.openReportCount ?? 0) === 0;
+  // Editing a resubmission again before review keeps it one; publishing clears the request.
+  const stillResubmitted = resubmitted || moderation?.requestedChanges !== undefined;
+  await syncReviewState(ctx, spot._id, {
+    submissionReason: stillResubmitted ? "resubmitted" : "edited",
     lastSubmittedAt: now,
     reviewedAt: selfReviewed ? now : undefined,
     reviewedBy: selfReviewed ? adminEditor : undefined,
-  };
-  if (moderation) {
-    await ctx.db.patch("spotModeration", moderation._id, review);
-    return;
-  }
-  await ctx.db.insert("spotModeration", {
-    spotId: spot._id,
-    spotCreationTime: spot._creationTime,
-    openReportCount: 0,
-    ...review,
+    ...(resubmitted ? { ownerNote } : {}),
   });
 }
 

@@ -86,7 +86,10 @@ describe("admin spot photos", () => {
       adminPhotosUnseen: true,
       adminPhotosAddedAt: expect.any(Number),
     });
-    expect((await admin.query(api.moderation.getSpot, { id }))?.review).toEqual(review);
+    // The queue state holds, but a decision screen opened before the upload is now stale.
+    const reviewAfter = (await admin.query(api.moderation.getSpot, { id }))?.review;
+    expect(reviewAfter).toEqual({ ...review, reviewVersion: expect.any(Number) });
+    expect(reviewAfter?.reviewVersion).toBeGreaterThan(review?.reviewVersion ?? 0);
     expect(await t.query(api.spots.get, { id })).toBeNull();
     await expect(
       owner.mutation(api.spots.setAdminPhotoPermission, { id, allowed: true }),

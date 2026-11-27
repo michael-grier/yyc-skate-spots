@@ -10,11 +10,7 @@ import {
   internalQuery,
   type MutationCtx,
 } from "./_generated/server";
-import {
-  clearSpotModeration,
-  MAX_OPEN_REPORTS_PER_SPOT,
-  spotModerationFor,
-} from "./moderationModel";
+import { clearSpotModeration, spotModerationFor, syncReviewState } from "./moderationModel";
 import { deleteReport } from "./reportPhotos";
 import { profileFor } from "./profileModel";
 import { appleClientId } from "./schema";
@@ -283,30 +279,7 @@ async function repairModerationAfterReportRemoval(ctx: MutationCtx, spotId: Id<"
     await ctx.db.delete("spotModeration", moderation._id);
     return;
   }
-  const remainingReports = await ctx.db
-    .query("spotReports")
-    .withIndex("by_spotId", (q) => q.eq("spotId", spotId))
-    .take(MAX_OPEN_REPORTS_PER_SPOT);
-  if (remainingReports.length > 0) {
-    await ctx.db.patch("spotModeration", moderation._id, {
-      needsReview: true,
-      attentionReason: "reported",
-      openReportCount: remainingReports.length,
-    });
-    return;
-  }
-  if (spot.publicationStatus === "published") {
-    await ctx.db.patch("spotModeration", moderation._id, {
-      needsReview: false,
-      openReportCount: 0,
-    });
-    return;
-  }
-  await ctx.db.patch("spotModeration", moderation._id, {
-    needsReview: true,
-    attentionReason: moderation.lastSubmittedAt === spot._creationTime ? "new" : "edited",
-    openReportCount: 0,
-  });
+  await syncReviewState(ctx, spotId);
 }
 
 /** Removes one bounded slice of the departing user's data and identity references. */
