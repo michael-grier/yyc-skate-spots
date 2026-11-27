@@ -294,7 +294,7 @@ export const markMeetsStandards = mutation({
           recipient: report.reportedBy,
           kind: "report_kept",
           spotId: spot._id,
-          spotName: spot.name,
+          spotName: report.spotName ?? spot.name,
           reason: report.reason,
         });
       }

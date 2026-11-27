@@ -84,6 +84,20 @@ describe("updates", () => {
     expect(reporterNotice).not.toHaveProperty("spotId");
   });
 
+  test("a reporter's update keeps the name they reported after a rename", async () => {
+    const harness = setup();
+    const { asAlice, asBob, asAdmin } = harness;
+    const id = await aliceSpot(harness);
+    await asAdmin.mutation(api.moderation.markMeetsStandards, { spotId: id });
+    await asBob.mutation(api.reports.create, { spotId: id, reason: "other" });
+    await asAlice.mutation(api.spots.update, { ...SPOT, id, name: "Renamed Ledge" });
+
+    await asAdmin.mutation(api.moderation.markMeetsStandards, { spotId: id });
+    expect((await asBob.query(api.notices.list, PAGE)).page).toMatchObject([
+      { kind: "report_kept", spotName: SPOT.name },
+    ]);
+  });
+
   test("seed spots and accounts being deleted get no updates", async () => {
     const { t, asAdmin } = setup();
     const seeded = await t.run((ctx) => ctx.db.insert("spots", { ...SPOT, createdBy: "seed" }));
