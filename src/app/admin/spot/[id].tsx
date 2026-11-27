@@ -111,22 +111,36 @@ export default function AdminSpotReviewScreen() {
       spot.reports.length === 0
         ? ""
         : ` and clear ${spot.reports.length} report${spot.reports.length === 1 ? "" : "s"}`;
-    Alert.alert("Mark as meeting standards?", `This will finish the review${reportText}.`, [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Confirm",
-        onPress: async () => {
-          setWorking(true);
-          try {
-            await markMeetsStandards({ spotId: spot._id });
-            router.back();
-          } catch {
-            Alert.alert("Couldn't finish review", "Check your connection and try again.");
-            setWorking(false);
-          }
+    const publishing = !spot.isLive;
+    Alert.alert(
+      publishing ? "Publish this spot?" : "Mark as meeting standards?",
+      publishing
+        ? `It goes on the map for everyone${reportText}.`
+        : `This will finish the review${reportText}.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Confirm",
+          onPress: async () => {
+            setWorking(true);
+            try {
+              await markMeetsStandards({
+                spotId: spot._id,
+                expectedReviewVersion: spot.review.reviewVersion,
+              });
+              router.back();
+            } catch {
+              // Production hides the server's reason, which may be a stale-screen refusal.
+              Alert.alert(
+                "Couldn't finish review",
+                "The spot may have changed while you were looking at it. Check it again, then retry.",
+              );
+              setWorking(false);
+            }
+          },
         },
-      },
-    ]);
+      ],
+    );
   }
 
   function confirmContributorAccess() {
@@ -206,6 +220,11 @@ export default function AdminSpotReviewScreen() {
     );
   }
 
+  const waitingOnContributor = spot.publicationStatus === "needs_changes";
+  // Only a spot that isn't live can go back to its owner; a live one is removed or kept.
+  const canRequestChanges = !spot.isLive && !waitingOnContributor;
+  const requested = spot.review.requestedChanges;
+
   return (
     <View className="flex-1 bg-base">
       <Stack.Screen options={{ headerShown: false }} />
@@ -219,8 +238,9 @@ export default function AdminSpotReviewScreen() {
             <View
               className="h-2 w-2 rounded-full"
               style={{
-                backgroundColor:
-                  spot.reports.length > 0
+                backgroundColor: waitingOnContributor
+                  ? colors.mute
+                  : spot.reports.length > 0
                     ? colors.bust.high
                     : spot.review.needsReview || spot.workSubmission
                       ? colors.bust.medium
@@ -228,15 +248,19 @@ export default function AdminSpotReviewScreen() {
               }}
             />
             <Text className="font-sans-semibold text-[11px] text-mute">
-              {spot.reports.length > 0
-                ? `${spot.reports.length} OPEN REPORT${spot.reports.length === 1 ? "" : "S"}`
-                : spot.review.needsReview
-                  ? spot.review.attentionReason === "edited"
-                    ? "EDITED · NEEDS REVIEW"
-                    : "NEW · NEEDS REVIEW"
-                  : spot.workSubmission
-                    ? "WORK SUBMITTED"
-                    : "REVIEWED"}
+              {waitingOnContributor
+                ? "WAITING ON CONTRIBUTOR"
+                : spot.reports.length > 0
+                  ? `${spot.reports.length} OPEN REPORT${spot.reports.length === 1 ? "" : "S"}`
+                  : spot.review.needsReview
+                    ? spot.review.attentionReason === "resubmitted"
+                      ? "RESUBMITTED · NEEDS REVIEW"
+                      : spot.review.attentionReason === "edited"
+                        ? "EDITED · NEEDS REVIEW"
+                        : "NEW · NEEDS REVIEW"
+                    : spot.workSubmission
+                      ? "WORK SUBMITTED"
+                      : "REVIEWED"}
             </Text>
           </View>
           <Text className="mt-2 font-sans-semibold text-[26px] tracking-tight text-ink">
@@ -265,6 +289,43 @@ export default function AdminSpotReviewScreen() {
             </Text>
           ) : null}
 
+          {requested ? (
+            <>
+              <Text className="mt-7 mb-2 px-1 font-sans-medium text-[11px] text-mute">
+                CHANGES REQUESTED
+              </Text>
+              <Card className="border-bust-medium/30 p-4">
+                <Text className="font-sans-medium text-[11px] text-mute">
+                  YOU ASKED · {formatMonthYear(requested.at)}
+                </Text>
+                <View className="mt-1.5 border-l-2 border-white/20 pl-3">
+                  <Text className="font-sans text-[14px] leading-relaxed text-ink">
+                    {requested.message}
+                  </Text>
+                </View>
+                {waitingOnContributor ? (
+                  <Text className="mt-3 font-sans text-[12px] leading-relaxed text-mute">
+                    Waiting for the contributor to edit and resubmit.
+                  </Text>
+                ) : (
+                  <>
+                    <Text className="mt-4 font-sans-medium text-[11px] text-mute">
+                      CONTRIBUTOR’S NOTE
+                    </Text>
+                    <Text
+                      className={
+                        spot.review.ownerNote
+                          ? "mt-1.5 font-sans text-[14px] leading-relaxed text-ink"
+                          : "mt-1.5 font-sans text-[13px] text-mute"
+                      }
+                    >
+                      {spot.review.ownerNote ?? "They resubmitted without a note."}
+                    </Text>
+                  </>
+                )}
+              </Card>
+            </>
+          ) : null}
           {spot.canAddAdminPhotos ? (
             <Card className="mt-5 p-4">
               <Text className="font-sans-medium text-[13px] text-bust-low">
@@ -418,20 +479,41 @@ export default function AdminSpotReviewScreen() {
               admin can still remove it. Reports put a spot back in review. */}
           <Card className="p-4">
             <Text className="font-sans-semibold text-[15px] text-ink">
-              {spot.review.needsReview ? "Finish this review" : "Already reviewed"}
+              {waitingOnContributor
+                ? "Waiting on the contributor"
+                : spot.review.needsReview
+                  ? "Finish this review"
+                  : "Already reviewed"}
             </Text>
             <Text className="mt-1 font-sans text-[12px] leading-relaxed text-mute">
-              {spot.review.needsReview
-                ? "Approving publishes the current version and clears its reports. Removal deletes the spot."
-                : "This version passed review. Removal deletes the spot."}{" "}
+              {waitingOnContributor
+                ? "It stays hidden until they resubmit, and no strike was added. Removal deletes the spot."
+                : spot.review.needsReview
+                  ? canRequestChanges
+                    ? "Publish puts it on the map. Request changes sends it back with your message and no strike. Removal deletes the spot."
+                    : "Approving keeps the current version live and clears its reports. Removal deletes the spot."
+                  : "This version passed review. Removal deletes the spot."}{" "}
               Dead-spot removal does not add a contributor strike.
             </Text>
-            {spot.review.needsReview ? (
+            {spot.review.needsReview && !waitingOnContributor ? (
               <Button
-                label={working ? "Working…" : "Meets standards"}
+                label={working ? "Working…" : spot.isLive ? "Meets standards" : "Publish"}
                 onPress={confirmApproval}
                 disabled={working}
                 className="mt-4"
+              />
+            ) : null}
+            {canRequestChanges ? (
+              <Button
+                label="Request changes"
+                disabled={working}
+                onPress={() =>
+                  router.push({
+                    pathname: "/admin/spot/request-changes/[id]",
+                    params: { id: spot._id, version: String(spot.review.reviewVersion) },
+                  })
+                }
+                className="mt-2"
               />
             ) : null}
             <Button
@@ -439,9 +521,12 @@ export default function AdminSpotReviewScreen() {
               variant="danger"
               disabled={working}
               onPress={() =>
-                router.push({ pathname: "/admin/spot/remove/[id]", params: { id: spot._id } })
+                router.push({
+                  pathname: "/admin/spot/remove/[id]",
+                  params: { id: spot._id, version: String(spot.review.reviewVersion) },
+                })
               }
-              className={spot.review.needsReview ? "mt-2" : "mt-4"}
+              className={spot.review.needsReview && !waitingOnContributor ? "mt-2" : "mt-4"}
             />
           </Card>
 
