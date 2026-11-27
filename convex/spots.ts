@@ -345,6 +345,7 @@ export const get = query({
         _creationTime: removal.spotCreationTime,
         name: removal.name,
         reason: removal.reason,
+        ownerMessage: removal.ownerMessage,
         removedAt: removal.removedAt,
         strikeNumber: removal.strikeNumber,
       };
