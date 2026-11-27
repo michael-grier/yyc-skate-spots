@@ -29,6 +29,8 @@ function noticeCopy({ kind }: Notice): { headline: string; body?: string } {
       };
     case "spot_removed":
       return { headline: "Your spot was removed" };
+    case "spot_changes_requested":
+      return { headline: "Changes requested" };
     case "report_kept":
       return {
         headline: "We reviewed your report",

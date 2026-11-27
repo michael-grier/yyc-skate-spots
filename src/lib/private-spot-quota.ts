@@ -2,7 +2,10 @@ import { privateSpotAllowance } from "@convex/privateSpots";
 
 export type PrivateSpotQuota = { used: number; allowed: number };
 
-type OwnedSpot = { _id: string; status: "active" | "pending" | "private" | "removed" };
+type OwnedSpot = {
+  _id: string;
+  status: "active" | "pending" | "needs_changes" | "private" | "removed";
+};
 
 /**
  * The form's copy of the server's allowance check in convex/spots.ts. The spot

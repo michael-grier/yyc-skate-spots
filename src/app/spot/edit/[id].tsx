@@ -3,6 +3,7 @@ import type { Id } from "@convex/_generated/dataModel";
 import { describesWork } from "@convex/needsWork";
 import { useMutation, useQuery } from "convex/react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { useState } from "react";
 import { ActivityIndicator, Text, View } from "react-native";
 
 import { SpotEditForm } from "@/components/spot-edit-form";
@@ -23,6 +24,7 @@ export default function EditSpotScreen() {
   const updateSpot = useMutation(api.spots.update);
   const acknowledgeStandards = useMutation(api.moderation.acknowledgeStandards);
   const privateQuota = usePrivateSpotQuota(id);
+  const [ownerNote, setOwnerNote] = useState("");
 
   if (spot === undefined || moderation === undefined) {
     return (
@@ -83,11 +85,26 @@ export default function EditSpotScreen() {
               "Someone sent photos of a fix for this spot. It can be made private once an admin has reviewed them.",
             );
           }
-          await updateSpot({ id: spotId, ...payload, photoIds, expectedAdminPhotosAddedAt });
+          await updateSpot({
+            id: spotId,
+            ...payload,
+            photoIds,
+            expectedAdminPhotosAddedAt,
+            ...(spot.changesRequested ? { ownerNote } : {}),
+          });
           router.back();
         }}
         privateQuota={privateQuota}
         skipPhotoPermission={moderation.isAdmin}
+        resubmission={
+          spot.changesRequested
+            ? {
+                message: spot.changesRequested.message,
+                note: ownerNote,
+                onNoteChange: setOwnerNote,
+              }
+            : undefined
+        }
         onAcknowledgeStandards={
           moderation.hasAcknowledgedStandards
             ? undefined

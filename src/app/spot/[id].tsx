@@ -417,6 +417,29 @@ export default function SpotDetailScreen() {
               </Text>
             </Card>
           ) : null}
+          {spot.changesRequested ? (
+            <Card className="mt-4 border-bust-medium/30 p-4">
+              <Text className="font-sans-medium text-[11px] text-bust-medium">
+                CHANGES REQUESTED
+              </Text>
+              <Text className="mt-1.5 font-sans text-[13px] leading-relaxed text-mute">
+                Before this goes on the map, YYC Skate Spots asked:
+              </Text>
+              <View className="mt-2 border-l-2 border-white/20 pl-3">
+                <Text className="font-sans text-[15px] leading-relaxed text-ink">
+                  {spot.changesRequested.message}
+                </Text>
+              </View>
+              <Text className="mt-3 font-sans text-[12px] leading-relaxed text-mute">
+                No strike was added. Until you resubmit, only you and administrators can see it.
+              </Text>
+              <Button
+                label="Edit and resubmit"
+                className="mt-4"
+                onPress={() => router.push({ pathname: "/spot/edit/[id]", params: { id: spotId } })}
+              />
+            </Card>
+          ) : null}
           {spot.isPrivate ? (
             <Card className="mt-4 p-4">
               <View className="flex-row items-center gap-2">
@@ -574,7 +597,7 @@ export default function SpotDetailScreen() {
       </View>
       {backButton}
       <View className="absolute right-4 flex-row gap-2" style={{ top: insets.top + 8 }}>
-        {spot.isPendingReview ? null : (
+        {spot.isPendingReview || spot.changesRequested ? null : (
           <>
             <Pressable
               accessibilityRole="button"
