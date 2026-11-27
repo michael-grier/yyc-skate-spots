@@ -50,9 +50,22 @@ export const noticeKind = v.union(
   v.literal("spot_removed"),
   v.literal("report_kept"),
   v.literal("report_removed"),
+  v.literal("spot_changes_requested"),
 );
 
-const reviewReason = v.union(v.literal("new"), v.literal("edited"), v.literal("reported"));
+// Why a spot was last put in front of an admin, apart from any reports on it.
+export const submissionReason = v.union(
+  v.literal("new"),
+  v.literal("edited"),
+  v.literal("resubmitted"),
+);
+
+const reviewReason = v.union(
+  v.literal("new"),
+  v.literal("edited"),
+  v.literal("resubmitted"),
+  v.literal("reported"),
+);
 
 export default defineSchema({
   // Saved display names. Accounts without a row show a derived anonymous name.
@@ -90,8 +103,14 @@ export default defineSchema({
     // Optional during rollout so existing rows remain valid. Public reads use
     // their moderation row as the fallback until the next review or edit.
     // "private" is owner-chosen: visible only to the creator, never reviewed.
+    // "needs_changes" is an admin's send-back: hidden like "pending" until the owner resubmits.
     publicationStatus: v.optional(
-      v.union(v.literal("pending"), v.literal("published"), v.literal("private")),
+      v.union(
+        v.literal("pending"),
+        v.literal("published"),
+        v.literal("private"),
+        v.literal("needs_changes"),
+      ),
     ),
     // Hides a deleted spot while its unbounded favorite rows are removed in
     // scheduled batches. The final batch physically deletes this document.
@@ -178,6 +197,15 @@ export default defineSchema({
     openReportCount: v.number(),
     reviewedAt: v.optional(v.number()),
     reviewedBy: v.optional(v.string()),
+    // Absent on rows from before it was tracked; see legacySubmissionReason.
+    submissionReason: v.optional(submissionReason),
+    // Rises on every review-state change. Decisions carry the version the admin saw, so a
+    // decision made on a stale screen is refused. Absent counts as 0.
+    reviewVersion: v.optional(v.number()),
+    // The admin's last Request changes message, kept through the resubmission so the next
+    // review shows it beside the owner's note.
+    requestedChanges: v.optional(v.object({ message: v.string(), at: v.number() })),
+    ownerNote: v.optional(v.string()),
   })
     .index("by_spotId", ["spotId"])
     .index("by_reviewedBy", ["reviewedBy"]),

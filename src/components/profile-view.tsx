@@ -357,6 +357,15 @@ export function ProfileView() {
                         : `Confirmed removal ${item.strikeNumber} · ban threshold 3`}
                     </Text>
                   </View>
+                ) : item.status === "needs_changes" ? (
+                  <View className="mt-1">
+                    <Text className="font-sans-medium text-[12px] text-bust-medium">
+                      Needs changes
+                    </Text>
+                    <Text className="mt-0.5 font-sans text-[11px] text-mute">
+                      Tap to see what to fix
+                    </Text>
+                  </View>
                 ) : item.status === "pending" ? (
                   <View className="mt-1">
                     <Text className="font-sans-medium text-[12px] text-bust-medium">

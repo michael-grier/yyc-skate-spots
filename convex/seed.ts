@@ -2,6 +2,7 @@ import type { Doc } from "./_generated/dataModel";
 import { env, internalMutation, mutation, type MutationCtx } from "./_generated/server";
 import { requireIdentity } from "./auth";
 import { MODERATION_FIXTURE_OWNER, MODERATION_FIXTURE_REPORTER, SEED_OWNER } from "./constants";
+import { syncReviewState } from "./moderationModel";
 import { deleteSpotWork } from "./spotWorkModel";
 
 const BANNED_USER_FIXTURE_ADMIN = "seed:banned-user-scenario";
@@ -287,20 +288,7 @@ export const createModerationScenario = internalMutation({
       photoIds: [],
       createdBy: MODERATION_FIXTURE_OWNER,
       createdByName: "Workflow Test User",
-    });
-    const spot = await ctx.db.get("spots", spotId);
-    if (!spot) {
-      throw new Error("Failed to create the moderation fixture spot.");
-    }
-
-    const submittedAt = Date.now();
-    await ctx.db.insert("spotModeration", {
-      spotId,
-      spotCreationTime: spot._creationTime,
-      needsReview: true,
-      attentionReason: "reported",
-      lastSubmittedAt: submittedAt,
-      openReportCount: 1,
+      publicationStatus: "published",
     });
     await ctx.db.insert("spotReports", {
       spotId,
@@ -308,6 +296,7 @@ export const createModerationScenario = internalMutation({
       reason: "not_a_spot",
       details: "Test report: this location is not a real skate spot.",
     });
+    await syncReviewState(ctx, spotId);
     await ctx.db.insert("userModeration", {
       userIdentifier: MODERATION_FIXTURE_OWNER,
       name: "Workflow Test User",

@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { mutation } from "./_generated/server";
 import { requireUnblockedIdentity } from "./auth";
-import { MAX_OPEN_REPORTS_PER_SPOT, spotIsPublished, spotModerationFor } from "./moderationModel";
+import { MAX_OPEN_REPORTS_PER_SPOT, spotIsPublished, syncReviewState } from "./moderationModel";
 import { claimReportPhotos } from "./reportPhotos";
 import { MAX_REPORT_PHOTOS } from "./constants";
 import { reportReason } from "./schema";
@@ -57,11 +57,6 @@ export const create = mutation({
       throw new Error("This spot already has enough reports for review.");
     }
 
-    // A rollout-era spot without a status reads as published only until its moderation row
-    // flags it. Saving the status first keeps it up for everyone while the report is reviewed.
-    if (spot.publicationStatus === undefined) {
-      await ctx.db.patch("spots", spot._id, { publicationStatus: "published" });
-    }
     await claimReportPhotos(ctx, identity.tokenIdentifier, photoIds);
     await ctx.db.insert("spotReports", {
       spotId: args.spotId,
@@ -71,25 +66,9 @@ export const create = mutation({
       ...(photoIds.length ? { photoIds } : {}),
       ...(details ? { details } : {}),
     });
-    const moderation = await spotModerationFor(ctx, args.spotId);
-    if (moderation) {
-      await ctx.db.patch("spotModeration", moderation._id, {
-        needsReview: true,
-        attentionReason: "reported",
-        openReportCount: reports.length + 1,
-        reviewedAt: undefined,
-        reviewedBy: undefined,
-      });
-    } else {
-      await ctx.db.insert("spotModeration", {
-        spotId: spot._id,
-        spotCreationTime: spot._creationTime,
-        needsReview: true,
-        attentionReason: "reported",
-        lastSubmittedAt: spot._creationTime,
-        openReportCount: reports.length + 1,
-      });
-    }
+    // Also saves a rollout-era spot's published status before flagging it, so the report
+    // leaves it up for everyone while it waits for review.
+    await syncReviewState(ctx, spot._id, { reviewedAt: undefined, reviewedBy: undefined });
     return null;
   },
 });

@@ -1,3 +1,4 @@
+import { MAX_OWNER_NOTE_LENGTH } from "@convex/constants";
 import type { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { useRouter } from "expo-router";
 import { useRef, useState } from "react";
@@ -43,6 +44,8 @@ type SpotEditFormProps = {
   onAcknowledgeStandards?: StandardsAcknowledge;
   privateQuota: PrivateSpotQuota | undefined;
   skipPhotoPermission?: boolean;
+  /** Set when an admin sent the spot back: their message, and the owner's note in reply. */
+  resubmission?: { message: string; note: string; onNoteChange: (note: string) => void };
 };
 
 /** Other people's favourites of the spot vanish with it, so that is said before it happens. */
@@ -150,6 +153,7 @@ export function SpotEditForm({
   onAcknowledgeStandards,
   privateQuota,
   skipPhotoPermission,
+  resubmission,
 }: SpotEditFormProps) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -214,6 +218,40 @@ export function SpotEditForm({
           keyboardDismissMode="on-drag"
           contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 32 }}
         >
+          {resubmission ? (
+            <Card className="mt-4 border-bust-medium/30 p-4">
+              <Text className="font-sans-medium text-[11px] text-bust-medium">
+                CHANGES REQUESTED
+              </Text>
+              <View className="mt-2 border-l-2 border-white/20 pl-3">
+                <Text className="font-sans text-[14px] leading-relaxed text-ink">
+                  {resubmission.message}
+                </Text>
+              </View>
+              {/* A private spot isn't resubmitted, so there is no reviewer to read a note. */}
+              {values.visibility === "public" ? (
+                <>
+                  <Text className="mt-4 mb-2 font-sans-medium text-[11px] text-mute">
+                    NOTE FOR THE REVIEWER (OPTIONAL)
+                  </Text>
+                  <TextInput
+                    value={resubmission.note}
+                    onChangeText={resubmission.onNoteChange}
+                    maxLength={MAX_OWNER_NOTE_LENGTH}
+                    placeholder="What you changed"
+                    placeholderTextColor={colors.mute}
+                    multiline
+                    textAlignVertical="top"
+                    accessibilityLabel="Note for the reviewer"
+                    className="min-h-[64px] rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 font-sans text-[14px] leading-relaxed text-ink"
+                  />
+                  <Text className="mt-1.5 text-right font-sans text-[11px] text-mute">
+                    {resubmission.note.length}/{MAX_OWNER_NOTE_LENGTH}
+                  </Text>
+                </>
+              ) : null}
+            </Card>
+          ) : null}
           <Card className="mt-4">
             <Field label="NAME" error={errors.name} className="px-4 py-3.5">
               <NameInput value={values.name} onChange={(name) => setField("name", name)} />
@@ -303,7 +341,15 @@ export function SpotEditForm({
             <StandardsLine onPress={() => standardsRef.current?.present()} />
           </View>
           <Button
-            label={saving ? "Saving…" : "Save changes"}
+            label={
+              resubmission && values.visibility === "public"
+                ? saving
+                  ? "Resubmitting…"
+                  : "Resubmit for review"
+                : saving
+                  ? "Saving…"
+                  : "Save changes"
+            }
             variant="light"
             disabled={saving}
             onPress={() => void saveChanges()}

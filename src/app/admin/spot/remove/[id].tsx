@@ -29,7 +29,10 @@ type RemovalResult = FunctionReturnType<typeof api.moderation.removeSpot>;
 
 /** Final admin removal form, separated from review so deletion requires an explicit reason. */
 export default function AdminRemoveSpotScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  // The version the review screen showed. The form's own query updates live, so deciding on it
+  // could land on an edit the admin never looked at.
+  const { id, version } = useLocalSearchParams<{ id: string; version?: string }>();
+  const reviewedVersion = version === undefined ? undefined : Number(version);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const viewer = useQuery(api.moderation.viewer);
@@ -91,16 +94,17 @@ export default function AdminRemoveSpotScreen() {
               setResult(
                 await removeSpot({
                   spotId: spot._id,
+                  expectedReviewVersion: reviewedVersion,
                   reason,
                   ...(ownerMessage.trim() ? { ownerMessage: ownerMessage.trim() } : {}),
                   ...(details.trim() ? { details: details.trim() } : {}),
                 }),
               );
-            } catch (removeError) {
+            } catch {
+              // Production hides the server's reason, which may be a stale-screen refusal, and
+              // retrying here would resend the same version.
               setError(
-                removeError instanceof Error
-                  ? removeError.message
-                  : "The spot could not be removed.",
+                "Couldn't remove the spot. It may have changed while you were deciding; go back and check it.",
               );
             } finally {
               setWorking(false);

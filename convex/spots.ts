@@ -9,7 +9,9 @@ import {
   type QueryCtx,
 } from "./_generated/server";
 import { requireAdmin, requireCanContribute, requireIdentity } from "./auth";
+import { MAX_OWNER_NOTE_LENGTH } from "./constants";
 import {
+  bumpReviewVersion,
   clearSpotModeration,
   queueEditedSpot,
   recordNewSpotModeration,
@@ -304,8 +306,8 @@ export const mine = query({
         .filter((spot) => !spot.deletionRequested)
         .map(async (spot) => ({
           status:
-            spot.publicationStatus === "private"
-              ? ("private" as const)
+            spot.publicationStatus === "private" || spot.publicationStatus === "needs_changes"
+              ? spot.publicationStatus
               : (await spotIsPublished(ctx, spot))
                 ? ("active" as const)
                 : ("pending" as const),
@@ -377,6 +379,7 @@ export const get = query({
     const identity = await ctx.auth.getUserIdentity();
     const isOwner = identity !== null && spot.createdBy === identity.tokenIdentifier;
     const isPrivate = spot.publicationStatus === "private";
+    const needsChanges = spot.publicationStatus === "needs_changes";
     const isPublished = await spotIsPublished(ctx, spot);
     // Private spots are unpublished, so this also keeps them to their owner.
     if (!isPublished && !isOwner) {
@@ -445,9 +448,13 @@ export const get = query({
       isFavorite: favorite !== null,
       // The caller's own open report, so they can see it's being reviewed.
       myReportReason: myReport?.reason ?? null,
-      isPendingReview: !isPublished && !isPrivate,
+      isPendingReview: !isPublished && !isPrivate && !needsChanges,
       isPrivate,
       photoIds: isOwner ? photoIds : null,
+      // Only the owner can load an unpublished spot, so this never reaches anyone else.
+      changesRequested: needsChanges
+        ? ((await spotModerationFor(ctx, spot._id))?.requestedChanges ?? null)
+        : null,
       ...(isOwner
         ? {
             allowAdminPhotos: allowAdminPhotos ?? false,
@@ -512,10 +519,22 @@ export const update = mutation({
     id: v.id("spots"),
     ...spotFields.fields,
     expectedAdminPhotosAddedAt: v.optional(v.number()),
+    // The owner's one reply when resubmitting a spot sent back for changes.
+    ownerNote: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { id, expectedAdminPhotosAddedAt, visibility = "public", ...fields } = args;
+    const {
+      id,
+      expectedAdminPhotosAddedAt,
+      visibility = "public",
+      ownerNote: rawOwnerNote,
+      ...fields
+    } = args;
     const { spot: existing, identity } = await requireOwnedSpot(ctx, id, true);
+    const ownerNote = rawOwnerNote?.trim() || undefined;
+    if (ownerNote && ownerNote.length > MAX_OWNER_NOTE_LENGTH) {
+      throw new Error(`Keep the note for the reviewer to ${MAX_OWNER_NOTE_LENGTH} characters.`);
+    }
     // An editor opened before an admin upload must not silently drop the new photos.
     if (existing.adminPhotosAddedAt !== expectedAdminPhotosAddedAt) {
       throw new Error(
@@ -594,11 +613,11 @@ export const update = mutation({
       // Its first public submission, so it queues as new rather than edited.
       await recordNewSpotModeration(ctx, updated, Date.now());
     } else {
-      await queueEditedSpot(
-        ctx,
-        updated,
-        identity.role === "admin" ? identity.tokenIdentifier : undefined,
-      );
+      await queueEditedSpot(ctx, updated, {
+        adminEditor: identity.role === "admin" ? identity.tokenIdentifier : undefined,
+        resubmitted: existing.publicationStatus === "needs_changes",
+        ownerNote,
+      });
     }
     return null;
   },
@@ -771,6 +790,8 @@ export const addAdminPhotos = mutation({
       adminPhotosAddedAt: Date.now(),
       adminPhotosUnseen: true,
     });
+    // A decision screen opened before the upload must not publish photos it never showed.
+    await bumpReviewVersion(ctx, id);
     return null;
   },
 });
