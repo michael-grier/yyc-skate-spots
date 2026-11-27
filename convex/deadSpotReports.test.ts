@@ -31,7 +31,7 @@ async function setup() {
 
 describe("dead-spot reports", () => {
   test("requires fresh, distinct evidence owned by the reporter", async () => {
-    const { t, reporter, owner, spotId, photoId } = await setup();
+    const { t, reporter, owner, admin, spotId, photoId } = await setup();
     const report = { spotId, reason: "gone_or_unusable" as const };
     await expect(reporter.mutation(api.reports.create, report)).rejects.toThrow(
       /at least one photo/,
@@ -73,6 +73,7 @@ describe("dead-spot reports", () => {
     ).rejects.toThrow(/uploaded by you/);
     await reporter.mutation(api.reports.create, { ...report, photoIds: [photoId] });
     const secondSpot = await owner.mutation(api.spots.create, spotFields);
+    await admin.mutation(api.moderation.markMeetsStandards, { spotId: secondSpot });
     await expect(
       reporter.mutation(api.reports.create, { ...report, spotId: secondSpot, photoIds: [photoId] }),
     ).rejects.toThrow(/uploaded by you/);

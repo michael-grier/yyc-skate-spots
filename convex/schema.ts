@@ -45,6 +45,13 @@ export const appleClientId = v.union(
   v.literal("com.yycskatespots.app.dev"),
 );
 
+export const noticeKind = v.union(
+  v.literal("spot_published"),
+  v.literal("spot_removed"),
+  v.literal("report_kept"),
+  v.literal("report_removed"),
+);
+
 const reviewReason = v.union(v.literal("new"), v.literal("edited"), v.literal("reported"));
 
 export default defineSchema({
@@ -151,6 +158,10 @@ export default defineSchema({
     photoIds: v.optional(v.array(v.id("_storage"))),
     reason: reportReason,
     details: v.optional(v.string()),
+    // The live name the reporter saw. An owner's edit can rename the spot before the
+    // decision, and the reporter's update must not show a name that was never approved.
+    // Absent on reports filed before the snapshot existed.
+    spotName: v.optional(v.string()),
   })
     .index("by_spotId", ["spotId"])
     .index("by_spotId_and_reportedBy", ["spotId", "reportedBy"])
@@ -228,4 +239,21 @@ export default defineSchema({
     appleClientId: v.optional(appleClientId),
     appleRevoked: v.boolean(),
   }).index("by_userIdentifier", ["userIdentifier"]),
+
+  // One-way updates from YYC Skate Spots, private to their recipient. There is
+  // no sender field, so an administrator's account deletion leaves them intact.
+  notices: defineTable({
+    recipient: v.string(),
+    kind: noticeKind,
+    // Absent when the spot is gone for the recipient, such as a reporter's removed spot.
+    spotId: v.optional(v.id("spots")),
+    // A snapshot, so the update still reads correctly after the spot changes or goes.
+    spotName: v.string(),
+    // The removal reason for an owner; the reporter's own reason on report outcomes.
+    reason: v.optional(reportReason),
+    message: v.optional(v.string()),
+    readAt: v.optional(v.number()),
+  })
+    .index("by_recipient", ["recipient"])
+    .index("by_recipient_and_readAt", ["recipient", "readAt"]),
 });

@@ -1,10 +1,9 @@
 import type { Doc } from "./_generated/dataModel";
 import { env, internalMutation, mutation, type MutationCtx } from "./_generated/server";
 import { requireIdentity } from "./auth";
-import { MODERATION_FIXTURE_OWNER, SEED_OWNER } from "./constants";
+import { MODERATION_FIXTURE_OWNER, MODERATION_FIXTURE_REPORTER, SEED_OWNER } from "./constants";
 import { deleteSpotWork } from "./spotWorkModel";
 
-const MODERATION_FIXTURE_REPORTER = "seed:moderation-reporter";
 const BANNED_USER_FIXTURE_ADMIN = "seed:banned-user-scenario";
 const BANNED_USER_FIXTURE_NAME = "Banned Workflow Test User";
 const BANNED_USER_FIXTURE_ACTIVE_SPOT = "Banned User Test Spot";
