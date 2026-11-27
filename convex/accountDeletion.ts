@@ -424,6 +424,17 @@ export const cleanupBatch = internalMutation({
       return false;
     }
 
+    const notices = await ctx.db
+      .query("notices")
+      .withIndex("by_recipient", (q) => q.eq("recipient", userIdentifier))
+      .take(DELETE_BATCH_SIZE);
+    if (notices.length > 0) {
+      for (const notice of notices) {
+        await ctx.db.delete("notices", notice._id);
+      }
+      return false;
+    }
+
     const reviews = await ctx.db
       .query("spotModeration")
       .withIndex("by_reviewedBy", (q) => q.eq("reviewedBy", userIdentifier))

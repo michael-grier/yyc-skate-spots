@@ -12,8 +12,10 @@ import {
   clearSpotModeration,
   deleteOpenReports,
   MAX_OPEN_REPORTS_PER_SPOT,
+  spotIsPublished,
   spotModerationFor,
 } from "./moderationModel";
+import { insertNotice } from "./noticeModel";
 import { contributorName, type profileFor } from "./profileModel";
 import { clearSpotWork, spotWorkFor } from "./spotWorkModel";
 import { reportReason } from "./schema";
@@ -274,8 +276,29 @@ export const markMeetsStandards = mutation({
     if (!spot || spot.deletionRequested || spot.publicationStatus === "private") {
       throw new Error("Spot not found.");
     }
+    const wasPublished = await spotIsPublished(ctx, spot);
     await ctx.db.patch("spots", spot._id, { publicationStatus: "published" });
-    await deleteOpenReports(ctx, args.spotId);
+    const reports = await deleteOpenReports(ctx, args.spotId);
+    // An admin deciding on their own spot or report needs no update about it.
+    if (!wasPublished && spot.createdBy !== identity.tokenIdentifier) {
+      await insertNotice(ctx, {
+        recipient: spot.createdBy,
+        kind: "spot_published",
+        spotId: spot._id,
+        spotName: spot.name,
+      });
+    }
+    for (const report of reports) {
+      if (report.reportedBy !== identity.tokenIdentifier) {
+        await insertNotice(ctx, {
+          recipient: report.reportedBy,
+          kind: "report_kept",
+          spotId: spot._id,
+          spotName: report.spotName ?? spot.name,
+          reason: report.reason,
+        });
+      }
+    }
     const moderation = await spotModerationFor(ctx, args.spotId);
     const reviewedAt = Date.now();
     if (moderation) {
@@ -326,7 +349,9 @@ export const removeSpot = mutation({
         `The message to the contributor must be at most ${MAX_REMOVAL_TEXT_LENGTH} characters.`,
       );
     }
-    const reportCount = await clearSpotModeration(ctx, spot._id);
+    // Read before the moderation row goes, since rollout-era spots resolve through it.
+    const wasLive = await spotIsPublished(ctx, spot);
+    const reports = await clearSpotModeration(ctx, spot._id);
     await clearSpotWork(ctx, spot._id);
     await releasePhotos(ctx, spot.photoIds);
     await scheduleSpotDeletion(ctx, spot._id);
@@ -364,9 +389,31 @@ export const removeSpot = mutation({
       ...(ownerMessage ? { ownerMessage } : {}),
       removedAt,
       removedBy: identity.tokenIdentifier,
-      reportCount,
+      reportCount: reports.length,
       strikeNumber,
     });
+    if (spot.createdBy !== identity.tokenIdentifier) {
+      // The spot id still opens the owner's removal notice after the spot is gone.
+      await insertNotice(ctx, {
+        recipient: spot.createdBy,
+        kind: "spot_removed",
+        spotId: spot._id,
+        spotName: spot.name,
+        reason: args.reason,
+        ...(ownerMessage ? { message: ownerMessage } : {}),
+      });
+    }
+    for (const report of reports) {
+      if (report.reportedBy !== identity.tokenIdentifier) {
+        await insertNotice(ctx, {
+          recipient: report.reportedBy,
+          kind: "report_removed",
+          // Reports from before the snapshot fall back to a label, not an unapproved rename.
+          spotName: report.spotName ?? (wasLive ? spot.name : "A spot you reported"),
+          reason: report.reason,
+        });
+      }
+    }
     return {
       strikeCount: strikeNumber,
       eligibleForBan: strikeNumber >= 3,

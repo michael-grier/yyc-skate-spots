@@ -390,6 +390,14 @@ export const get = query({
           )
           .unique()
       : null;
+    const myReport = identity
+      ? await ctx.db
+          .query("spotReports")
+          .withIndex("by_spotId_and_reportedBy", (q) =>
+            q.eq("spotId", spot._id).eq("reportedBy", identity.tokenIdentifier),
+          )
+          .unique()
+      : null;
     const photoUrls = (
       await Promise.all(spot.photoIds.map((photoId) => ctx.storage.getUrl(photoId)))
     ).filter((url): url is string => url !== null);
@@ -435,6 +443,8 @@ export const get = query({
       photoUrls,
       isOwner,
       isFavorite: favorite !== null,
+      // The caller's own open report, so they can see it's being reviewed.
+      myReportReason: myReport?.reason ?? null,
       isPendingReview: !isPublished && !isPrivate,
       isPrivate,
       photoIds: isOwner ? photoIds : null,

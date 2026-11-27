@@ -17,6 +17,8 @@ import type * as http from "../http.js";
 import type * as moderation from "../moderation.js";
 import type * as moderationModel from "../moderationModel.js";
 import type * as needsWork from "../needsWork.js";
+import type * as noticeModel from "../noticeModel.js";
+import type * as notices from "../notices.js";
 import type * as privateSpots from "../privateSpots.js";
 import type * as profileModel from "../profileModel.js";
 import type * as profiles from "../profiles.js";
@@ -43,6 +45,8 @@ declare const fullApi: ApiFromModules<{
   moderation: typeof moderation;
   moderationModel: typeof moderationModel;
   needsWork: typeof needsWork;
+  noticeModel: typeof noticeModel;
+  notices: typeof notices;
   privateSpots: typeof privateSpots;
   profileModel: typeof profileModel;
   profiles: typeof profiles;

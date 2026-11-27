@@ -1,14 +1,14 @@
 import { v } from "convex/values";
 import { mutation } from "./_generated/server";
 import { requireUnblockedIdentity } from "./auth";
-import { MAX_OPEN_REPORTS_PER_SPOT, spotModerationFor } from "./moderationModel";
+import { MAX_OPEN_REPORTS_PER_SPOT, spotIsPublished, spotModerationFor } from "./moderationModel";
 import { claimReportPhotos } from "./reportPhotos";
 import { MAX_REPORT_PHOTOS } from "./constants";
 import { reportReason } from "./schema";
 
 const MAX_DETAILS_LENGTH = 500;
 
-/** Adds one private report and returns the spot to the admin review queue. */
+/** Adds one private report to the admin review queue. The spot stays live until a decision. */
 export const create = mutation({
   args: {
     spotId: v.id("spots"),
@@ -19,8 +19,8 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const identity = await requireUnblockedIdentity(ctx);
     const spot = await ctx.db.get("spots", args.spotId);
-    // A private spot's id may linger in an old share link; it is nobody's to report.
-    if (!spot || spot.deletionRequested || spot.publicationStatus === "private") {
+    // Only live spots can be reported. A private spot's id may linger in an old share link.
+    if (!spot || spot.deletionRequested || !(await spotIsPublished(ctx, spot))) {
       throw new Error("Spot not found.");
     }
     if (spot.createdBy === identity.tokenIdentifier) {
@@ -57,11 +57,17 @@ export const create = mutation({
       throw new Error("This spot already has enough reports for review.");
     }
 
+    // A rollout-era spot without a status reads as published only until its moderation row
+    // flags it. Saving the status first keeps it up for everyone while the report is reviewed.
+    if (spot.publicationStatus === undefined) {
+      await ctx.db.patch("spots", spot._id, { publicationStatus: "published" });
+    }
     await claimReportPhotos(ctx, identity.tokenIdentifier, photoIds);
     await ctx.db.insert("spotReports", {
       spotId: args.spotId,
       reportedBy: identity.tokenIdentifier,
       reason: args.reason,
+      spotName: spot.name,
       ...(photoIds.length ? { photoIds } : {}),
       ...(details ? { details } : {}),
     });

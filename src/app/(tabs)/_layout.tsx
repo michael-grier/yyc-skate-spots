@@ -1,5 +1,8 @@
 import { useAuth } from "@clerk/expo";
+import { api } from "@convex/_generated/api";
+import { useQuery } from "convex/react";
 import { Tabs } from "expo-router";
+import { View } from "react-native";
 
 import { MapIcon, PersonIcon, PlusCircleIcon } from "@/components/icons";
 import { colors } from "@/theme/colors";
@@ -10,6 +13,7 @@ import { colors } from "@/theme/colors";
  */
 export default function TabsLayout() {
   const { isSignedIn } = useAuth();
+  const unreadUpdates = useQuery(api.notices.unreadCount, isSignedIn ? {} : "skip");
 
   return (
     <Tabs
@@ -42,7 +46,15 @@ export default function TabsLayout() {
         name="account"
         options={{
           title: isSignedIn ? "Profile" : "Sign in",
-          tabBarIcon: ({ color, size }) => <PersonIcon size={size} color={color} />,
+          tabBarAccessibilityLabel: unreadUpdates ? "Profile, new updates" : undefined,
+          tabBarIcon: ({ color, size }) => (
+            <View>
+              <PersonIcon size={size} color={color} />
+              {unreadUpdates ? (
+                <View className="absolute -right-0.5 top-0 h-2.5 w-2.5 rounded-full border-2 border-card bg-bust-low" />
+              ) : null}
+            </View>
+          ),
         }}
       />
     </Tabs>

@@ -4,6 +4,7 @@ export const SEED_OWNER = "seed";
 // Separate from ordinary seed rows so the moderation fixture can accrue and
 // clear strikes without affecting the browsable Calgary seed spots.
 export const MODERATION_FIXTURE_OWNER = "seed:moderation-workflow";
+export const MODERATION_FIXTURE_REPORTER = "seed:moderation-reporter";
 
 // Increment this only when contributors must accept a materially changed policy.
 export const COMMUNITY_STANDARDS_VERSION = 1;

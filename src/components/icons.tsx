@@ -127,6 +127,24 @@ export function ChevronRightIcon({ size = 24, color }: IconProps) {
   );
 }
 
+export function BellIcon({ size = 24, color }: IconProps) {
+  return (
+    <Svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <Path d="M6 8a6 6 0 0 1 12 0c0 7 3 8 3 8H3s3-1 3-8" />
+      <Path d="M10 20a2 2 0 0 0 4 0" />
+    </Svg>
+  );
+}
+
 export function SearchIcon({ size = 24, color }: IconProps) {
   return (
     <Svg

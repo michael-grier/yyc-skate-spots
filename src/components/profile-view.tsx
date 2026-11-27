@@ -11,7 +11,7 @@ import { ActivityIndicator, Alert, FlatList, Pressable, Text, View } from "react
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { DisplayNameSheet } from "@/components/display-name-sheet";
-import { ChevronRightIcon, LockIcon } from "@/components/icons";
+import { BellIcon, ChevronRightIcon, LockIcon } from "@/components/icons";
 import { PublicSiteLinks } from "@/components/public-site-links";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -91,6 +91,9 @@ export function ProfileView() {
   const [isDeleting, setIsDeleting] = useState(false);
   const moderation = useQuery(api.moderation.viewer);
   const reviewCount = useQuery(api.moderation.reviewCount, moderation?.isAdmin ? {} : "skip");
+  const unreadUpdates = useQuery(api.notices.unreadCount);
+  // The server stops counting at ten, so ten means "more than nine".
+  const unreadLabel = unreadUpdates ? (unreadUpdates > 9 ? "9+" : String(unreadUpdates)) : null;
   const email = user?.primaryEmailAddress?.emailAddress;
   const activeSpots: ProfileSpot[] | undefined =
     activeList === "favorites"
@@ -175,7 +178,27 @@ export function ProfileView() {
         extraData={activeList}
         ListHeaderComponent={
           <>
-            <Text className="font-sans-semibold text-[26px] tracking-tight text-ink">Profile</Text>
+            <View className="flex-row items-center justify-between">
+              <Text className="font-sans-semibold text-[26px] tracking-tight text-ink">
+                Profile
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={unreadLabel ? `Updates, ${unreadLabel} new` : "Updates"}
+                hitSlop={8}
+                onPress={() => router.push("/updates")}
+                className="h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-card active:opacity-80"
+              >
+                <BellIcon size={22} color={colors.ink} />
+                {unreadLabel ? (
+                  <View className="absolute -right-1.5 -top-1.5 min-w-[18px] items-center rounded-full border-2 border-base bg-bust-low px-1">
+                    <Text className="font-sans-semibold text-[11px]" style={{ color: colors.base }}>
+                      {unreadLabel}
+                    </Text>
+                  </View>
+                ) : null}
+              </Pressable>
+            </View>
             <Card className="mt-6 flex-row items-center gap-3 px-4 py-3">
               <View className="h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5">
                 <Text className="font-sans-semibold text-[13px] text-silver">

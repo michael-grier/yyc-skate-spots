@@ -173,7 +173,21 @@ describe("account deletion", () => {
         standardsVersion: 1,
         acceptedAt: Date.now(),
       });
+      await ctx.db.insert("notices", {
+        recipient: USER_IDENTIFIER,
+        kind: "spot_published",
+        spotId: ownedSpot,
+        spotName: "Alice's spot",
+      });
+      const otherNotice = await ctx.db.insert("notices", {
+        recipient: "other-user",
+        kind: "report_kept",
+        spotId: otherSpot,
+        spotName: "Someone else's spot",
+        reason: "other",
+      });
       return {
+        otherNotice,
         ownedPhoto,
         pendingUpload,
         fixPhoto,
@@ -210,6 +224,9 @@ describe("account deletion", () => {
       expect(await ctx.db.query("uploads").collect()).toEqual([]);
       expect(await ctx.db.query("spotReports").collect()).toEqual([]);
       expect(await ctx.db.query("communityAcknowledgements").collect()).toEqual([]);
+      expect((await ctx.db.query("notices").collect()).map((notice) => notice._id)).toEqual([
+        ids.otherNotice,
+      ]);
       expect(await ctx.db.get("spotModeration", ids.otherReview)).toMatchObject({
         needsReview: false,
         openReportCount: 0,

@@ -71,7 +71,10 @@ export async function queueEditedSpot(ctx: MutationCtx, spot: Doc<"spots">, admi
   });
 }
 
-/** Deletes every open report, whose count is capped at submission time. */
+/**
+ * Deletes every open report, whose count is capped at submission time, and
+ * returns them so a review decision can tell each reporter the outcome.
+ */
 export async function deleteOpenReports(ctx: MutationCtx, spotId: Id<"spots">) {
   const reports = await ctx.db
     .query("spotReports")
@@ -80,15 +83,15 @@ export async function deleteOpenReports(ctx: MutationCtx, spotId: Id<"spots">) {
   for (const report of reports) {
     await deleteReport(ctx, report);
   }
-  return reports.length;
+  return reports;
 }
 
-/** Deletes reports and operational state for a departing spot. */
+/** Deletes reports and operational state for a departing spot, returning the reports. */
 export async function clearSpotModeration(ctx: MutationCtx, spotId: Id<"spots">) {
-  const reportCount = await deleteOpenReports(ctx, spotId);
+  const reports = await deleteOpenReports(ctx, spotId);
   const moderation = await spotModerationFor(ctx, spotId);
   if (moderation) {
     await ctx.db.delete("spotModeration", moderation._id);
   }
-  return reportCount;
+  return reports;
 }

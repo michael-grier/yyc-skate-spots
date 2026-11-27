@@ -135,9 +135,7 @@ export default function ReportSpotScreen() {
       >
         <BackIcon size={18} color={colors.ink} />
       </Pressable>
-      <Text className="font-sans-semibold text-[20px] tracking-tight text-ink">
-        Report spot
-      </Text>
+      <Text className="font-sans-semibold text-[20px] tracking-tight text-ink">Report spot</Text>
     </View>
   );
 
@@ -163,21 +161,7 @@ export default function ReportSpotScreen() {
     );
   }
 
-  if (spot === null || spot.status !== "active" || spot.isOwner) {
-    return (
-      <View className="flex-1 bg-base">
-        <Stack.Screen options={{ headerShown: false }} />
-        {header}
-        <View className="flex-1 items-center justify-center px-8">
-          <Text className="font-sans-semibold text-[17px] text-ink">Nothing to report here</Text>
-          <Text className="mt-2 text-center font-sans text-[14px] text-mute">
-            The spot is unavailable, or it belongs to you.
-          </Text>
-        </View>
-      </View>
-    );
-  }
-
+  // Before the availability check, which the new report itself could change.
   if (submitted) {
     return (
       <View className="flex-1 bg-base">
@@ -190,11 +174,26 @@ export default function ReportSpotScreen() {
               Thanks for looking out
             </Text>
             <Text className="mt-3 font-sans text-[14px] leading-relaxed text-mute">
-              Your report is private. The spot has been returned to the review queue for an admin
-              decision.
+              Your report is private, and sending it doesn’t take the spot down. An admin will
+              review it.
             </Text>
           </Card>
           <Button label="Back to spot" onPress={() => router.back()} className="mt-4" />
+        </View>
+      </View>
+    );
+  }
+
+  if (spot === null || spot.status !== "active" || spot.isOwner) {
+    return (
+      <View className="flex-1 bg-base">
+        <Stack.Screen options={{ headerShown: false }} />
+        {header}
+        <View className="flex-1 items-center justify-center px-8">
+          <Text className="font-sans-semibold text-[17px] text-ink">Nothing to report here</Text>
+          <Text className="mt-2 text-center font-sans text-[14px] text-mute">
+            The spot is unavailable, or it belongs to you.
+          </Text>
         </View>
       </View>
     );

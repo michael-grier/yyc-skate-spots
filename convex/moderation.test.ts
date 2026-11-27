@@ -278,13 +278,18 @@ describe("spot moderation", () => {
     });
   });
 
-  test("reports are private, unique per reporter, and return a spot to review", async () => {
+  test("reports are private, unique per reporter, and queue a live spot for review", async () => {
     const t = convexTest(schema, modules);
     const asAlice = t.withIdentity({ subject: "alice" });
     const asBob = t.withIdentity({ subject: "bob" });
     const asAdmin = t.withIdentity({ subject: "admin", role: "admin" });
     await acknowledgeStandards(asAlice);
     const id = await asAlice.mutation(api.spots.create, SPOT);
+    // A pending spot isn't live, so there is nothing to report yet.
+    await expect(
+      asBob.mutation(api.reports.create, { spotId: id, reason: "not_a_spot" }),
+    ).rejects.toThrow(/not found/);
+    await asAdmin.mutation(api.moderation.markMeetsStandards, { spotId: id });
 
     await expect(
       asAlice.mutation(api.reports.create, { spotId: id, reason: "not_a_spot" }),
@@ -301,6 +306,11 @@ describe("spot moderation", () => {
     await expect(
       asBob.mutation(api.reports.create, { spotId: id, reason: "other" }),
     ).rejects.toThrow(/already reported/);
+    // The spot stays up while the report waits, and only the reporter sees their report.
+    expect(await t.query(api.spots.get, { id })).toMatchObject({ myReportReason: null });
+    expect(await asBob.query(api.spots.get, { id })).toMatchObject({
+      myReportReason: "duplicate_or_inaccurate",
+    });
 
     const review = await asAdmin.query(api.moderation.getSpot, { id });
     expect(review?.review).toMatchObject({
@@ -430,12 +440,24 @@ describe("spot moderation", () => {
     await expect(asAlice.mutation(api.spots.create, SPOT)).resolves.toBeDefined();
   });
 
+  test("reporting a rollout-era spot leaves it on the map", async () => {
+    const t = convexTest(schema, modules);
+    const asBob = t.withIdentity({ subject: "bob" });
+    const id = await t.run((ctx) => ctx.db.insert("spots", { ...SPOT, createdBy: "seed" }));
+
+    await asBob.mutation(api.reports.create, { spotId: id, reason: "not_a_spot" });
+    expect(await t.query(api.spots.list, {})).toMatchObject([{ _id: id }]);
+    expect(await t.query(api.spots.get, { id })).not.toBeNull();
+  });
+
   test("owner deletion clears reports without a removal notice or strike", async () => {
     const t = convexTest(schema, modules);
     const asAlice = t.withIdentity({ subject: "alice" });
     const asBob = t.withIdentity({ subject: "bob" });
+    const asAdmin = t.withIdentity({ subject: "admin", role: "admin" });
     await acknowledgeStandards(asAlice);
     const id = await asAlice.mutation(api.spots.create, SPOT);
+    await asAdmin.mutation(api.moderation.markMeetsStandards, { spotId: id });
     await asBob.mutation(api.reports.create, { spotId: id, reason: "other" });
 
     await asAlice.mutation(api.spots.remove, { id });
