@@ -336,8 +336,8 @@ export default function AdminSpotReviewScreen() {
                 </View>
                 <Text className="mt-3 font-sans text-[12px] leading-relaxed text-mute">
                   These photos are public on the spot. Removing them deletes the photos and the
-                  credit, and the spot stays fixed. Nobody gets a strike. If a report flagged them,
-                  mark the spot as meeting standards afterwards to close it.
+                  credit, and the spot stays fixed. Nobody gets a strike. Meets standards closes
+                  every open report, so check any others before using it to close one about these.
                 </Text>
                 <Button
                   label={working ? "Working…" : "Remove fix photos"}
