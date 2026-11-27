@@ -141,6 +141,10 @@ describe("I fixed it", () => {
     const photo = await uploadAs(t, asSam, "after");
     await asSam.mutation(api.spotWork.submit, { spotId, photoIds: [photo] });
     const workId = await pendingWorkId(asAdmin, spotId);
+    // A pending fix goes through reject, which reopens the spot.
+    await expect(asAdmin.mutation(api.spotWork.removeApproved, { workId })).rejects.toThrow(
+      /isn't on the spot/,
+    );
     await asAdmin.mutation(api.spotWork.accept, { workId });
     expect(await asAdmin.query(api.moderation.getSpot, { id: spotId })).toMatchObject({
       approvedFix: { _id: workId, submitterName: "Sam R." },
@@ -164,6 +168,19 @@ describe("I fixed it", () => {
     await expect(
       asAlice.mutation(api.spots.setNeedsWork, { id: spotId, needsWork: true }),
     ).rejects.toThrow(/already been fixed/);
+  });
+
+  test("an admin can't take down fix photos once the owner makes the spot private", async () => {
+    const { t, asAlice, asSam, asAdmin, spotId } = await setup();
+    const photo = await uploadAs(t, asSam, "after");
+    await asSam.mutation(api.spotWork.submit, { spotId, photoIds: [photo] });
+    const workId = await pendingWorkId(asAdmin, spotId);
+    await asAdmin.mutation(api.spotWork.accept, { workId });
+    await asAlice.mutation(api.spots.update, { id: spotId, ...SPOT, visibility: "private" });
+    await expect(asAdmin.mutation(api.spotWork.removeApproved, { workId })).rejects.toThrow(
+      /not found/,
+    );
+    expect(await t.run((ctx) => ctx.storage.getUrl(photo))).not.toBeNull();
   });
 
   test("rejecting deletes the photos and reopens the spot for another fix", async () => {

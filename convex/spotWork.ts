@@ -85,6 +85,9 @@ export const removeApproved = mutation({
     await requireAdmin(ctx);
     const work = await ctx.db.get("spotWork", workId);
     if (!work || work.acceptedAt === undefined) throw new Error("This fix isn't on the spot.");
+    // A spot made private after an admin opened it is the owner's alone again, as in removeSpot.
+    const spot = await ctx.db.get("spots", work.spotId);
+    if (!spot || spot.publicationStatus === "private") throw new Error("Spot not found.");
     await deleteSpotWork(ctx, work);
     return null;
   },

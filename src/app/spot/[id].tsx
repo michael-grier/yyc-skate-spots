@@ -97,7 +97,8 @@ function RowCard({ label, rows }: { label: string; rows: (SpotRow | false)[] }) 
           <View className="flex-1">
             <View className="flex-row items-center gap-1.5">
               {row.icon}
-              <Text className="font-sans-semibold text-[14px] text-ink">{row.title}</Text>
+              {/* shrink lets a long "Fixed up by" name wrap inside the card. */}
+              <Text className="shrink font-sans-semibold text-[14px] text-ink">{row.title}</Text>
             </View>
             <Text className="mt-0.5 font-sans text-[12px] leading-[17px] text-mute">
               {row.body}
