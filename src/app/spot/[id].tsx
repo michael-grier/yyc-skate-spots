@@ -541,16 +541,21 @@ export default function SpotDetailScreen() {
                             router.push({ pathname: "/spot/fix/[id]", params: { id: spotId } }),
                         },
                       }),
-                {
-                  title: "Spot not right?",
-                  body: "Report a dead spot or another problem.",
-                  action: {
-                    label: "Report",
-                    accessibilityLabel: "Report this spot",
-                    onPress: () =>
-                      router.push({ pathname: "/spot/report/[id]", params: { id: spotId } }),
-                  },
-                },
+                spot.myReportReason
+                  ? {
+                      title: "Report under review",
+                      body: `You reported it as “${reportReasonLabel(spot.myReportReason)}”. An admin will review it.`,
+                    }
+                  : {
+                      title: "Spot not right?",
+                      body: "Report a dead spot or another problem.",
+                      action: {
+                        label: "Report",
+                        accessibilityLabel: "Report this spot",
+                        onPress: () =>
+                          router.push({ pathname: "/spot/report/[id]", params: { id: spotId } }),
+                      },
+                    },
               ]}
             />
           )}
