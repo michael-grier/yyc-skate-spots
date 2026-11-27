@@ -414,18 +414,26 @@ export default function AdminSpotReviewScreen() {
           </Card>
 
           <Text className="mt-7 mb-2 px-1 font-sans-medium text-[11px] text-mute">DECISION</Text>
+          {/* A reviewed spot, such as one just fixed up, has nothing left to approve, but an
+              admin can still remove it. Reports put a spot back in review. */}
           <Card className="p-4">
-            <Text className="font-sans-semibold text-[15px] text-ink">Finish this review</Text>
-            <Text className="mt-1 font-sans text-[12px] leading-relaxed text-mute">
-              Approving publishes the current version and clears its reports. Removal deletes the
-              spot. Dead-spot removal does not add a contributor strike.
+            <Text className="font-sans-semibold text-[15px] text-ink">
+              {spot.review.needsReview ? "Finish this review" : "Already reviewed"}
             </Text>
-            <Button
-              label={working ? "Working…" : "Meets standards"}
-              onPress={confirmApproval}
-              disabled={working}
-              className="mt-4"
-            />
+            <Text className="mt-1 font-sans text-[12px] leading-relaxed text-mute">
+              {spot.review.needsReview
+                ? "Approving publishes the current version and clears its reports. Removal deletes the spot."
+                : "This version passed review. Removal deletes the spot."}{" "}
+              Dead-spot removal does not add a contributor strike.
+            </Text>
+            {spot.review.needsReview ? (
+              <Button
+                label={working ? "Working…" : "Meets standards"}
+                onPress={confirmApproval}
+                disabled={working}
+                className="mt-4"
+              />
+            ) : null}
             <Button
               label="Remove spot"
               variant="danger"
@@ -433,7 +441,7 @@ export default function AdminSpotReviewScreen() {
               onPress={() =>
                 router.push({ pathname: "/admin/spot/remove/[id]", params: { id: spot._id } })
               }
-              className="mt-2"
+              className={spot.review.needsReview ? "mt-2" : "mt-4"}
             />
           </Card>
 
