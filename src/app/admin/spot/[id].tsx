@@ -26,6 +26,7 @@ export default function AdminSpotReviewScreen() {
   const markMeetsStandards = useMutation(api.moderation.markMeetsStandards);
   const acceptFix = useMutation(api.spotWork.accept);
   const rejectFix = useMutation(api.spotWork.reject);
+  const removeApprovedFix = useMutation(api.spotWork.removeApproved);
   const banContributor = useMutation(api.moderation.banContributor);
   const unbanContributor = useMutation(api.moderation.unbanContributor);
   const [working, setWorking] = useState(false);
@@ -66,6 +67,32 @@ export default function AdminSpotReviewScreen() {
                 "Couldn't save the decision",
                 "Another admin may have reviewed this fix already, or the connection dropped.",
               );
+            } finally {
+              setWorking(false);
+            }
+          },
+        },
+      ],
+    );
+  }
+
+  function confirmRemoveFix() {
+    if (!spot?.approvedFix) return;
+    const workId = spot.approvedFix._id;
+    Alert.alert(
+      "Remove the fix photos?",
+      `The photos and ${spot.approvedFix.submitterName}'s credit are deleted. The spot stays fixed.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Remove",
+          style: "destructive",
+          onPress: async () => {
+            setWorking(true);
+            try {
+              await removeApprovedFix({ workId });
+            } catch {
+              Alert.alert("Couldn't remove the photos", "Check your connection and try again.");
             } finally {
               setWorking(false);
             }
@@ -287,6 +314,33 @@ export default function AdminSpotReviewScreen() {
                   disabled={working}
                   onPress={() => confirmFixDecision(false)}
                   className="mt-2"
+                />
+              </Card>
+            </>
+          ) : null}
+          {spot.approvedFix ? (
+            <>
+              <Text className="mt-7 mb-2 px-1 font-sans-medium text-[11px] text-mute">
+                FIXED UP
+              </Text>
+              <Card className="p-4">
+                <Text className="font-sans-semibold text-[14px] text-ink">
+                  Fixed up by {spot.approvedFix.submitterName} ·{" "}
+                  {formatMonthYear(spot.approvedFix.acceptedAt)}
+                </Text>
+                <View className="mt-3">
+                  <EvidencePhotos urls={spot.approvedFix.photoUrls} />
+                </View>
+                <Text className="mt-3 font-sans text-[12px] leading-relaxed text-mute">
+                  These photos are public on the spot. Removing them deletes the photos and the
+                  credit, and the spot stays fixed. Nobody gets a strike.
+                </Text>
+                <Button
+                  label={working ? "Working…" : "Remove fix photos"}
+                  variant="danger"
+                  disabled={working}
+                  onPress={confirmRemoveFix}
+                  className="mt-3"
                 />
               </Card>
             </>

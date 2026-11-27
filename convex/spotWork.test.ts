@@ -136,6 +136,36 @@ describe("I fixed it", () => {
     ).rejects.toThrow(/already been fixed/);
   });
 
+  test("an admin can take down approved photos without striking the owner", async () => {
+    const { t, asAlice, asSam, asAdmin, spotId } = await setup();
+    const photo = await uploadAs(t, asSam, "after");
+    await asSam.mutation(api.spotWork.submit, { spotId, photoIds: [photo] });
+    const workId = await pendingWorkId(asAdmin, spotId);
+    await asAdmin.mutation(api.spotWork.accept, { workId });
+    expect(await asAdmin.query(api.moderation.getSpot, { id: spotId })).toMatchObject({
+      approvedFix: { _id: workId, submitterName: "Sam R." },
+      workSubmission: null,
+    });
+    await expect(asSam.mutation(api.spotWork.removeApproved, { workId })).rejects.toThrow(
+      /Administrator/,
+    );
+
+    await asAdmin.mutation(api.spotWork.removeApproved, { workId });
+    expect(await t.run((ctx) => ctx.storage.getUrl(photo))).toBeNull();
+    expect(await t.query(api.spots.get, { id: spotId })).toMatchObject({
+      needsWork: false,
+      isFixed: true,
+      fix: null,
+    });
+    expect(await asAdmin.query(api.moderation.getSpot, { id: spotId })).toMatchObject({
+      approvedFix: null,
+      creator: { confirmedRemovalCount: 0 },
+    });
+    await expect(
+      asAlice.mutation(api.spots.setNeedsWork, { id: spotId, needsWork: true }),
+    ).rejects.toThrow(/already been fixed/);
+  });
+
   test("rejecting deletes the photos and reopens the spot for another fix", async () => {
     const { t, asSam, asAdmin, spotId } = await setup();
     const photo = await uploadAs(t, asSam, "after");

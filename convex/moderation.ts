@@ -212,6 +212,13 @@ export const getSpot = query({
     const photoUrls = (
       await Promise.all(spot.photoIds.map((photoId) => ctx.storage.getUrl(photoId)))
     ).filter((url): url is string => url !== null);
+    const fix = work && {
+      _id: work._id,
+      submitterName: await creatorLabel(ctx, work.submittedBy, undefined),
+      photoUrls: (await Promise.all(work.photoIds.map((id) => ctx.storage.getUrl(id)))).filter(
+        (url): url is string => url !== null,
+      ),
+    };
     // Owner notification metadata must also stay out of the admin detail response.
     const {
       photoIds: _photoIds,
@@ -227,18 +234,12 @@ export const getSpot = query({
       photoUrls,
       canAddAdminPhotos: spot.allowAdminPhotos === true && spot.photoIds.length === 0,
       review: reviewState(spot, moderation ?? undefined),
-      // Only a pending fix needs a decision; an approved one is part of the public spot.
+      // A pending fix needs a decision; an approved one is public, so admins can still take it down.
+      approvedFix:
+        fix && work?.acceptedAt !== undefined ? { ...fix, acceptedAt: work.acceptedAt } : null,
       workSubmission:
-        work && work.acceptedAt === undefined
-          ? {
-              _id: work._id,
-              _creationTime: work._creationTime,
-              details: work.details,
-              submitterName: await creatorLabel(ctx, work.submittedBy, undefined),
-              photoUrls: (
-                await Promise.all(work.photoIds.map((id) => ctx.storage.getUrl(id)))
-              ).filter((url): url is string => url !== null),
-            }
+        fix && work?.acceptedAt === undefined
+          ? { ...fix, _creationTime: work._creationTime, details: work.details }
           : null,
       creator: {
         name: await creatorLabel(ctx, spot.createdBy, spot.createdByName),

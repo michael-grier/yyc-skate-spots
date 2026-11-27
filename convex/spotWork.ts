@@ -74,6 +74,22 @@ export const accept = mutation({
   },
 });
 
+/**
+ * Takes down approved photos that turn out to break the standards. Removing the spot would
+ * strike its owner for someone else's photos, so this drops only the fix and its credit; the
+ * spot stays fixed, as when the sender deletes their account.
+ */
+export const removeApproved = mutation({
+  args: { workId: v.id("spotWork") },
+  handler: async (ctx, { workId }) => {
+    await requireAdmin(ctx);
+    const work = await ctx.db.get("spotWork", workId);
+    if (!work || work.acceptedAt === undefined) throw new Error("This fix isn't on the spot.");
+    await deleteSpotWork(ctx, work);
+    return null;
+  },
+});
+
 /** Rejecting deletes the photos and lets someone else send a fix. */
 export const reject = mutation({
   args: { workId: v.id("spotWork") },
