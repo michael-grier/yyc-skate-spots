@@ -196,7 +196,7 @@ describe("spot moderation", () => {
         expect.arrayContaining([expect.objectContaining({ _id: id, creatorName: label })]),
       );
       expect(await admin.query(api.moderation.getSpot, { id })).toMatchObject({
-        creator: { name: label },
+        creator: { name: label, isSeeded: owner === "seed" },
       });
       await admin.mutation(api.moderation.markMeetsStandards, { spotId: id });
       const publicSpot = await t.query(api.spots.get, { id });
@@ -334,16 +334,21 @@ describe("spot moderation", () => {
     const result = await asAdmin.mutation(api.moderation.removeSpot, {
       spotId: id,
       reason: "not_a_spot",
+      ownerMessage: "  This is a parking lot curb.  ",
+      details: "Third report this week",
     });
     expect(result).toMatchObject({ strikeCount: 1, eligibleForBan: false });
     expect(await t.query(api.spots.get, { id })).toBeNull();
     expect(await asBob.query(api.spots.get, { id })).toBeNull();
-    expect(await asAlice.query(api.spots.get, { id })).toMatchObject({
+    const notice = await asAlice.query(api.spots.get, { id });
+    expect(notice).toMatchObject({
       status: "removed",
       name: SPOT.name,
       reason: "not_a_spot",
+      ownerMessage: "This is a parking lot curb.",
       strikeNumber: 1,
     });
+    expect(notice).not.toHaveProperty("details");
     expect(await asAlice.query(api.spots.mine, {})).toMatchObject([
       { status: "removed", _id: id, strikeNumber: 1 },
     ]);

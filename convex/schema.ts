@@ -180,7 +180,10 @@ export default defineSchema({
     createdBy: v.string(),
     createdByName: v.optional(v.string()),
     reason: reportReason,
+    // Internal moderation notes. Never returned to the owner.
     details: v.optional(v.string()),
+    // Shown to the owner word for word on their removal notice.
+    ownerMessage: v.optional(v.string()),
     removedAt: v.number(),
     // Cleared if the reviewing administrator later deletes their account.
     removedBy: v.optional(v.string()),

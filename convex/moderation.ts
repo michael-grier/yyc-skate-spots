@@ -19,7 +19,7 @@ import { clearSpotWork, spotWorkFor } from "./spotWorkModel";
 import { reportReason } from "./schema";
 import { MAX_SPOTS_LISTED, releasePhotos, scheduleSpotDeletion } from "./spots";
 
-const MAX_REMOVAL_DETAILS_LENGTH = 500;
+const MAX_REMOVAL_TEXT_LENGTH = 500;
 const MAX_ELIGIBLE_CONTRIBUTORS = 100;
 
 /** Admins see the public name. Unnamed seed fixtures have no account to derive one from. */
@@ -243,6 +243,8 @@ export const getSpot = query({
           : null,
       creator: {
         name: await creatorLabel(ctx, spot.createdBy, spot.createdByName),
+        // Seed rows have no account, so removal adds no strike and sends no notice.
+        isSeeded: spot.createdBy === SEED_OWNER,
         confirmedRemovalCount: contributor?.confirmedRemovalCount ?? 0,
         isBanned: contributor?.isBanned ?? false,
         moderationId: contributor?._id ?? null,
@@ -305,6 +307,7 @@ export const removeSpot = mutation({
     spotId: v.id("spots"),
     reason: reportReason,
     details: v.optional(v.string()),
+    ownerMessage: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const identity = await requireAdmin(ctx);
@@ -314,8 +317,14 @@ export const removeSpot = mutation({
       throw new Error("Spot not found.");
     }
     const details = args.details?.trim();
-    if (details && details.length > MAX_REMOVAL_DETAILS_LENGTH) {
-      throw new Error(`Removal details must be at most ${MAX_REMOVAL_DETAILS_LENGTH} characters.`);
+    if (details && details.length > MAX_REMOVAL_TEXT_LENGTH) {
+      throw new Error(`Removal details must be at most ${MAX_REMOVAL_TEXT_LENGTH} characters.`);
+    }
+    const ownerMessage = args.ownerMessage?.trim();
+    if (ownerMessage && ownerMessage.length > MAX_REMOVAL_TEXT_LENGTH) {
+      throw new Error(
+        `The message to the contributor must be at most ${MAX_REMOVAL_TEXT_LENGTH} characters.`,
+      );
     }
     const reportCount = await clearSpotModeration(ctx, spot._id);
     await clearSpotWork(ctx, spot._id);
@@ -352,6 +361,7 @@ export const removeSpot = mutation({
       createdByName: spot.createdByName,
       reason: args.reason,
       ...(details ? { details } : {}),
+      ...(ownerMessage ? { ownerMessage } : {}),
       removedAt,
       removedBy: identity.tokenIdentifier,
       reportCount,
