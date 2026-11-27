@@ -248,7 +248,7 @@ export default function FixSpotScreen() {
             </Text>
           </View>
 
-          <View onLayout={onFieldLayout}>
+          <View onLayout={onFieldLayout()}>
             <Text className="mt-5 mb-2 px-1 font-sans-medium text-[11px] text-mute">
               WHAT YOU DID (OPTIONAL)
             </Text>
